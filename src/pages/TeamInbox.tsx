@@ -1,7 +1,11 @@
 // SENDA Team Inbox: one connected WhatsApp number, one shared inbox, many employees. Everything shown comes from the server (no sample data);
 // the server decides what each signed-in employee may see and do, the buttons here only reflect that.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, Check, CheckCheck, Inbox, Loader2, MessageSquare, RefreshCw, Search, Send, StickyNote, UserCheck } from "lucide-react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, ArrowLeft, Check, CheckCheck, FileText, Inbox, Loader2, MessageSquare, Paperclip, Phone, RefreshCw, Reply, Search, Send, StickyNote, UserCheck, X } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { CallButton } from "@/components/whatsapp-calls/CallButton";
+import { CallsPanel } from "@/components/whatsapp-calls/CallsPanel";
+import { useWhatsAppCalling } from "@/contexts/WhatsAppCallingContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Badge } from "@/components/ui/badge";
@@ -11,14 +15,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { appLanguage } from "@/utils/appLocale";
-import { API_CONFIG } from "@/config/api";
+import { EmojiPicker } from "@/components/team-inbox/EmojiPicker";
+import { MessageMedia } from "@/components/team-inbox/MessageMedia";
+import { ACCEPT, CAPTION_KINDS, LIMIT_MB, MAX_FILES, checkFile, type FileKind } from "@/components/team-inbox/attachments";
+import { dayLabel, fileSize, isEmojiOnly, linkify, sameDay } from "@/components/team-inbox/format";
 import {
   errorCode, teamInboxApi, type Counts, type InboxMessage, type InboxNote, type InboxThread, type InboxView, type Person, type ThreadDetail, type ThreadStatus,
 } from "@/services/teamInboxApi";
 
 const TEXT = {
   sw: {
-    title: "Sanduku la Timu", all: "Mazungumzo yote", mine: "Yangu", unassigned: "Hayajapewa mtu", open: "Wazi", pending: "Yanasubiri", resolved: "Yamekamilika", archived: "Yaliyohifadhiwa",
+    title: "Sanduku la Timu", chats: "Mazungumzo", calls: "Simu", replyTo: "Jibu ujumbe huu", replyingTo: "Unajibu", cancelReply: "Ghairi jibu", original: "Ujumbe wa awali", all: "Mazungumzo yote", mine: "Yangu", unassigned: "Hayajapewa mtu", open: "Wazi", pending: "Yanasubiri", resolved: "Yamekamilika", archived: "Yaliyohifadhiwa",
     search: "Tafuta jina, namba au ujumbe", empty: "Hakuna mazungumzo hapa bado.", noResults: "Hakuna matokeo ya utafutaji huu.", pick: "Chagua mazungumzo kuanza.",
     loading: "Inapakia...", failed: "Imeshindikana kupakia. Jaribu tena.", retryLoad: "Jaribu tena", loadMore: "Pakia zaidi", older: "Ujumbe wa zamani",
     reply: "Jibu", note: "Dokezo la ndani", replyPlaceholder: "Andika jibu kwa mteja (Enter kutuma, Shift+Enter mstari mpya)", notePlaceholder: "Dokezo hili linaonekana na timu pekee, halitumwi kwa mteja",
@@ -28,9 +35,13 @@ const TEXT = {
     noReply: "Huna ruhusa ya kujibu mazungumzo haya.", contact: "Taarifa za mteja", noContact: "Hakuna taarifa zaidi za mteja zilizohifadhiwa.", notes: "Madokezo ya ndani", noNotes: "Hakuna madokezo.",
     reconnecting: "Inaunganisha upya...", live: "Moja kwa moja", you: "Wewe", unread: "Hayajasomwa", forbidden: "Huna ruhusa.", claimed: "Mazungumzo yamechukuliwa.", assignedOk: "Mazungumzo yamepewa.", statusOk: "Hali imebadilishwa.",
     noAccess: "Akaunti yako haina ufikiaji wa sanduku hili.", back: "Rudi", fromPhone: "Imetumwa kwa simu", mediaLoading: "Inapakia faili...", mediaFailed: "Faili hii haiwezi kupakiwa sasa.",
+    today: "Leo", yesterday: "Jana", attach: "Ambatisha faili", emoji: "Emoji", photo: "Picha", video: "Video", audio: "Sauti", document: "Hati", tapToLoad: "Bonyeza kufungua",
+    dropHere: "Dondosha faili hapa kuzituma", fileType: "WhatsApp inapokea picha (JPG, PNG), video (MP4), sauti (MP3, M4A, AAC, AMR, OGG) na hati (PDF, Word, Excel, PowerPoint, TXT).",
+    fileSize: (mb: number) => `Faili hii ni kubwa mno. Kikomo ni ${mb} MB.`, fileEmpty: "Faili hii ni tupu.", tooManyFiles: `Unaweza kutuma hadi faili ${MAX_FILES} kwa mara moja.`,
+    removeFile: "Ondoa faili", captionPlaceholder: "Ongeza maelezo (si lazima) kisha tuma", sendFiles: "Tuma faili", notSentFile: "Haikutumwa. Ambatisha tena.",
   },
   en: {
-    title: "Team Inbox", all: "All conversations", mine: "My conversations", unassigned: "Unassigned", open: "Open", pending: "Pending", resolved: "Resolved", archived: "Archived",
+    title: "Team Inbox", chats: "Chats", calls: "Calls", replyTo: "Reply to this message", replyingTo: "Replying to", cancelReply: "Cancel reply", original: "Original message", all: "All conversations", mine: "My conversations", unassigned: "Unassigned", open: "Open", pending: "Pending", resolved: "Resolved", archived: "Archived",
     search: "Search name, number or message", empty: "No conversations here yet.", noResults: "No results for this search.", pick: "Select a conversation to start.",
     loading: "Loading...", failed: "Could not load. Try again.", retryLoad: "Try again", loadMore: "Load more", older: "Older messages",
     reply: "Reply", note: "Internal note", replyPlaceholder: "Write a reply to the customer (Enter to send, Shift+Enter for a new line)", notePlaceholder: "Only your team sees this note. It is never sent to the customer",
@@ -40,6 +51,10 @@ const TEXT = {
     noReply: "You do not have permission to reply to this conversation.", contact: "Customer", noContact: "No further customer details are saved.", notes: "Internal notes", noNotes: "No notes yet.",
     reconnecting: "Reconnecting...", live: "Live", you: "You", unread: "Unread", forbidden: "You do not have permission.", claimed: "Conversation claimed.", assignedOk: "Conversation assigned.", statusOk: "Status changed.",
     noAccess: "Your account does not have access to this inbox.", back: "Back", fromPhone: "Sent from the phone", mediaLoading: "Loading file...", mediaFailed: "This file cannot be loaded right now.",
+    today: "Today", yesterday: "Yesterday", attach: "Attach a file", emoji: "Emoji", photo: "Photo", video: "Video", audio: "Audio", document: "Document", tapToLoad: "Tap to open",
+    dropHere: "Drop files here to send them", fileType: "WhatsApp accepts photos (JPG, PNG), video (MP4), audio (MP3, M4A, AAC, AMR, OGG) and documents (PDF, Word, Excel, PowerPoint, TXT).",
+    fileSize: (mb: number) => `This file is too large. The limit is ${mb} MB.`, fileEmpty: "This file is empty.", tooManyFiles: `You can send up to ${MAX_FILES} files at once.`,
+    removeFile: "Remove file", captionPlaceholder: "Add a caption (optional), then send", sendFiles: "Send files", notSentFile: "Not sent. Attach it again.",
   },
 } as const;
 
@@ -58,46 +73,11 @@ const label = (t: InboxThread) => t.customer_name || `+${t.customer_phone}`;
 const token = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : `${Date.now()}${Math.random().toString(16).slice(2)}`);
 
 function Ticks({ status }: { status: InboxMessage["status"] }) {
-  if (status === "read") return <CheckCheck className="h-3.5 w-3.5 text-sky-500" />;
-  if (status === "delivered") return <CheckCheck className="h-3.5 w-3.5 text-muted-foreground" />;
-  if (status === "sent") return <Check className="h-3.5 w-3.5 text-muted-foreground" />;
-  if (status === "pending") return <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />;
+  if (status === "read") return <CheckCheck className="h-3.5 w-3.5 text-[#53bdeb]" />;
+  if (status === "delivered") return <CheckCheck className="h-3.5 w-3.5 text-[#667781] dark:text-[#8696a0]" />;
+  if (status === "sent") return <Check className="h-3.5 w-3.5 text-[#667781] dark:text-[#8696a0]" />;
+  if (status === "pending") return <Loader2 className="h-3.5 w-3.5 animate-spin text-[#667781] dark:text-[#8696a0]" />;
   return null;
-}
-
-/** A picture / video / voice note / document the customer sent. WhatsApp keeps it, so it is fetched through our server (which checks the
- *  agent may see this conversation) when the message scrolls into view of the page, and shown in the bubble. */
-function MessageMedia({ threadId, message, failed, loading }: { threadId: string; message: InboxMessage; failed: string; loading: string }) {
-  const [src, setSrc] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    let alive = true;
-    let objectUrl = "";
-    void (async () => {
-      try {
-        const res = await fetch(`${API_CONFIG.BASE_URL}/team-inbox/threads/${threadId}/messages/${message.id}/media/`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("access_token") || ""}` },
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          throw new Error(body?.message || failed);
-        }
-        const blob = await res.blob();
-        objectUrl = URL.createObjectURL(blob);
-        if (alive) setSrc(objectUrl);
-      } catch (e) {
-        if (alive) setError(e instanceof Error && e.message ? e.message : failed);
-      }
-    })();
-    return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [threadId, message.id, failed]);
-
-  if (error) return <p className="mb-1 rounded-md bg-background/60 px-2 py-1 text-xs text-muted-foreground">{error}</p>;
-  if (!src) return <p className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />{loading}</p>;
-  if (message.kind === "image" || message.kind === "sticker") return <a href={src} target="_blank" rel="noreferrer"><img src={src} alt={message.text} className="mb-1 max-h-72 max-w-full rounded-md" /></a>;
-  if (message.kind === "video") return <video src={src} controls className="mb-1 max-h-72 max-w-full rounded-md" />;
-  if (message.kind === "audio") return <audio src={src} controls className="mb-1 max-w-full" />;
-  return <a href={src} download className="mb-1 inline-block text-xs font-medium underline">{message.text || "Download"}</a>;
 }
 
 const TeamInbox = () => {
@@ -122,6 +102,10 @@ const TeamInbox = () => {
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const calling = useWhatsAppCalling();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [section, setSection] = useState<"chats" | "calls">("chats");
   const [view, setView] = useState<InboxView | ThreadStatus>("all");
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -140,8 +124,19 @@ const TeamInbox = () => {
   const [notes, setNotes] = useState<InboxNote[]>([]);
   const [members, setMembers] = useState<Array<Person & { role: string }>>([]);
   const [mode, setMode] = useState<"reply" | "note">("reply");
+  const [replyingTo, setReplyingTo] = useState<InboxMessage | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  // Files chosen but not sent yet, previews of files being (or just) sent, and the drag-and-drop highlight.
+  type PendingFile = { id: string; file: File; kind: FileKind; previewUrl: string };
+  const [files, setFiles] = useState<PendingFile[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const urlsRef = useRef<string[]>([]);
+  const localFiles = useRef<Map<string, PendingFile>>(new Map());
+  const releaseUrls = () => { urlsRef.current.forEach((u) => URL.revokeObjectURL(u)); urlsRef.current = []; localFiles.current.clear(); };
+  useEffect(() => releaseUrls, []);
 
   const lastEvent = useRef<number | null>(null);
   const activeRef = useRef<string | null>(null);
@@ -200,7 +195,7 @@ const TeamInbox = () => {
   const open = useCallback(async (id: string) => {
     setActiveId(id);
     activeRef.current = id;
-    setDetail(null); setMessages([]); setNotes([]); setHasMore(false); setDraft(""); setMode("reply");
+    releaseUrls(); setFiles([]); setDetail(null); setMessages([]); setNotes([]); setHasMore(false); setDraft(""); setMode("reply"); setReplyingTo(null);
     const [d, m, n] = await Promise.all([teamInboxApi.detail(id), teamInboxApi.messages(id), teamInboxApi.notes(id)]);
     if (activeRef.current !== id) return;
     if (d.success && d.data) setDetail(d.data); else toast({ title: d.message || T.failed, variant: "destructive" });
@@ -208,6 +203,16 @@ const TeamInbox = () => {
     if (n.success && n.data) setNotes(n.data.results);
     void teamInboxApi.markRead(id).then(() => { void loadList(1); });
   }, [T.failed, loadList, toast]);
+
+  // A link such as /conversations?thread=<id> (from a call card or the Calls tab) opens that conversation.
+  useEffect(() => {
+    const id = new URLSearchParams(location.search).get("thread");
+    if (!id) return;
+    setSection("chats");
+    void open(id);
+    navigate(location.pathname, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   // Keep the newest message in view.
   useEffect(() => { bottomRef.current?.scrollIntoView({ block: "end" }); }, [messages.length, activeId]);
@@ -272,22 +277,16 @@ const TeamInbox = () => {
     toast({ title: res.status === 403 ? T.forbidden : res.message || T.failed, variant: "destructive" });
   };
 
-  const send = async () => {
-    const text = draft.trim();
-    if (!text || !activeId || sending) return;
-    setSending(true);
-    if (mode === "note") {
-      const res = await teamInboxApi.addNote(activeId, text);
-      setSending(false);
-      if (res.success && res.data) { setNotes((p) => [...p, res.data!.note]); setDraft(""); } else fail(res);
-      return;
-    }
+  /** Send the typed text as a normal message (optionally quoting one). Shown at once as "sending", then settled by the server's answer. */
+  const sendText = async (text: string, quoted: InboxMessage | null) => {
+    if (!activeId) return;
     const clientToken = token();
-    const local: InboxMessage = { id: `local-${clientToken}`, direction: "out", kind: "text", text, status: "pending", error: "", sent_by: null, created_at: new Date().toISOString(), client_token: clientToken };
+    const local: InboxMessage = {
+      id: `local-${clientToken}`, direction: "out", kind: "text", text, status: "pending", error: "", sent_by: null, created_at: new Date().toISOString(), client_token: clientToken,
+      reply_to: quoted ? { id: quoted.id, direction: quoted.direction, kind: quoted.kind, text: quoted.text.slice(0, 140), author: quoted.sent_by?.name ?? "" } : null,
+    };
     setMessages((p) => [...p, local]);
-    setDraft("");
-    const res = await teamInboxApi.send(activeId, text, clientToken);
-    setSending(false);
+    const res = await teamInboxApi.send(activeId, text, clientToken, quoted?.id);
     const sent = (res.data as { message?: InboxMessage } | undefined)?.message ?? (res.errors as unknown as { message?: InboxMessage } | null)?.message;
     if (sent) {
       mergeMessages([sent]);
@@ -298,16 +297,119 @@ const TeamInbox = () => {
       setMessages((p) => p.map((m) => (m.id === local.id ? { ...m, status: "failed", error: errorCode(res) === "window_closed" ? T.window : res.message || T.failed } : m)));
       if (errorCode(res) === "window_closed") void refreshActive(activeId);
     }
+  };
+
+  /** Send the chosen files one after another (WhatsApp takes one file per message). The caption rides on the first photo or video; when
+   *  none of the files can carry one (audio, documents) it goes as its own message after them. */
+  const sendFiles = async (caption: string) => {
+    if (!activeId) return;
+    const threadId = activeId;
+    const queue = files;
+    const quoted = replyingTo;
+    setFiles([]); setDraft(""); setReplyingTo(null);
+    const captionIndex = caption ? queue.findIndex((f) => CAPTION_KINDS.includes(f.kind)) : -1;
+    for (let i = 0; i < queue.length; i++) {
+      const item = queue[i];
+      const clientToken = token();
+      const localId = `local-${clientToken}`;
+      const text = i === captionIndex ? caption : "";
+      localFiles.current.set(localId, item);
+      setMessages((p) => [...p, {
+        id: localId, direction: "out", kind: item.kind, has_media: true, local_url: item.previewUrl, progress: 0, status: "pending", error: "", sent_by: null,
+        text: item.kind === "document" ? item.file.name : text || `[${item.kind[0].toUpperCase()}${item.kind.slice(1)}]`, created_at: new Date().toISOString(), client_token: clientToken,
+        reply_to: i === 0 && quoted ? { id: quoted.id, direction: quoted.direction, kind: quoted.kind, text: quoted.text.slice(0, 140), author: quoted.sent_by?.name ?? "" } : null,
+      }]);
+      const res = await teamInboxApi.sendAttachment(threadId, item.file, {
+        caption: text || undefined, clientToken, replyTo: i === 0 ? quoted?.id : undefined,
+        onProgress: (percent) => setMessages((p) => p.map((m) => (m.id === localId ? { ...m, progress: percent } : m))),
+      });
+      const sent = (res.data as { message?: InboxMessage } | undefined)?.message ?? (res.errors as unknown as { message?: InboxMessage } | null)?.message;
+      if (sent) {
+        localFiles.current.delete(localId);
+        mergeMessages([{ ...sent, local_url: item.previewUrl }]);
+        if (res.data?.warning) toast({ title: T.recent(res.data.warning.name) });
+        if (!res.success) toast({ title: (res.errors as unknown as { error?: string })?.error || res.message || T.failed, variant: "destructive" });
+      } else {
+        const code = errorCode(res);
+        setMessages((p) => p.map((m) => (m.id === localId ? { ...m, status: "failed", progress: undefined, error: code === "window_closed" ? T.window : res.message || T.failed } : m)));
+        if (code === "window_closed") void refreshActive(threadId);
+      }
+    }
+    if (caption && captionIndex < 0) await sendText(caption, null);
+    void loadList(1);
+  };
+
+  const send = async () => {
+    const text = draft.trim();
+    if (!activeId || sending) return;
+    if (mode === "reply" && files.length) {
+      setSending(true);
+      await sendFiles(text);
+      setSending(false);
+      return;
+    }
+    if (!text) return;
+    setSending(true);
+    if (mode === "note") {
+      const res = await teamInboxApi.addNote(activeId, text);
+      setSending(false);
+      if (res.success && res.data) { setNotes((p) => [...p, res.data!.note]); setDraft(""); } else fail(res);
+      return;
+    }
+    const quoted = replyingTo;
+    setDraft("");
+    setReplyingTo(null);
+    await sendText(text, quoted);
+    setSending(false);
     void loadList(1);
   };
 
   const retry = async (m: InboxMessage) => {
     if (!activeId) return;
-    if (m.id.startsWith("local-")) { setMessages((p) => p.filter((x) => x.id !== m.id)); setDraft(m.text); return; }
+    if (m.id.startsWith("local-")) {
+      setMessages((p) => p.filter((x) => x.id !== m.id));
+      const file = localFiles.current.get(m.id);
+      if (file) { localFiles.current.delete(m.id); setFiles((p) => [...p, file]); return; }  // a file that never reached WhatsApp goes back to be sent again
+      setDraft(m.text);
+      return;
+    }
     const res = await teamInboxApi.retry(activeId, m.id);
     const sent = (res.data as { message?: InboxMessage } | undefined)?.message ?? (res.errors as unknown as { message?: InboxMessage } | null)?.message;
     if (sent) mergeMessages([sent]);
     if (!res.success) fail(res);
+  };
+
+  /** Queue files from the file picker, a paste, or a drop. Wrong types and sizes are refused here with the reason, before any upload. */
+  const addFiles = (list: FileList | File[]) => {
+    const incoming = Array.from(list);
+    if (!incoming.length || mode !== "reply") return;
+    const room = Math.max(MAX_FILES - files.length, 0);
+    const accepted: PendingFile[] = [];
+    for (const file of incoming.slice(0, room)) {
+      const check = checkFile(file);
+      if (check.error || !check.kind) {
+        toast({ title: file.name, description: check.error === "size" ? T.fileSize(LIMIT_MB[check.kind as FileKind]) : check.error === "empty" ? T.fileEmpty : T.fileType, variant: "destructive" });
+        continue;
+      }
+      const previewUrl = URL.createObjectURL(file);
+      urlsRef.current.push(previewUrl);
+      accepted.push({ id: token(), file, kind: check.kind, previewUrl });
+    }
+    if (incoming.length > room) toast({ title: T.tooManyFiles });
+    if (accepted.length) setFiles((p) => [...p, ...accepted]);
+  };
+
+  const insertEmoji = (emoji: string) => {
+    const el = composerRef.current;
+    const start = el?.selectionStart ?? draft.length;
+    const end = el?.selectionEnd ?? draft.length;
+    setDraft(draft.slice(0, start) + emoji + draft.slice(end));
+    window.requestAnimationFrame(() => { el?.focus(); const pos = start + emoji.length; el?.setSelectionRange(pos, pos); });
+  };
+
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pasted = Array.from(e.clipboardData?.files ?? []);
+    if (pasted.length && mode === "reply" && canWrite) { e.preventDefault(); addFiles(pasted); }
   };
 
   const change = async (run: Promise<{ success?: boolean; data?: { thread: InboxThread }; message?: string; status: number }>, ok: string) => {
@@ -316,6 +418,7 @@ const TeamInbox = () => {
   };
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Escape" && replyingTo) { setReplyingTo(null); return; }
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
   };
   const onDraft = (value: string) => {
@@ -372,7 +475,7 @@ const TeamInbox = () => {
               </span>
               <span className="flex items-center justify-between gap-2">
                 <span className="truncate text-xs text-muted-foreground">{t.last_direction === "out" ? `${T.you}: ` : ""}{t.last_preview}</span>
-                {t.unread > 0 && <span className="shrink-0 rounded-full bg-primary px-1.5 text-xs text-primary-foreground" aria-label={T.unread}>{t.unread}</span>}
+                {t.unread > 0 && <span className="shrink-0 rounded-full bg-[#00a884] px-1.5 text-xs font-medium text-white" aria-label={T.unread}>{t.unread}</span>}
               </span>
               <span className="mt-1 flex items-center gap-1.5">
                 <Badge variant="secondary" className={`px-1.5 py-0 text-[10px] ${STATUS_TONE[t.status]}`}>{T[t.status]}</Badge>
@@ -386,30 +489,80 @@ const TeamInbox = () => {
     </section>
   );
 
+  /** Scroll to the original message a reply quotes and flash it, as the normal WhatsApp app does. */
+  const jumpTo = (id: string) => {
+    const el = document.getElementById(`msg-${id}`);
+    if (!el) { if (activeId) void refreshActive(activeId); return; }
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.add("bg-emerald-500/25");
+    window.setTimeout(() => el.classList.remove("bg-emerald-500/25"), 1400);
+  };
+
+  const mediaText = { loading: T.mediaLoading, failed: T.mediaFailed, retry: T.retry, tapToLoad: T.tapToLoad, photo: T.photo, video: T.video, audio: T.audio, document: T.document };
+
   const bubble = (m: InboxMessage) => {
     const mine = m.direction === "out";
+    if (m.kind === "call" || m.kind === "call_permission" || m.kind === "call_permission_request") {
+      return (
+        <div key={m.id} className="flex justify-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-xs text-[#54656f] shadow-sm dark:bg-[#202c33] dark:text-[#8696a0]"><Phone className="h-3 w-3" />{m.text} · {clock(m.created_at)}</span>
+        </div>
+      );
+    }
+    const canQuote = mode === "reply" && !!perms?.can_reply && !m.id.startsWith("local-") && m.status !== "failed";
+    const who = (q: NonNullable<InboxMessage["reply_to"]>) => (q.direction === "in" ? label(active!) : q.author || T.fromPhone);
+    const placeholder = /^\[[A-Za-z ]+\]$/.test(m.text);
+    const showText = !!m.text && !(m.has_media && placeholder) && !(m.has_media && m.kind === "document");
+    const big = !m.has_media && !m.reply_to && isEmojiOnly(m.text);
+    const meta = "text-[#667781] dark:text-[#8696a0]";
     return (
-      <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-        <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-muted"} ${m.status === "failed" ? "ring-2 ring-destructive" : ""}`}>
-          {mine && <p className="mb-0.5 text-[11px] opacity-80">{m.sent_by ? m.sent_by.name : T.fromPhone}</p>}
-          {m.has_media && activeId && <MessageMedia threadId={activeId} message={m} failed={T.mediaFailed} loading={T.mediaLoading} />}
-          {!(m.has_media && /^\[[A-Za-z ]+\]$/.test(m.text)) && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
-          <p className={`mt-1 flex items-center justify-end gap-1 text-[11px] ${mine ? "opacity-80" : "text-muted-foreground"}`}>
+      <div key={m.id} id={`msg-${m.id}`} className={`group flex items-center gap-1 rounded-lg transition-colors ${mine ? "flex-row-reverse" : ""}`}>
+        <div className={`max-w-[80%] rounded-lg px-2.5 py-1.5 text-sm shadow-sm ${mine ? "rounded-tr-none bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]" : "rounded-tl-none bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef]"} ${m.status === "failed" ? "ring-2 ring-red-500" : ""}`}>
+          {mine && <p className="mb-0.5 text-[11px] font-semibold text-[#1f7a5a] dark:text-[#7fd8b8]">{m.sent_by ? m.sent_by.name : T.fromPhone}</p>}
+          {m.reply_to && (
+            <button type="button" title={T.original} onClick={() => jumpTo(m.reply_to!.id)}
+              className={`mb-1.5 block w-full rounded-md border-l-4 bg-black/5 px-2 py-1 text-left text-xs dark:bg-white/10 ${mine ? "border-[#1f7a5a] dark:border-[#7fd8b8]" : "border-[#027eb5] dark:border-[#53bdeb]"}`}>
+              <span className={`block truncate font-semibold ${mine ? "text-[#1f7a5a] dark:text-[#7fd8b8]" : "text-[#027eb5] dark:text-[#53bdeb]"}`}>{who(m.reply_to)}</span>
+              <span className="line-clamp-2 break-words opacity-80">{m.reply_to.text}</span>
+            </button>
+          )}
+          {m.has_media && activeId && <MessageMedia threadId={activeId} message={m} text={mediaText} />}
+          {m.progress !== undefined && m.status === "pending" && (
+            <div className="mb-1 h-1 w-full overflow-hidden rounded bg-black/10 dark:bg-white/20" role="progressbar" aria-valuenow={m.progress} aria-valuemin={0} aria-valuemax={100}>
+              <div className="h-1 rounded bg-[#00a884] transition-all" style={{ width: `${m.progress}%` }} />
+            </div>
+          )}
+          {showText && <p className={`whitespace-pre-wrap break-words ${big ? "text-4xl leading-tight" : ""}`}>{big ? m.text : linkify(m.text)}</p>}
+          <p className={`mt-0.5 flex items-center justify-end gap-1 text-[11px] ${meta}`}>
             {clock(m.created_at)} {mine && <Ticks status={m.status} />}
           </p>
           {m.status === "failed" && (
-            <p className="mt-1 flex items-center gap-2 text-xs">
-              <AlertTriangle className="h-3.5 w-3.5" /><span className="min-w-0 flex-1 break-words">{T.failedSend}{m.error ? `: ${m.error}` : ""}</span>
+            <p className="mt-1 flex items-center gap-2 text-xs text-red-700 dark:text-red-300">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" /><span className="min-w-0 flex-1 break-words">{T.failedSend}{m.error ? `: ${m.error}` : ""}</span>
               <button type="button" className="font-semibold underline" onClick={() => void retry(m)}>{T.retry}</button>
             </p>
           )}
         </div>
+        {canQuote && (
+          <button type="button" aria-label={T.replyTo} title={T.replyTo} onClick={() => { setReplyingTo(m); composerRef.current?.focus(); }}
+            className="shrink-0 rounded-full p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-black/5 focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+            <Reply className="h-4 w-4" />
+          </button>
+        )}
       </div>
     );
   };
 
   const conversation = (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <section className="relative flex min-h-0 min-w-0 flex-1 flex-col"
+      onDragOver={(e) => { if (mode === "reply" && canWrite && e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDragging(true); } }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false); }}
+      onDrop={(e) => { if (e.dataTransfer.files.length) { e.preventDefault(); setDragging(false); if (mode === "reply" && canWrite) addFiles(e.dataTransfer.files); } }}>
+      {dragging && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-[#00a884] bg-[#00a884]/10 text-sm font-medium text-[#1f7a5a]">
+          <Paperclip className="mr-2 h-5 w-5" />{T.dropHere}
+        </div>
+      )}
       {!active ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground">
           {activeId ? <Loader2 className="h-5 w-5 animate-spin" /> : <><MessageSquare className="h-8 w-8" /><p>{T.pick}</p></>}
@@ -418,8 +571,9 @@ const TeamInbox = () => {
         <>
           <header className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
             {isMobile && <Button variant="ghost" size="icon" onClick={() => { setActiveId(null); setDetail(null); }} aria-label={T.back}><ArrowLeft className="h-4 w-4" /></Button>}
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(label(active))}</span>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#00a884]/15 text-xs font-semibold text-[#1f7a5a]">{initials(label(active))}</span>
             <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{label(active)}</p><p className="truncate text-xs text-muted-foreground">+{active.customer_phone}</p></div>
+            {calling.enabled && <CallButton threadId={active.id} name={label(active)} phone={active.customer_phone} windowOpen={active.window_open} />}
             {perms?.can_claim && !active.assigned_to && (
               <Button size="sm" variant="outline" onClick={() => void change(teamInboxApi.claim(active.id), T.claimed)}><UserCheck className="mr-1 h-3.5 w-3.5" />{T.claim}</Button>
             )}
@@ -436,14 +590,23 @@ const TeamInbox = () => {
             </Select>
           </header>
 
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[#efeae2] px-3 py-3 dark:bg-[#0b141a]">
             {hasMore && <div className="text-center"><Button size="sm" variant="ghost" onClick={() => void loadOlder()}>{T.older}</Button></div>}
-            {messages.map(bubble)}
+            {messages.map((m, i) => (
+              <Fragment key={m.id}>
+                {(i === 0 || !sameDay(messages[i - 1].created_at, m.created_at)) && (
+                  <div className="flex justify-center py-1">
+                    <span className="rounded-lg bg-white/90 px-3 py-0.5 text-xs font-medium text-[#54656f] shadow-sm dark:bg-[#182229] dark:text-[#8696a0]">{dayLabel(m.created_at, T.today, T.yesterday)}</span>
+                  </div>
+                )}
+                {bubble(m)}
+              </Fragment>
+            ))}
             {notes.length > 0 && (
-              <div className="space-y-1.5 border-t pt-2">
-                <p className="text-xs font-medium text-amber-800">{T.notes}</p>
+              <div className="space-y-1.5 border-t border-black/10 pt-2">
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">{T.notes}</p>
                 {notes.map((n) => (
-                  <div key={n.id} className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                  <div key={n.id} className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
                     <p className="whitespace-pre-wrap break-words">{n.body}</p>
                     <p className="mt-1 text-[11px] text-amber-800">{n.author?.name} · {clock(n.created_at)}</p>
                   </div>
@@ -459,14 +622,42 @@ const TeamInbox = () => {
             {mode === "reply" && !active.window_open && <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-900">{T.window}</p>}
             {mode === "reply" && perms && !perms.can_reply && <p className="rounded-md bg-muted p-2 text-xs">{T.noReply}</p>}
             <div className="flex gap-1">
-              <Button size="sm" variant={mode === "reply" ? "default" : "ghost"} onClick={() => setMode("reply")}><MessageSquare className="mr-1 h-3.5 w-3.5" />{T.reply}</Button>
+              <Button size="sm" variant={mode === "reply" ? "default" : "ghost"} className={mode === "reply" ? "bg-[#00a884] text-white hover:bg-[#008f72]" : ""} onClick={() => setMode("reply")}><MessageSquare className="mr-1 h-3.5 w-3.5" />{T.reply}</Button>
               {perms?.can_note && <Button size="sm" variant={mode === "note" ? "secondary" : "ghost"} onClick={() => setMode("note")}><StickyNote className="mr-1 h-3.5 w-3.5" />{T.note}</Button>}
             </div>
-            <div className="flex items-end gap-2">
-              <Textarea value={draft} onChange={(e) => onDraft(e.target.value)} onKeyDown={onKey} rows={2} disabled={!canWrite}
-                placeholder={mode === "note" ? T.notePlaceholder : T.replyPlaceholder} maxLength={4096}
+            {replyingTo && mode === "reply" && (
+              <div className="flex items-start gap-2 rounded-md border-l-4 border-[#00a884] bg-muted px-2 py-1.5 text-xs">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-[#1f7a5a]">{T.replyingTo} {replyingTo.direction === "in" ? label(active) : replyingTo.sent_by?.name || T.fromPhone}</p>
+                  <p className="line-clamp-2 break-words text-muted-foreground">{replyingTo.text}</p>
+                </div>
+                <button type="button" aria-label={T.cancelReply} title={T.cancelReply} onClick={() => setReplyingTo(null)} className="rounded p-0.5 hover:bg-background"><X className="h-4 w-4" /></button>
+              </div>
+            )}
+            {files.length > 0 && mode === "reply" && (
+              <div className="flex gap-2 overflow-x-auto rounded-md border bg-muted/40 p-2" aria-label={T.attach}>
+                {files.map((f) => (
+                  <div key={f.id} className="relative flex w-28 shrink-0 flex-col items-center gap-1 rounded-md bg-background p-1.5 text-center text-[11px]">
+                    {f.kind === "image" ? <img src={f.previewUrl} alt={f.file.name} className="h-16 w-full rounded object-cover" />
+                      : <span className="flex h-16 w-full items-center justify-center rounded bg-muted"><FileText className="h-6 w-6 text-muted-foreground" /></span>}
+                    <span className="w-full truncate font-medium" title={f.file.name}>{f.file.name}</span>
+                    <span className="text-muted-foreground">{fileSize(f.file.size)}</span>
+                    <button type="button" aria-label={`${T.removeFile}: ${f.file.name}`} title={T.removeFile}
+                      onClick={() => setFiles((p) => p.filter((x) => x.id !== f.id))} className="absolute -right-1.5 -top-1.5 rounded-full bg-foreground p-0.5 text-background shadow"><X className="h-3 w-3" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-end gap-1">
+              <input ref={fileInputRef} type="file" multiple accept={ACCEPT} className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
+              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground" disabled={!canWrite || mode !== "reply" || sending}
+                aria-label={T.attach} title={T.attach} onClick={() => fileInputRef.current?.click()}><Paperclip className="h-5 w-5" /></Button>
+              <EmojiPicker onPick={insertEmoji} disabled={!canWrite} label={T.emoji} />
+              <Textarea ref={composerRef} value={draft} onChange={(e) => onDraft(e.target.value)} onKeyDown={onKey} onPaste={onPaste} rows={2} disabled={!canWrite}
+                placeholder={mode === "note" ? T.notePlaceholder : files.length ? T.captionPlaceholder : T.replyPlaceholder} maxLength={4096}
                 className={`min-h-[44px] flex-1 resize-none ${mode === "note" ? "border-amber-300 bg-amber-50" : ""}`} aria-label={mode === "note" ? T.note : T.reply} />
-              <Button onClick={() => void send()} disabled={!canWrite || sending || !draft.trim()} aria-label={mode === "note" ? T.addNote : T.send}>
+              <Button onClick={() => void send()} disabled={!canWrite || sending || (!draft.trim() && !(mode === "reply" && files.length > 0))} aria-label={mode === "note" ? T.addNote : files.length ? T.sendFiles : T.send}
+                className="h-10 w-10 shrink-0 rounded-full bg-[#00a884] p-0 text-white hover:bg-[#008f72] disabled:bg-[#00a884]/40">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "note" ? <StickyNote className="h-4 w-4" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
@@ -500,13 +691,30 @@ const TeamInbox = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         {reconnecting && <p className="flex items-center justify-center gap-2 bg-amber-100 py-1 text-xs text-amber-900"><Loader2 className="h-3 w-3 animate-spin" />{T.reconnecting}</p>}
         <div ref={wrapRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {!rail && (split || !activeId) && renderNav(true)}
-          <div className="flex min-h-0 min-w-0 flex-1">
-            {rail && renderNav(false)}
-            {(split || !activeId) && list}
-            {(split || activeId) && conversation}
-            {contactPanel}
-          </div>
+          {calling.enabled && (
+            <div className="flex shrink-0 gap-1 border-b px-2" role="tablist" aria-label={T.title}>
+              {(["chats", "calls"] as const).map((k) => (
+                <button key={k} type="button" role="tab" aria-selected={section === k} onClick={() => setSection(k)}
+                  className={`px-3 py-2 text-sm ${section === k ? "border-b-2 border-primary font-medium text-primary" : "text-muted-foreground"}`}>
+                  {k === "chats" ? T.chats : T.calls}
+                </button>
+              ))}
+            </div>
+          )}
+          {section === "calls" && calling.enabled ? (
+            <CallsPanel canSeeTeam={!!calling.live?.me.is_manager}
+              onOpenThread={(id) => { setSection("chats"); void open(id); }} />
+          ) : (
+            <>
+              {!rail && (split || !activeId) && renderNav(true)}
+              <div className="flex min-h-0 min-w-0 flex-1">
+                {rail && renderNav(false)}
+                {(split || !activeId) && list}
+                {(split || activeId) && conversation}
+                {contactPanel}
+              </div>
+            </>
+          )}
         </div>
         <h1 className="sr-only"><Inbox />{T.title}</h1>
       </div>

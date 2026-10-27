@@ -1,6 +1,7 @@
 // Client for the shared WhatsApp inbox (main backend, `/api/team-inbox/`). Every call is authenticated as the signed-in employee; the server decides
 // which business and which conversations they may see, so nothing here sends a business id.
 import { apiClient, type ApiResponse } from "@/lib/api";
+import { API_CONFIG } from "@/config/api";
 
 const BASE = "/team-inbox";
 
@@ -34,6 +35,12 @@ export interface InboxMessage {
   client_token: string;
   /** The customer sent a picture / video / audio / document that can be loaded from the server. */
   has_media?: boolean;
+  /** The earlier message this one answers (a quoted reply). */
+  reply_to?: { id: string; direction: "in" | "out"; kind: string; text: string; author: string } | null;
+  /** Browser only: a preview of a file this person is sending (or just sent), shown without downloading it again. */
+  local_url?: string;
+  /** Browser only: how much of a file being sent has reached the server, 0-100. */
+  progress?: number;
 }
 export interface InboxNote { id: string; body: string; author: Person | null; created_at: string }
 export interface Permissions { role: string; can_reply: boolean; can_claim: boolean; can_assign: boolean; can_change_status: boolean; can_note: boolean; can_manage_settings: boolean }
@@ -64,15 +71,46 @@ const qs = (params: Record<string, string | number | undefined>) => {
 };
 const post = <T>(path: string, body?: unknown) => apiClient.call<T>(`${BASE}${path}`, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
 
+/** Send one file (photo, video, audio, document) with an optional caption. Uses its own request, not the shared client, so a big file on a slow
+ *  connection is not cut off after 30 seconds, and it can report progress. Resolves like the other calls: `data` on success, `errors` = the body on failure. */
+function sendAttachment(
+  id: string, file: File, opts: { caption?: string; clientToken: string; replyTo?: string; onProgress?: (percent: number) => void },
+): Promise<ApiResponse<{ message: InboxMessage; warning: { name: string; at: string } | null }>> {
+  return new Promise((resolve) => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    form.append("client_token", opts.clientToken);
+    if (opts.caption) form.append("caption", opts.caption);
+    if (opts.replyTo) form.append("reply_to", opts.replyTo);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_CONFIG.BASE_URL}${BASE}/threads/${id}/attachments/`);
+    xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("access_token") || ""}`);
+    xhr.timeout = 5 * 60 * 1000;
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable && opts.onProgress) opts.onProgress(Math.round((e.loaded / e.total) * 100)); };
+    xhr.onerror = xhr.ontimeout = () => resolve({ success: false, status: 0, message: "Could not reach the server. Check your connection and try again." } as ApiResponse<never>);
+    xhr.onload = () => {
+      let body: Record<string, unknown> = {};
+      try { body = JSON.parse(xhr.responseText || "{}"); } catch { /* not JSON */ }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve({ success: true, status: xhr.status, data: body } as ApiResponse<never>);
+      } else {
+        resolve({ success: false, status: xhr.status, message: String(body.message || body.error || ""), errors: body } as unknown as ApiResponse<never>);
+      }
+    };
+    xhr.send(form);
+  });
+}
+
 export const teamInboxApi = {
+  sendAttachment,
   threads: (p: { view?: InboxView; status?: string; q?: string; page?: number; assignee?: string }) =>
     apiClient.call<{ count: number; page: number; page_size: number; results: InboxThread[] }>(`${BASE}/threads/${qs(p)}`),
   counts: () => apiClient.call<Counts>(`${BASE}/threads/counts/`),
   detail: (id: string) => apiClient.call<ThreadDetail>(`${BASE}/threads/${id}/`),
   messages: (id: string, before?: string) =>
     apiClient.call<{ has_more: boolean; results: InboxMessage[] }>(`${BASE}/threads/${id}/messages/${qs({ before })}`),
-  send: (id: string, text: string, clientToken: string) =>
-    post<{ message: InboxMessage; warning: { name: string; at: string } | null }>(`/threads/${id}/messages/`, { text, client_token: clientToken }),
+  send: (id: string, text: string, clientToken: string, replyTo?: string) =>
+    post<{ message: InboxMessage; warning: { name: string; at: string } | null }>(`/threads/${id}/messages/`, { text, client_token: clientToken, ...(replyTo ? { reply_to: replyTo } : {}) }),
   retry: (id: string, messageId: string) => post<{ message: InboxMessage }>(`/threads/${id}/messages/${messageId}/retry/`),
   assign: (id: string, userId: string | null) => post<{ thread: InboxThread }>(`/threads/${id}/assign/`, { user_id: userId }),
   claim: (id: string) => post<{ thread: InboxThread }>(`/threads/${id}/claim/`),

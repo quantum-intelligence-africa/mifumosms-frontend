@@ -7,6 +7,8 @@ import React, { useEffect, lazy, Suspense, type ReactNode } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DialerProvider } from "@/contexts/DialerContext";
 import { CallCenterProvider } from "@/contexts/CallCenterContext";
+import { WhatsAppCallingProvider } from "@/contexts/WhatsAppCallingContext";
+import { CallOverlay } from "@/components/whatsapp-calls/CallOverlay";
 import { CallCenterOverlay } from "@/components/callcenter/CallCenterOverlay";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCallCenterRole, hasIvrAccess, hasSmsAccess } from "@/utils/roleUtils";
@@ -573,7 +575,11 @@ const App = () => (
                     v7_relativeSplatPath: true,
                   }}
                 >
-                  <AppContent />
+                  {/* WhatsApp voice calls: polls only for organizations that were given the feature; renders nothing otherwise. */}
+                  <WhatsAppCallingProvider>
+                    <AppContent />
+                    <CallOverlay />
+                  </WhatsAppCallingProvider>
                 </BrowserRouter>
                 {/* Ringing / active-call / wrap-up UI: above every page, so a call interrupts whatever the agent is doing. */}
                 <CallCenterOverlay />

@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { appLocale } from "@/utils/appLocale";
 import { aiEn, aiKey } from "@/i18n/aiAgent";
+import { HandoverPreview } from "@/components/callcenter/HandoverPreview";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { AITeachPanel } from "@/components/callcenter/AITeachPanel";
 import { AIKnowledgePanel } from "@/components/callcenter/AIKnowledgePanel";
@@ -423,10 +424,15 @@ export default function AIAssistant() {
                 <div className="space-y-2">
                   <p className="font-medium">{t(aiKey("ai.perm.title"))}</p>
                   <p className="text-xs text-muted-foreground">{t(aiKey("ai.perm.help"))}</p>
-                  <ToggleRow label={t(aiKey("ai.perm.transfers"))} checked={settings.permissions?.transfers !== false} onChange={(v) => edit((d) => { d.permissions = { transfers: v, create_requests: d.permissions?.create_requests !== false }; })} />
-                  <ToggleRow label={t(aiKey("ai.perm.requests"))} checked={settings.permissions?.create_requests !== false} onChange={(v) => edit((d) => { d.permissions = { transfers: d.permissions?.transfers !== false, create_requests: v }; })} />
+                  <ToggleRow label={t(aiKey("ai.perm.transfers"))} help={t(aiKey("ai.perm.transfers_help"))} checked={settings.permissions?.transfers !== false} onChange={(v) => edit((d) => { d.permissions = { transfers: v, create_requests: d.permissions?.create_requests !== false }; })} />
+                  <ToggleRow label={t(aiKey("ai.perm.requests"))} help={t(aiKey("ai.perm.requests_help"))} checked={settings.permissions?.create_requests !== false} onChange={(v) => edit((d) => { d.permissions = { transfers: d.permissions?.transfers !== false, create_requests: v }; })} />
                   {fieldErrors.permissions && <p className="text-xs text-red-700">{fieldErrors.permissions}</p>}
                 </div>
+                <HandoverPreview
+                  transfers={settings.permissions?.transfers !== false} requests={settings.permissions?.create_requests !== false}
+                  departments={[...DEPARTMENTS]} teamFor={(dept) => settings.handoff.departments[dept] || ""}
+                  defaultDepartment={settings.handoff.default_department} teams={teams.filter((tm) => tm.is_active)}
+                />
                 <div>
                   <p className="font-medium">{t("ai.f.dept_heading")}</p>
                   <p className="text-xs text-muted-foreground">{t("ai.f.dept_help")}</p>
