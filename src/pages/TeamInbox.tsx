@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { appLanguage } from "@/utils/appLocale";
+import { API_CONFIG } from "@/config/api";
 import {
   errorCode, teamInboxApi, type Counts, type InboxMessage, type InboxNote, type InboxThread, type InboxView, type Person, type ThreadDetail, type ThreadStatus,
 } from "@/services/teamInboxApi";
@@ -26,7 +27,7 @@ const TEXT = {
     window: "Zaidi ya saa 24 zimepita tangu mteja aandike mara ya mwisho. WhatsApp inaruhusu ujumbe wa kiolezo kilichoidhinishwa pekee sasa.",
     noReply: "Huna ruhusa ya kujibu mazungumzo haya.", contact: "Taarifa za mteja", noContact: "Hakuna taarifa zaidi za mteja zilizohifadhiwa.", notes: "Madokezo ya ndani", noNotes: "Hakuna madokezo.",
     reconnecting: "Inaunganisha upya...", you: "Wewe", unread: "Hayajasomwa", forbidden: "Huna ruhusa.", claimed: "Mazungumzo yamechukuliwa.", assignedOk: "Mazungumzo yamepewa.", statusOk: "Hali imebadilishwa.",
-    noAccess: "Akaunti yako haina ufikiaji wa sanduku hili.", back: "Rudi", media: "Ujumbe wa vyombo vya habari (haupakuliwi hapa)",
+    noAccess: "Akaunti yako haina ufikiaji wa sanduku hili.", back: "Rudi", mediaLoading: "Inapakia faili...", mediaFailed: "Faili hii haiwezi kupakiwa sasa.",
   },
   en: {
     title: "Team Inbox", all: "All conversations", mine: "My conversations", unassigned: "Unassigned", open: "Open", pending: "Pending", resolved: "Resolved", archived: "Archived",
@@ -38,7 +39,7 @@ const TEXT = {
     window: "More than 24 hours have passed since the customer last wrote. WhatsApp only allows an approved template message now.",
     noReply: "You do not have permission to reply to this conversation.", contact: "Customer", noContact: "No further customer details are saved.", notes: "Internal notes", noNotes: "No notes yet.",
     reconnecting: "Reconnecting...", you: "You", unread: "Unread", forbidden: "You do not have permission.", claimed: "Conversation claimed.", assignedOk: "Conversation assigned.", statusOk: "Status changed.",
-    noAccess: "Your account does not have access to this inbox.", back: "Back", media: "Media message (not downloaded here)",
+    noAccess: "Your account does not have access to this inbox.", back: "Back", mediaLoading: "Loading file...", mediaFailed: "This file cannot be loaded right now.",
   },
 } as const;
 
@@ -62,6 +63,41 @@ function Ticks({ status }: { status: InboxMessage["status"] }) {
   if (status === "sent") return <Check className="h-3.5 w-3.5 text-muted-foreground" />;
   if (status === "pending") return <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />;
   return null;
+}
+
+/** A picture / video / voice note / document the customer sent. WhatsApp keeps it, so it is fetched through our server (which checks the
+ *  agent may see this conversation) when the message scrolls into view of the page, and shown in the bubble. */
+function MessageMedia({ threadId, message, failed, loading }: { threadId: string; message: InboxMessage; failed: string; loading: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let alive = true;
+    let objectUrl = "";
+    void (async () => {
+      try {
+        const res = await fetch(`${API_CONFIG.BASE_URL}/team-inbox/threads/${threadId}/messages/${message.id}/media/`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("access_token") || ""}` },
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error(body?.message || failed);
+        }
+        const blob = await res.blob();
+        objectUrl = URL.createObjectURL(blob);
+        if (alive) setSrc(objectUrl);
+      } catch (e) {
+        if (alive) setError(e instanceof Error && e.message ? e.message : failed);
+      }
+    })();
+    return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [threadId, message.id, failed]);
+
+  if (error) return <p className="mb-1 rounded-md bg-background/60 px-2 py-1 text-xs text-muted-foreground">{error}</p>;
+  if (!src) return <p className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />{loading}</p>;
+  if (message.kind === "image" || message.kind === "sticker") return <a href={src} target="_blank" rel="noreferrer"><img src={src} alt={message.text} className="mb-1 max-h-72 max-w-full rounded-md" /></a>;
+  if (message.kind === "video") return <video src={src} controls className="mb-1 max-h-72 max-w-full rounded-md" />;
+  if (message.kind === "audio") return <audio src={src} controls className="mb-1 max-w-full" />;
+  return <a href={src} download className="mb-1 inline-block text-xs font-medium underline">{message.text || "Download"}</a>;
 }
 
 const TeamInbox = () => {
@@ -336,7 +372,8 @@ const TeamInbox = () => {
       <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
         <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-muted"} ${m.status === "failed" ? "ring-2 ring-destructive" : ""}`}>
           {mine && m.sent_by && <p className="mb-0.5 text-[11px] opacity-80">{m.sent_by.name}</p>}
-          <p className="whitespace-pre-wrap break-words">{m.text}</p>
+          {m.has_media && activeId && <MessageMedia threadId={activeId} message={m} failed={T.mediaFailed} loading={T.mediaLoading} />}
+          {!(m.has_media && /^\[[A-Za-z ]+\]$/.test(m.text)) && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
           <p className={`mt-1 flex items-center justify-end gap-1 text-[11px] ${mine ? "opacity-80" : "text-muted-foreground"}`}>
             {clock(m.created_at)} {mine && <Ticks status={m.status} />}
           </p>

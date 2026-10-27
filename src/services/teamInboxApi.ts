@@ -32,6 +32,8 @@ export interface InboxMessage {
   sent_by: Person | null;
   created_at: string;
   client_token: string;
+  /** The customer sent a picture / video / audio / document that can be loaded from the server. */
+  has_media?: boolean;
 }
 export interface InboxNote { id: string; body: string; author: Person | null; created_at: string }
 export interface Permissions { role: string; can_reply: boolean; can_claim: boolean; can_assign: boolean; can_change_status: boolean; can_note: boolean; can_manage_settings: boolean }
