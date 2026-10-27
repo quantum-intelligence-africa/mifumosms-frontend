@@ -221,6 +221,13 @@ All colors MUST be HSL for consistency and theming.
         @apply border-border;
     }
 
+    /* One knob for the size of the whole interface: Tailwind sizes text and spacing in rem, so 14px here (browser default 16px) makes every
+       page about 12% more compact. Raise or lower this single value to resize everything. */
+    html {
+        font-size: 14px;
+    }
+    .text-xs { font-size: max(0.75rem, 11px); }
+
     body {
         @apply bg-background text-foreground font-sans antialiased;
         font-family: Inter, system-ui, sans-serif;
