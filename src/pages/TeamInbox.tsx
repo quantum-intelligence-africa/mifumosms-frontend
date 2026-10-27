@@ -26,7 +26,7 @@ const TEXT = {
     assign: "Mpe mtu", status: "Hali", typing: (n: string) => `${n} anaandika...`, recent: (n: string) => `${n} amejibu sasa hivi. Hakikisha hamjibu kitu kimoja.`,
     window: "Zaidi ya saa 24 zimepita tangu mteja aandike mara ya mwisho. WhatsApp inaruhusu ujumbe wa kiolezo kilichoidhinishwa pekee sasa.",
     noReply: "Huna ruhusa ya kujibu mazungumzo haya.", contact: "Taarifa za mteja", noContact: "Hakuna taarifa zaidi za mteja zilizohifadhiwa.", notes: "Madokezo ya ndani", noNotes: "Hakuna madokezo.",
-    reconnecting: "Inaunganisha upya...", you: "Wewe", unread: "Hayajasomwa", forbidden: "Huna ruhusa.", claimed: "Mazungumzo yamechukuliwa.", assignedOk: "Mazungumzo yamepewa.", statusOk: "Hali imebadilishwa.",
+    reconnecting: "Inaunganisha upya...", live: "Moja kwa moja", you: "Wewe", unread: "Hayajasomwa", forbidden: "Huna ruhusa.", claimed: "Mazungumzo yamechukuliwa.", assignedOk: "Mazungumzo yamepewa.", statusOk: "Hali imebadilishwa.",
     noAccess: "Akaunti yako haina ufikiaji wa sanduku hili.", back: "Rudi", fromPhone: "Imetumwa kwa simu", mediaLoading: "Inapakia faili...", mediaFailed: "Faili hii haiwezi kupakiwa sasa.",
   },
   en: {
@@ -38,7 +38,7 @@ const TEXT = {
     assign: "Assign to", status: "Status", typing: (n: string) => `${n} is typing...`, recent: (n: string) => `${n} just replied. Make sure you are not answering the same thing.`,
     window: "More than 24 hours have passed since the customer last wrote. WhatsApp only allows an approved template message now.",
     noReply: "You do not have permission to reply to this conversation.", contact: "Customer", noContact: "No further customer details are saved.", notes: "Internal notes", noNotes: "No notes yet.",
-    reconnecting: "Reconnecting...", you: "You", unread: "Unread", forbidden: "You do not have permission.", claimed: "Conversation claimed.", assignedOk: "Conversation assigned.", statusOk: "Status changed.",
+    reconnecting: "Reconnecting...", live: "Live", you: "You", unread: "Unread", forbidden: "You do not have permission.", claimed: "Conversation claimed.", assignedOk: "Conversation assigned.", statusOk: "Status changed.",
     noAccess: "Your account does not have access to this inbox.", back: "Back", fromPhone: "Sent from the phone", mediaLoading: "Loading file...", mediaFailed: "This file cannot be loaded right now.",
   },
 } as const;
@@ -131,6 +131,7 @@ const TeamInbox = () => {
   const [page, setPage] = useState(1);
   const [listState, setListState] = useState<"loading" | "ok" | "error" | "denied">("loading");
   const [reconnecting, setReconnecting] = useState(false);
+  const [lastOk, setLastOk] = useState<Date | null>(null);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ThreadDetail | null>(null);
@@ -215,17 +216,32 @@ const TeamInbox = () => {
   // simply catches up, so nothing is missed and nothing is shown twice.
   useEffect(() => {
     let stopped = false;
+    let failures = 0;
+    let wait = 0;
+    const healAfterOutage = () => {
+      // Events may have come and gone while the connection was down: re-read everything on screen instead of waiting for the next event.
+      void loadCounts();
+      void loadList(1);
+      if (activeRef.current) void refreshActive(activeRef.current);
+    };
+    const failed = () => { failures += 1; wait = Math.min(failures, 4); setReconnecting(true); };  // ask less often while the server is struggling
+    const ok = () => {
+      setReconnecting(false);
+      setLastOk(new Date());
+      if (failures > 0) { failures = 0; wait = 0; healAfterOutage(); }
+    };
     const tick = async () => {
       if (stopped || document.hidden) return;
+      if (wait > 0) { wait -= 1; return; }
       try {
         if (lastEvent.current === null) {
           const first = await teamInboxApi.events();
-          if (first.success && first.data) { lastEvent.current = first.data.last_id; setReconnecting(false); } else setReconnecting(true);
+          if (first.success && first.data) { lastEvent.current = first.data.last_id; ok(); } else failed();
           return;
         }
         const res = await teamInboxApi.events(lastEvent.current);
-        if (!res.success || !res.data) { setReconnecting(true); return; }
-        setReconnecting(false);
+        if (!res.success || !res.data) { failed(); return; }
+        ok();
         const { events, last_id } = res.data;
         lastEvent.current = last_id;
         if (events.length) {
@@ -237,7 +253,7 @@ const TeamInbox = () => {
           const d = await teamInboxApi.detail(activeRef.current); // typing indicators are not events
           if (d.success && d.data && activeRef.current === d.data.thread.id) setDetail(d.data);
         }
-      } catch { setReconnecting(true); }
+      } catch { failed(); }
     };
     const handle = window.setInterval(() => void tick(), POLL_MS);
     const onVisible = () => { if (!document.hidden) void tick(); };
@@ -330,6 +346,10 @@ const TeamInbox = () => {
 
   const list = (
     <section className={`flex min-h-0 flex-col border-r ${!split ? "w-full flex-1" : width < 900 ? "w-64 shrink-0" : "w-80 shrink-0"}`}>
+      <p className="flex items-center gap-1.5 border-b px-3 py-1 text-[11px] text-muted-foreground" aria-live="polite">
+        <span className={`h-2 w-2 rounded-full ${reconnecting ? "bg-amber-500" : "bg-emerald-500"}`} />
+        {reconnecting ? T.reconnecting : T.live}{lastOk ? ` · ${lastOk.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}
+      </p>
       <div className="relative border-b p-2">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={T.search} className="h-9 pl-8" aria-label={T.search} />
