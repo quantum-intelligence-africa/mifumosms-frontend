@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { friendlyWhatsAppError } from "@/utils/whatsappErrors";
 import { API_CONFIG, buildApiUrl } from "@/config/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -898,7 +899,7 @@ export const useWhatsAppCloud = () => {
 			return await get<WAGetTemplatesResponse>(url);
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : "Failed to load templates";
-			toast({ title: "Templates load failed", description: msg, variant: "destructive" });
+			toast({ title: "Templates load failed", description: friendlyWhatsAppError(msg), variant: "destructive" });
 			throw err;
 		} finally {
 			setIsLoading(false);

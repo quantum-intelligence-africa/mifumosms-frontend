@@ -1152,6 +1152,11 @@ class ApiClient {
     }
   }
 
+  /** Authenticated call for newer feature clients (token refresh and error handling stay in one place). */
+  call<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, options);
+  }
+
   private request<T>(
     endpoint: string,
     options: RequestInit = {},

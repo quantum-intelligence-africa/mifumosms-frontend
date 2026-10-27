@@ -1,3 +1,4 @@
+import { Suspense, lazy, useEffect, useState } from "react";
 import {
   MessageSquare,
   Users,
@@ -30,7 +31,6 @@ const LiveCallCenter = lazy(() => import("@/components/dashboard/LiveCallCenter"
 const CallAnalyticsPreview = lazy(() => import("@/components/dashboard/CallAnalyticsPreview"));
 import { useBranding } from "@/contexts/BrandingContext";
 import { MobileHomeHero } from "@/components/layout/MobileHomeHero";
-import { Suspense, lazy, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useVoiceDashboardStats } from "@/hooks/useVoiceDashboardStats";

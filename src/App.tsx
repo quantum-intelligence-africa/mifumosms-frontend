@@ -41,7 +41,7 @@ if (typeof window !== "undefined" && window.location.pathname === "/dashboard") 
     /* storage unavailable */
   }
 }
-const Conversations = lazy(() => import("./pages/Conversations"));
+const Conversations = lazy(() => import("./pages/TeamInbox"));
 const Contacts = lazy(() => import("./pages/Contacts"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Templates = lazy(() => import("./pages/Templates"));
@@ -341,7 +341,7 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               <Route path="/conversations" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFeature="team_inbox">
                   <Conversations />
                 </ProtectedRoute>
               } />

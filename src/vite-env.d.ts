@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
 	readonly VITE_CORE_API_URL?: string;
+	readonly VITE_API_BASE_URL_OVERRIDE?: string;
 	readonly VITE_VOICE_API_URL?: string;
 }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { friendlyWhatsAppError } from "@/utils/whatsappErrors";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Send,
@@ -702,7 +703,7 @@ function SingleSendTab({
         const list = (res?.data?.graph?.data ?? []).filter((t) => t.status === "APPROVED");
         setMetaTpls(list);
       } catch (e) {
-        if (!cancelled) setMetaTplError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_templates_failed"));
+        if (!cancelled) setMetaTplError(friendlyWhatsAppError(e instanceof Error ? e.message : "", t("whatsapp.cloud.errors.load_templates_failed")));
       } finally {
         if (!cancelled) setMetaTplLoading(false);
       }
@@ -1575,7 +1576,7 @@ function BulkSendTab({
         const list = (res?.data?.graph?.data ?? []).filter((t) => t.status === "APPROVED");
         setMetaTpls(list);
       } catch (e) {
-        if (!cancelled) setMetaTplError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_templates_failed"));
+        if (!cancelled) setMetaTplError(friendlyWhatsAppError(e instanceof Error ? e.message : "", t("whatsapp.cloud.errors.load_templates_failed")));
       } finally {
         if (!cancelled) setMetaTplLoading(false);
       }

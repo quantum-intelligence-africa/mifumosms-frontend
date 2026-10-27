@@ -1,7 +1,8 @@
 // API Configuration - Updated to match backend API documentation
 export const API_CONFIG = {
 	// BASE_URL: 'https://mifumosms.servehttp.com/api',
-	BASE_URL: 'https://mifumosms.mifumolabs.com/api',
+	// VITE_API_BASE_URL_OVERRIDE is only set for local testing against a backend on this machine; unset, this is the live API.
+	BASE_URL: import.meta.env.VITE_API_BASE_URL_OVERRIDE || 'https://mifumosms.mifumolabs.com/api',
 	ENDPOINTS: {
 		AUTH: {
 			LOGIN: '/auth/login/',

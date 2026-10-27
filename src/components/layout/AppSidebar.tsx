@@ -51,6 +51,7 @@ import { useDialer } from "@/contexts/DialerContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoles } from "@/hooks/useRoles";
+import { useFeatures } from "@/hooks/useFeatures";
 import {
   canUseCallCenter, getCallCenterRole, hasIvrAccess, hasSmsAccess, isCallCenterAdmin, isCallCenterSupervisor,
 } from "@/utils/roleUtils";
@@ -117,6 +118,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   // Live counts for the Outbox (failed), Sent and Scheduled badges: one cached query shared by every page.
   const { outboxCount, sentCount, scheduledCount } = useMessageBadgeCounts();
   const { user, logout, isLoading } = useAuth();
+  const { hasFeature } = useFeatures();
   const cc = useCallCenter();
   const missedSummary = useMissedSummary();
   const brand = useBranding();
@@ -217,6 +219,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             ],
           },
         ]),
+    // Team Inbox is its own entry (not tucked inside Messaging, which some accounts do not have). It exists only for organizations SENDA has switched it on for.
+    ...(hasFeature("team_inbox") ? [{ name: "Team Inbox", href: "/conversations", icon: MessageSquareText }] : []),
     // A call-center-only account (call center on, SMS off: the people who signed up through the call center link) never sees the AI / voice
     // copilot entries; they are not part of what it signed up for.
     ...(inVoiceSection || agentOnly || callCenterOnly ? [] : [{ name: t("nav.ai_copilots"), href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
