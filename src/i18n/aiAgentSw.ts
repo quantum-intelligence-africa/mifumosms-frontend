@@ -11,6 +11,8 @@ export const aiSw: Record<keyof typeof aiEn, string> = {
   "ai.teach.mode_replace": "Anza upya (badilisha anachojua)",
   "ai.teach.mode_merge": "Ongeza kwenye anachojua tayari",
   "ai.teach.start": "Fundisha",
+  "ai.teach.from_docs": "Andaa rasimu kutoka nyaraka nilizopakia",
+  "ai.teach.from_docs_help": "Inasoma nyaraka zilizo kwenye sehemu ya Maarifa (zilizo tayari tu) na kuandaa kusudi, mtindo, salamu na kuaga. Unakagua rasimu kabla ya kitu chochote kubadilika.",
   "ai.teach.working": "Inasoma na kuandaa… inaweza kuchukua hadi dakika moja.",
   "ai.teach.failed": "Imeshindikana kumfundisha msaidizi.",
   "ai.teach.ai": "AI inayotumika kufundisha",

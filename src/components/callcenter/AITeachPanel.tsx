@@ -100,12 +100,12 @@ export function AITeachPanel({ config, settings, meta, onChanged, providers }: P
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [learnError, setLearnError] = useState("");
 
-  const teach = async () => {
+  const teach = async (fromDocs = false) => {
     setWorking(true);
     setProgress(null);
     setError("");
     setDraft(null);
-    const start = await aiAgentApi.teach.start(config.id, { text, url: url.trim() || undefined, mode, ...choice() });
+    const start = await aiAgentApi.teach.start(config.id, { text, url: url.trim() || undefined, from_knowledge: fromDocs || undefined, mode, ...choice() });
     if (!start.success || !start.data) {
       setWorking(false);
       setError(describeError(start) || t(aiKey("ai.teach.failed")));
@@ -228,6 +228,12 @@ export function AITeachPanel({ config, settings, meta, onChanged, providers }: P
                 {t(aiKey(`ai.teach.mode_${m}`))}
               </label>
             ))}
+          </div>
+          <div className="space-y-1.5 rounded-md border border-primary/30 bg-primary/5 p-3">
+            <Button onClick={() => void teach(true)} disabled={archived || working}>
+              <Sparkles className="mr-2 h-4 w-4" />{t(aiKey("ai.teach.from_docs"))}
+            </Button>
+            <p className="text-xs text-muted-foreground">{t(aiKey("ai.teach.from_docs_help"))}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={() => void teach()} disabled={archived || working || (text.trim().length < 40 && !url.trim())}>

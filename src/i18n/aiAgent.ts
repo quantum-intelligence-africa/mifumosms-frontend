@@ -12,6 +12,8 @@ export const aiEn = {
   "ai.teach.mode_replace": "Start fresh (replace what it knows)",
   "ai.teach.mode_merge": "Add to what it already knows",
   "ai.teach.start": "Teach",
+  "ai.teach.from_docs": "Draft from my uploaded documents",
+  "ai.teach.from_docs_help": "Reads the documents in the Knowledge tab (ready ones only) and drafts the purpose, tone, greeting and goodbye. You review the draft before anything changes.",
   "ai.teach.working": "Reading and drafting… this can take up to a minute.",
   "ai.teach.failed": "Could not teach the assistant.",
   "ai.teach.ai": "AI used for teaching",

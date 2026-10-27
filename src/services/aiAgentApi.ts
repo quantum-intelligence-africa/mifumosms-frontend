@@ -313,7 +313,7 @@ export const aiAgentApi = {
   teach: {
     models: (id: string, providerId?: string) =>
       voiceApi.get<{ provider: string; type: string; models: string[]; current: string }>(`${BASE}/agents/${id}/models/${providerId ? `?provider_id=${encodeURIComponent(providerId)}` : ""}`),
-    start: (id: string, body: { text?: string; url?: string; mode: "replace" | "merge"; provider_id?: string; model?: string }) => voiceApi.post<TeachJob<TeachProposal>>(`${BASE}/agents/${id}/teach/`, body),
+    start: (id: string, body: { text?: string; url?: string; from_knowledge?: boolean; mode: "replace" | "merge"; provider_id?: string; model?: string }) => voiceApi.post<TeachJob<TeachProposal>>(`${BASE}/agents/${id}/teach/`, body),
     learn: (id: string, days: number, ai: { provider_id?: string; model?: string } = {}) => voiceApi.post<TeachJob<LearnResult>>(`${BASE}/agents/${id}/learn/`, { days, ...ai }),
     job: <T,>(jobId: string) => voiceApi.get<TeachJob<T>>(`${BASE}/teach-jobs/${jobId}/`),
     apply: (id: string, body: { items: Array<{ question: string; answer: string }>; dismiss: string[] }) =>
