@@ -1,7 +1,7 @@
 // SENDA Team Inbox: one connected WhatsApp number, one shared inbox, many employees. Everything shown comes from the server (no sample data);
 // the server decides what each signed-in employee may see and do, the buttons here only reflect that.
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, Check, CheckCheck, FileText, Inbox, LayoutTemplate, Loader2, MessageSquare, Paperclip, Phone, RefreshCw, Reply, Search, Send, StickyNote, UserCheck, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, CheckCheck, FileText, Inbox, LayoutTemplate, Plus, Loader2, MessageSquare, Paperclip, Phone, RefreshCw, Reply, Search, Send, StickyNote, UserCheck, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CallButton } from "@/components/whatsapp-calls/CallButton";
 import { CallsPanel } from "@/components/whatsapp-calls/CallsPanel";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { appLanguage } from "@/utils/appLocale";
@@ -42,7 +43,7 @@ const TEXT = {
     dropHere: "Dondosha faili hapa kuzituma", fileType: "WhatsApp inapokea picha (JPG, PNG), video (MP4), sauti (MP3, M4A, AAC, AMR, OGG) na hati (PDF, Word, Excel, PowerPoint, TXT).",
     fileSize: (mb: number) => `Faili hii ni kubwa mno. Kikomo ni ${mb} MB.`, fileEmpty: "Faili hii ni tupu.", tooManyFiles: `Unaweza kutuma hadi faili ${MAX_FILES} kwa mara moja.`,
     removeFile: "Ondoa faili", captionPlaceholder: "Ongeza maelezo (si lazima) kisha tuma", sendFiles: "Tuma faili", notSentFile: "Haikutumwa. Ambatisha tena.",
-    template: "Tuma kiolezo", react: "Weka hisia", removeReaction: "Ondoa", templateTag: "Kiolezo", reactFailed: "Hisia haikutumwa.",
+    template: "Tuma kiolezo", replyShort: "Andika jibu...", react: "Weka hisia", removeReaction: "Ondoa", templateTag: "Kiolezo", reactFailed: "Hisia haikutumwa.",
   },
   en: {
     title: "Team Inbox", chats: "Chats", calls: "Calls", replyTo: "Reply to this message", replyingTo: "Replying to", cancelReply: "Cancel reply", original: "Original message", all: "All conversations", mine: "My conversations", unassigned: "Unassigned", open: "Open", pending: "Pending", resolved: "Resolved", archived: "Archived",
@@ -59,7 +60,7 @@ const TEXT = {
     dropHere: "Drop files here to send them", fileType: "WhatsApp accepts photos (JPG, PNG), video (MP4), audio (MP3, M4A, AAC, AMR, OGG) and documents (PDF, Word, Excel, PowerPoint, TXT).",
     fileSize: (mb: number) => `This file is too large. The limit is ${mb} MB.`, fileEmpty: "This file is empty.", tooManyFiles: `You can send up to ${MAX_FILES} files at once.`,
     removeFile: "Remove file", captionPlaceholder: "Add a caption (optional), then send", sendFiles: "Send files", notSentFile: "Not sent. Attach it again.",
-    template: "Send a template", react: "React", removeReaction: "Remove", templateTag: "Template", reactFailed: "The reaction was not sent.",
+    template: "Send a template", replyShort: "Write a reply...", react: "React", removeReaction: "Remove", templateTag: "Template", reactFailed: "The reaction was not sent.",
   },
 } as const;
 
@@ -471,7 +472,7 @@ const TeamInbox = () => {
   ];
 
   const renderNav = (horizontal: boolean) => (
-    <nav className={horizontal ? "flex shrink-0 gap-1.5 overflow-x-auto border-b px-2 py-2" : "flex w-52 shrink-0 flex-col gap-0.5 overflow-y-auto border-r p-2"} aria-label={T.title}>
+    <nav className={horizontal ? "flex shrink-0 gap-1.5 overflow-x-auto border-b py-2 pl-2 pr-14 md:pr-2" : "flex w-52 shrink-0 flex-col gap-0.5 overflow-y-auto border-r p-2"} aria-label={T.title}>
       {navItems.map((i) => (
         <button key={i.key} type="button" onClick={() => setView(i.key)}
           className={`flex shrink-0 items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm ${view === i.key ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted"}`}>
@@ -585,7 +586,7 @@ const TeamInbox = () => {
         {canReact && <ReactionPicker current={myReaction} label={T.react} removeLabel={T.removeReaction} onPick={(emoji) => void react(m, emoji)} />}
         {canQuote && (
           <button type="button" aria-label={T.replyTo} title={T.replyTo} onClick={() => { setReplyingTo(m); composerRef.current?.focus(); }}
-            className="shrink-0 rounded-full p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-black/5 focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+            className="shrink-0 rounded-full p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-black/5 focus:opacity-100 group-hover:opacity-100 sm:p-1.5 [@media(hover:none)]:opacity-100">
             <Reply className="h-4 w-4" />
           </button>
         )}
@@ -610,10 +611,10 @@ const TeamInbox = () => {
         </div>
       ) : (
         <>
-          <header className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+          <header className={`flex flex-wrap items-center gap-2 border-b py-2 pl-3 ${isMobile ? "pr-14" : "pr-3"}`}>
             {isMobile && <Button variant="ghost" size="icon" onClick={() => { setActiveId(null); setDetail(null); }} aria-label={T.back}><ArrowLeft className="h-4 w-4" /></Button>}
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#00a884]/15 text-xs font-semibold text-[#1f7a5a]">{initials(label(active))}</span>
-            <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{label(active)}</p><p className="truncate text-xs text-muted-foreground">+{active.customer_phone}</p></div>
+            <div className="min-w-[8rem] flex-1"><p className="truncate text-sm font-semibold">{label(active)}</p><p className="truncate text-xs text-muted-foreground">+{active.customer_phone}</p></div>
             {calling.enabled && <CallButton threadId={active.id} name={label(active)} phone={active.customer_phone} windowOpen={active.window_open} />}
             {perms?.can_claim && !active.assigned_to && (
               <Button size="sm" variant="outline" onClick={() => void change(teamInboxApi.claim(active.id), T.claimed)}><UserCheck className="mr-1 h-3.5 w-3.5" />{T.claim}</Button>
@@ -657,7 +658,7 @@ const TeamInbox = () => {
             <div ref={bottomRef} />
           </div>
 
-          <footer className="space-y-1.5 border-t p-2">
+          <footer className="space-y-1.5 border-t p-2" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
             {detail?.typing && detail.typing.length > 0 && <p className="px-1 text-xs italic text-muted-foreground">{T.typing(detail.typing.join(", "))}</p>}
             {detail?.recent_reply && mode === "reply" && <p className="flex items-center gap-1 px-1 text-xs text-amber-700"><AlertTriangle className="h-3.5 w-3.5" />{T.recent(detail.recent_reply.name)}</p>}
             {mode === "reply" && !active.window_open && (
@@ -696,19 +697,29 @@ const TeamInbox = () => {
             )}
             <div className="flex items-end gap-1">
               <input ref={fileInputRef} type="file" multiple accept={ACCEPT} className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
-              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground" disabled={!canWrite || mode !== "reply" || sending}
+              {/* On a phone the attach and template buttons fold into one "+" so the message box keeps its width. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground sm:hidden" disabled={mode !== "reply" || sending || recording || (!canWrite && !perms?.can_reply)} aria-label={T.attach}><Plus className="h-5 w-5" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="start">
+                  <DropdownMenuItem disabled={!canWrite} onSelect={() => fileInputRef.current?.click()}><Paperclip className="mr-2 h-4 w-4" />{T.attach}</DropdownMenuItem>
+                  {perms?.can_reply && <DropdownMenuItem onSelect={() => setTemplatesOpen(true)}><LayoutTemplate className="mr-2 h-4 w-4" />{T.template}</DropdownMenuItem>}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button type="button" variant="ghost" size="icon" className="hidden h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground sm:inline-flex" disabled={!canWrite || mode !== "reply" || sending}
                 aria-label={T.attach} title={T.attach} onClick={() => fileInputRef.current?.click()}><Paperclip className="h-5 w-5" /></Button>
               <EmojiPicker onPick={insertEmoji} disabled={!canWrite} label={T.emoji} />
               {mode === "reply" && perms?.can_reply && (
-                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground" disabled={recording || sending}
+                <Button type="button" variant="ghost" size="icon" className="hidden h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground sm:inline-flex" disabled={recording || sending}
                   aria-label={T.template} title={T.template} onClick={() => setTemplatesOpen(true)}><LayoutTemplate className="h-5 w-5" /></Button>
               )}
               {mode === "reply" && canWrite && files.length === 0 && !draft.trim() && (
                 <VoiceRecorder disabled={sending} onBusyChange={setRecording} onRecorded={(f) => void sendVoice(f)} onNotice={(title) => toast({ title, variant: "destructive" })} />
               )}
               <Textarea ref={composerRef} value={draft} onChange={(e) => onDraft(e.target.value)} onKeyDown={onKey} onPaste={onPaste} rows={2} disabled={!canWrite}
-                placeholder={mode === "note" ? T.notePlaceholder : files.length ? T.captionPlaceholder : T.replyPlaceholder} maxLength={4096}
-                className={`min-h-[44px] flex-1 resize-none ${mode === "note" ? "border-amber-300 bg-amber-50" : ""} ${recording ? "hidden" : ""}`} aria-label={mode === "note" ? T.note : T.reply} />
+                placeholder={mode === "note" ? T.notePlaceholder : files.length ? T.captionPlaceholder : isMobile ? T.replyShort : T.replyPlaceholder} maxLength={4096}
+                className={`min-h-[44px] min-w-0 flex-1 resize-none ${mode === "note" ? "border-amber-300 bg-amber-50" : ""} ${recording ? "hidden" : ""}`} aria-label={mode === "note" ? T.note : T.reply} />
               <Button onClick={() => void send()} disabled={!canWrite || sending || recording || (!draft.trim() && !(mode === "reply" && files.length > 0))} aria-label={mode === "note" ? T.addNote : files.length ? T.sendFiles : T.send}
                 className="h-10 w-10 shrink-0 rounded-full bg-[#00a884] p-0 text-white hover:bg-[#008f72] disabled:bg-[#00a884]/40">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "note" ? <StickyNote className="h-4 w-4" /> : <Send className="h-4 w-4" />}

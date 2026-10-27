@@ -35,7 +35,8 @@ const ROUTE_META: Array<{ match: RegExp; meta: PageMeta }> = [
   { match: /^\/whatsapp/, meta: { title: "WhatsApp", isHome: false, showBack: true, showTabBar: true, tab: "send" } },
   { match: /^\/ai-copilots/, meta: { title: "AI Copilots", isHome: false, showBack: true, showTabBar: true, tab: null } },
   { match: /^\/voice-copilots/, meta: { title: "Voice Copilots", isHome: false, showBack: true, showTabBar: true, tab: null } },
-  { match: /^\/conversations/, meta: { title: "Team Inbox", isHome: false, showBack: true, showTabBar: true, tab: null } },
+  // No bottom tab bar here: on a phone it would sit on top of the message box. The header menu still reaches every page.
+  { match: /^\/conversations/, meta: { title: "Team Inbox", isHome: false, showBack: true, showTabBar: false, tab: null } },
   { match: /^\/templates/, meta: { title: "Templates", isHome: false, showBack: true, showTabBar: true, tab: null } },
   { match: /^\/analytics/, meta: { title: "Analytics", isHome: false, showBack: true, showTabBar: true, tab: null } },
   { match: /^\/notifications/, meta: { title: "Notifications", isHome: false, showBack: true, showTabBar: true, tab: null } },

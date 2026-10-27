@@ -1,4 +1,5 @@
 import { Download, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -6,8 +7,10 @@ import { useLanguage } from '@/hooks/useLanguage';
 export function InstallAppPrompt() {
   const { canInstall, installed, recentlyDismissed, prompt, dismiss } = useInstallPrompt();
   const { t } = useLanguage();
+  const { pathname } = useLocation();
 
-  if (installed || !canInstall || recentlyDismissed) return null;
+  // The Team Inbox is a full-height chat: on a phone this card would sit on top of the message box.
+  if (installed || !canInstall || recentlyDismissed || pathname.startsWith('/conversations')) return null;
 
   return (
     <div

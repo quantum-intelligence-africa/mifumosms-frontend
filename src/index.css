@@ -820,3 +820,20 @@ All colors MUST be HSL for consistency and theming.
         animation: scaleIn 0.2s ease-out;
     }
 }
+
+
+/* Phones: stop iOS zooming into small form fields, and never let one wide element make the whole page scroll sideways. */
+@layer base {
+    @media (max-width: 767px) {
+        input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+        select,
+        textarea {
+            font-size: max(16px, 1em);
+        }
+        html,
+        body {
+            max-width: 100%;
+            overflow-x: clip;
+        }
+    }
+}

@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      // h-screen / min-h-screen follow the VISIBLE height on phones (the browser's address bar no longer hides the bottom of a page, such as a message box).
+      height: { screen: ["100vh", "100dvh"] },
+      minHeight: { screen: ["100vh", "100dvh"] },
+      maxHeight: { screen: ["100vh", "100dvh"] },
       colors: {
         border: "hsl(var(--border))",
         "border-subtle": "hsl(var(--border-subtle))",

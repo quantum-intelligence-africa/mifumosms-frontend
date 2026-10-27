@@ -33,7 +33,7 @@ export function ReactionPicker({ current, label, removeLabel, onPick }: PickerPr
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" aria-label={label} title={label}
-          className="shrink-0 rounded-full p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-black/5 focus:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100">
+          className="shrink-0 rounded-full p-1 text-muted-foreground opacity-0 sm:p-1.5 transition-opacity hover:bg-black/5 focus:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100">
           <SmilePlus className="h-4 w-4" />
         </button>
       </PopoverTrigger>

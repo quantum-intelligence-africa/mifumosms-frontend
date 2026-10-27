@@ -20,7 +20,7 @@ export function SectionTabs() {
 
   return (
     <nav aria-label={t(ccKey(section.labelKey))} className="shrink-0 border-b border-border-subtle bg-background px-2 sm:px-3 lg:px-6">
-      <div className="flex gap-1 overflow-x-auto py-1.5 [scrollbar-width:none]">
+      <div className="flex gap-1 overflow-x-auto py-1.5 pr-12 [scrollbar-width:none] md:pr-0">
         {section.tabs.map((tab) => {
           const active = tab.href === currentHref;
           return (
