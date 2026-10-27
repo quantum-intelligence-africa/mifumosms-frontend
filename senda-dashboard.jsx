@@ -11574,6 +11574,218 @@ function FreeCreditExpirySettings() {
 }
 
 // ─── Credit Alerts Tab ───────────────────────────────────────────────────────
+// ─── Free SMS Pool (partners such as Kuza) ────────────────────────────────────
+// Mifumo sets aside a pool of free SMS per partner; the partner's own system hands it out to the tenants it created through the Partner API.
+// Backed by /api/admin/v1/free-sms-pool/partners (+ /<account_id>/pool, /<account_id>/entries). The same rules apply here and in the API.
+const FREE_POOL_KINDS = [
+  { id: '',         label: 'All' },
+  { id: 'grant',    label: 'Given' },
+  { id: 'revoke',   label: 'Taken back' },
+  { id: 'expire',   label: 'Expired' },
+  { id: 'pool_set', label: 'Pool set' },
+  { id: 'pool_add', label: 'Pool top-up' },
+];
+const FREE_POOL_KIND_STYLE = {
+  grant:    { bg: '#d1fae5', fg: '#065f46', text: 'Given' },
+  revoke:   { bg: '#fee2e2', fg: '#991b1b', text: 'Taken back' },
+  expire:   { bg: '#f1f5f9', fg: '#475569', text: 'Expired' },
+  pool_set: { bg: '#dbeafe', fg: '#1e40af', text: 'Pool set' },
+  pool_add: { bg: '#dbeafe', fg: '#1e40af', text: 'Pool top-up' },
+};
+
+function FreePoolDialog({ partner, onClose, onDone }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [mode, setMode]     = useState('add');
+  const [amount, setAmount] = useState('');
+  const [note, setNote]     = useState('');
+  const [busy, setBusy]     = useState(false);
+  const n = Number(amount);
+  const valid = amount !== '' && Number.isInteger(n) && n >= (mode === 'set' ? 0 : 1) && n <= 1000000;
+  const after = !valid ? null : mode === 'set' ? n : partner.remaining + n;
+
+  const save = async () => {
+    if (!valid || busy) return;
+    setBusy(true);
+    try {
+      const res = await adminFetch(`/api/admin/v1/free-sms-pool/partners/${partner.account_id}/pool`, {
+        method: 'POST', body: JSON.stringify({ amount: n, mode, note }),
+      }, onLogout);
+      if (res.success) { showToast(`${partner.name} now has ${res.data?.remaining ?? after} free SMS left to give.`, 'success'); onDone(); }
+      else showToast(res.error?.message || 'Could not change the pool.', 'error');
+    } catch (e) { showToast('Network error while saving.', 'error'); }
+    finally { setBusy(false); }
+  };
+
+  return createPortal((
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(15,23,42,0.55)',backdropFilter:'blur(3px)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'24px 16px',overflowY:'auto'}}>
+      <div onClick={e=>e.stopPropagation()} className="senda-fade-up" style={{width:'100%',maxWidth:440,margin:'auto',background:'#fff',borderRadius:18,boxShadow:'0 24px 70px rgba(15,23,42,.28)',overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',gap:13,padding:'20px 22px',borderBottom:'1px solid #eef2f7'}}>
+          <div style={{width:42,height:42,borderRadius:12,background:`linear-gradient(135deg,${BRAND},${BRAND2})`,display:'flex',alignItems:'center',justifyContent:'center'}}><Gift size={19} color="#fff"/></div>
+          <div style={{flex:1,minWidth:0}}>
+            <h3 style={{fontSize:16,fontWeight:800,color:'#0f172a'}}>Free SMS pool</h3>
+            <p style={{fontSize:12,color:'#94a3b8',marginTop:1}}>{partner.name}</p>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{border:'none',background:'#f1f5f9',borderRadius:9,width:32,height:32,cursor:'pointer',color:'#64748b'}}><X size={16}/></button>
+        </div>
+        <div style={{padding:'18px 22px'}}>
+          <div style={{display:'flex',gap:10,marginBottom:14}}>
+            {[['Set aside', partner.assigned], ['Given out', partner.granted], ['Left to give', partner.remaining]].map(([label, value]) => (
+              <div key={label} className="senda-card" style={{flex:1,padding:'8px 12px'}}>
+                <div style={{fontSize:11,color:'#94a3b8'}}>{label}</div>
+                <div style={{fontSize:17,fontWeight:700,color:'#0f172a'}}>{Number(value).toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:6,marginBottom:12}}>
+            {[['add', 'Top up'], ['set', 'Set what is left']].map(([id, label]) => (
+              <button key={id} className="senda-btn senda-btn-sm" onClick={()=>setMode(id)}
+                style={{flex:1,background:mode===id?BRAND:'#f1f5f9',color:mode===id?'#fff':'#64748b',border:'none'}}>{label}</button>
+            ))}
+          </div>
+          <label style={{fontSize:12,fontWeight:600,color:'#475569'}}>{mode === 'add' ? 'SMS to add' : 'SMS the partner should have left'}</label>
+          <input className="senda-input" inputMode="numeric" value={amount} onChange={e=>setAmount(e.target.value.replace(/[^0-9]/g, ''))} placeholder="e.g. 2000" style={{width:'100%',height:40,margin:'4px 0 10px'}} autoFocus/>
+          <label style={{fontSize:12,fontWeight:600,color:'#475569'}}>Note (optional, kept in the history)</label>
+          <input className="senda-input" value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. November allowance" maxLength={300} style={{width:'100%',height:40,margin:'4px 0 10px'}}/>
+          <p style={{fontSize:12,color:valid?'#0f172a':'#94a3b8',minHeight:18}}>
+            {valid ? `After saving, ${partner.name} will have ${after.toLocaleString()} free SMS left to give.` : 'Enter a whole number.'}
+          </p>
+          <p style={{fontSize:11,color:'#94a3b8',marginTop:6}}>Credit already given to customers is not affected. Expired credit does not come back to the pool; credit taken back does.</p>
+        </div>
+        <div style={{display:'flex',justifyContent:'flex-end',gap:8,padding:'14px 22px',borderTop:'1px solid #eef2f7',background:'#f8fafc'}}>
+          <button className="senda-btn senda-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="senda-btn" disabled={!valid || busy} onClick={save} style={{background:BRAND,color:'#fff',border:'none',opacity:(!valid||busy)?0.6:1}}>{busy ? 'Saving…' : 'Save'}</button>
+        </div>
+      </div>
+    </div>
+  ), document.body);
+}
+
+function FreePoolHistory({ partner, onBack }) {
+  const { onLogout } = React.useContext(AppContext);
+  const [kind, setKind]     = useState('');
+  const [search, setSearch] = useState('');
+  const { rows, loading, error, page, setPage, hasNext, count, pageSize, setPageSize, summary, reload } =
+    usePagedList(`/api/admin/v1/free-sms-pool/partners/${partner.account_id}/entries`, { kind, search }, onLogout);
+  return (
+    <div>
+      <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={onBack} style={{marginBottom:12}}>‹ All partners</button>
+      <SectionHeader title={`${partner.name} — free SMS history`} subtitle="Everything given, taken back, expired or changed in the pool, newest first"/>
+      {summary && (
+        <div style={{display:'flex',gap:12,marginBottom:14,flexWrap:'wrap'}}>
+          {[['Set aside', summary.assigned], ['Given out', summary.granted], ['Left to give', summary.remaining]].map(([label, value]) => (
+            <div key={label} className="senda-card" style={{padding:'10px 16px'}}>
+              <div style={{fontSize:11,color:'#94a3b8'}}>{label}</div>
+              <div style={{fontSize:18,fontWeight:700,color:'#0f172a'}}>{Number(value).toLocaleString()}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        <input className="senda-input" placeholder="Search business, reason or key…" value={search} onChange={e=>setSearch(e.target.value)} style={{width:260,height:38,fontSize:13}}/>
+        <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+          {FREE_POOL_KINDS.map(k => (
+            <button key={k.id || 'all'} className="senda-btn senda-btn-sm" onClick={()=>setKind(k.id)}
+              style={{background:kind===k.id?BRAND:'#f1f5f9',color:kind===k.id?'#fff':'#64748b',border:'none'}}>{k.label}</button>
+          ))}
+        </div>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={reload}><RefreshCw size={13}/> Refresh</button>
+      </div>
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={reload}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:980}}>
+              <thead><tr><th>When</th><th>What</th><th>Business</th><th>SMS</th><th>Period</th><th>Reason</th><th>Key</th><th>By</th><th>Left in pool</th></tr></thead>
+              <tbody>
+                {rows.length === 0 && <tr><td colSpan={9} style={{textAlign:'center',color:'#94a3b8',padding:24}}>Nothing here yet.</td></tr>}
+                {rows.map(r => {
+                  const style = FREE_POOL_KIND_STYLE[r.kind] || FREE_POOL_KIND_STYLE.expire;
+                  return (
+                    <tr key={r.id}>
+                      <td style={{fontSize:12,color:'#64748b',whiteSpace:'nowrap'}}>{new Date(r.created_at).toLocaleString()}</td>
+                      <td><span style={{padding:'3px 10px',borderRadius:99,fontSize:11,fontWeight:700,background:style.bg,color:style.fg}}>{style.text}</span></td>
+                      <td style={{fontSize:12,fontWeight:600,color:'#0f172a'}}>{r.tenant_name || '—'}</td>
+                      <td style={{fontSize:12,fontWeight:700,color:'#0f172a'}} title={r.requested_amount !== r.amount ? `Asked for ${r.requested_amount}` : undefined}>{r.amount.toLocaleString()}{r.requested_amount !== r.amount ? ` / ${r.requested_amount.toLocaleString()}` : ''}</td>
+                      <td style={{fontSize:12,color:'#64748b'}}>{r.period || '—'}</td>
+                      <td style={{fontSize:12,color:'#64748b',maxWidth:220}}>{r.reason || '—'}</td>
+                      <td style={{fontSize:11,color:'#94a3b8',fontFamily:'monospace',maxWidth:180,overflow:'hidden',textOverflow:'ellipsis'}} title={r.idempotency_key}>{r.idempotency_key || '—'}</td>
+                      <td style={{fontSize:11,color:'#94a3b8'}}>{r.by || 'API'}</td>
+                      <td style={{fontSize:12,color:'#64748b'}}>{r.pool_remaining_after.toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="entries" pageSize={pageSize} setPageSize={setPageSize}/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FreeSmsPoolTab() {
+  const { onLogout } = React.useContext(AppContext);
+  const [search, setSearch]   = useState('');
+  const [editing, setEditing] = useState(null);
+  const [viewing, setViewing] = useState(null);
+  const { rows, loading, error, page, setPage, hasNext, count, pageSize, setPageSize, summary, reload } =
+    usePagedList('/api/admin/v1/free-sms-pool/partners', { search }, onLogout);
+
+  if (viewing) return <FreePoolHistory partner={viewing} onBack={()=>{ setViewing(null); reload(); }}/>;
+  return (
+    <div>
+      <SectionHeader title="Free SMS pool" subtitle="Free SMS Mifumo sets aside for a partner (such as Kuza). The partner's system gives it to its own customers; this page controls how much it may give."/>
+      {summary && (
+        <div style={{display:'flex',gap:12,marginBottom:14,flexWrap:'wrap'}}>
+          {[['Set aside (all partners)', summary.assigned], ['Given out', summary.granted], ['Left to give', summary.remaining], ['Partners with a pool', summary.pools]].map(([label, value]) => (
+            <div key={label} className="senda-card" style={{padding:'10px 16px'}}>
+              <div style={{fontSize:11,color:'#94a3b8'}}>{label}</div>
+              <div style={{fontSize:18,fontWeight:700,color:'#0f172a'}}>{Number(value).toLocaleString()}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        <input className="senda-input" placeholder="Search partner, email or account id…" value={search} onChange={e=>setSearch(e.target.value)} style={{width:300,height:38,fontSize:13}}/>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={reload}><RefreshCw size={13}/> Refresh</button>
+      </div>
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={reload}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:900}}>
+              <thead><tr><th>Partner</th><th>Owner</th><th>Customers</th><th>Set aside</th><th>Given out</th><th>Left to give</th><th></th></tr></thead>
+              <tbody>
+                {rows.length === 0 && <tr><td colSpan={7} style={{textAlign:'center',color:'#94a3b8',padding:24}}>No partners found. A partner appears here once it has created customers through the Partner API.</td></tr>}
+                {rows.map(r => {
+                  const low = r.assigned > 0 && r.remaining <= r.assigned * 0.1;
+                  return (
+                    <tr key={r.account_id}>
+                      <td><div style={{fontSize:13,fontWeight:700,color:'#0f172a'}}>{r.name}</div><div style={{fontSize:11,color:'#94a3b8',fontFamily:'monospace'}}>{r.account_id}</div></td>
+                      <td style={{fontSize:12,color:'#64748b'}}>{r.owner_email || '—'}</td>
+                      <td style={{fontSize:12,color:'#64748b'}}>{r.tenants}</td>
+                      <td style={{fontSize:12,color:'#64748b'}}>{r.assigned.toLocaleString()}</td>
+                      <td style={{fontSize:12,color:'#64748b'}}>{r.granted.toLocaleString()}</td>
+                      <td style={{fontSize:13,fontWeight:700,color:r.assigned === 0 ? '#94a3b8' : low ? '#b91c1c' : '#0f172a'}} title={low ? 'Running low: the partner will be refused once this reaches zero.' : undefined}>
+                        {r.remaining.toLocaleString()}{low ? ' ⚠' : ''}{r.assigned === 0 ? ' (no pool yet)' : ''}
+                      </td>
+                      <td style={{whiteSpace:'nowrap',textAlign:'right'}}>
+                        <button className="senda-btn senda-btn-sm" onClick={()=>setEditing(r)} style={{background:BRAND,color:'#fff',border:'none',marginRight:6}}>Set / top up</button>
+                        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={()=>setViewing(r)}>History</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="partners" pageSize={pageSize} setPageSize={setPageSize}/>
+        </div>
+      )}
+      {editing && <FreePoolDialog partner={editing} onClose={()=>setEditing(null)} onDone={()=>{ setEditing(null); reload(); }}/>}
+    </div>
+  );
+}
+
 // Low-balance customers, free-credit expiry customers, and notification
 // history/delivery-status — backed by /api/admin/v1/low-credit-warning/customers,
 // /api/admin/v1/free-credit-expiry/customers and /api/admin/v1/system-sms-logs.
@@ -18276,6 +18488,7 @@ const NAV_GROUPS = [
   { title: 'Partners', items: [
     { id:'partners',      Icon:Handshake,    label:'Partners'         },
     { id:'partnersenders', Icon:Tag,         label:'Partner Clients'  },
+    { id:'freesmspool',    Icon:Gift,        label:'Free SMS Pool'    },
   ]},
   { title: 'Billing', items: [
     { id:'transactions',  Icon:CreditCard,   label:'Transactions'     },
@@ -22481,6 +22694,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     textifysendernames: <TextifySenderNamesTab/>,
     partners:     <PartnersTab/>,
     partnersenders: <PartnerSendersTab/>,
+    freesmspool:  <FreeSmsPoolTab/>,
     approvedsenders: <ApprovedSendersTab/>,
     idleusers:    <RegisteredIdleTab/>,
     whatsapp:     <WhatsAppTab/>,
