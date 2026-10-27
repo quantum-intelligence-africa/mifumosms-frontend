@@ -39,13 +39,14 @@ interface Draft {
   audio_mode: AudioMode;
   extension: string;
   always_available: boolean;
+  takes_ai_transfers: boolean;
   team_ids: string[];
   temporary_password: string;
 }
 
 const EMPTY: Draft = {
   first_name: "", last_name: "", email: "", phone_number: "", role: "agent", audio_mode: "browser",
-  extension: "", always_available: false, team_ids: [], temporary_password: "",
+  extension: "", always_available: false, takes_ai_transfers: true, team_ids: [], temporary_password: "",
 };
 
 interface Credentials {
@@ -135,7 +136,7 @@ export default function CallCenterAgents() {
     setDraft({
       first_name: first, last_name: rest.join(" "), email: agent.email, phone_number: agent.phone_number,
       role: agent.role === "supervisor" ? "supervisor" : "agent", audio_mode: agent.audio_mode, extension: agent.extension,
-      always_available: !!agent.always_available, team_ids: agent.teams.map((x) => x.id), temporary_password: "",
+      always_available: !!agent.always_available, takes_ai_transfers: agent.takes_ai_transfers !== false, team_ids: agent.teams.map((x) => x.id), temporary_password: "",
     });
     setFormError(null);
     setOpen(true);
@@ -208,7 +209,7 @@ export default function CallCenterAgents() {
       const res = await callCenterApi.agents.update(editing.id, {
         name: `${draft.first_name} ${draft.last_name}`.trim() || editing.name,
         phone_number: draft.phone_number, extension: draft.extension, audio_mode: draft.audio_mode, team_ids: draft.team_ids,
-        always_available: draft.always_available,
+        always_available: draft.always_available, takes_ai_transfers: draft.takes_ai_transfers,
       });
       let roleError: string | null = null;
       if (res.success && editing.user && tenantId && draft.role !== editing.role) {
@@ -684,6 +685,16 @@ export default function CallCenterAgents() {
                 <span>
                   <span className="font-medium">{t("cc.agents.always_online")}</span>
                   <span className="block text-xs text-muted-foreground">{t("cc.agents.always_online_hint")}</span>
+                </span>
+              </label>
+            )}
+
+            {editing && (
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border p-2.5 text-sm">
+                <Checkbox checked={draft.takes_ai_transfers} onCheckedChange={(v) => setDraft({ ...draft, takes_ai_transfers: !!v })} className="mt-0.5" />
+                <span>
+                  <span className="font-medium">{t("cc.agents.ai_transfers")}</span>
+                  <span className="block text-xs text-muted-foreground">{t("cc.agents.ai_transfers_hint")}</span>
                 </span>
               </label>
             )}

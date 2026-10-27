@@ -414,6 +414,8 @@ export const ccEn = {
   "cc.agents.audio_mode": "Answers calls on",
   "cc.agents.always_online": "Always online",
   "cc.agents.always_online_hint": "Keep this agent Available all the time, even when they are not signed in. Calls ring their phone number. They can still go Away or Do not disturb.",
+  "cc.agents.ai_transfers": "Take calls transferred by the AI assistant",
+  "cc.agents.ai_transfers_hint": "When a caller asks the AI assistant for a person, it may ring this agent. Switch off to keep them out of AI transfers; they still receive normal call-center calls.",
   "cc.agents.always_needs_phone": "Add a phone number to keep this agent always online.",
   "cc.agents.phone": "Phone number",
   "cc.agents.teams": "Teams",

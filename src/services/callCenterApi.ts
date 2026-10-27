@@ -126,6 +126,8 @@ export interface CCAgent {
   audio_mode: AudioMode;
   /** An administrator keeps this agent Available even with no tab open (needs a phone number). */
   always_available?: boolean;
+  /** The AI assistant may transfer callers to this agent (default on). */
+  takes_ai_transfers?: boolean;
   is_active: boolean;
   status: AgentStatus;
   /** Status plus what the call layer knows: ringing, on a call, or switched off. */
@@ -142,6 +144,7 @@ export interface AgentProfileInput {
   department?: string;
   audio_mode?: AudioMode;
   always_available?: boolean;
+  takes_ai_transfers?: boolean;
   is_active?: boolean;
   team_ids?: string[];
 }

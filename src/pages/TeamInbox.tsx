@@ -1,7 +1,7 @@
 // SENDA Team Inbox: one connected WhatsApp number, one shared inbox, many employees. Everything shown comes from the server (no sample data);
 // the server decides what each signed-in employee may see and do, the buttons here only reflect that.
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, Check, CheckCheck, FileText, Inbox, Loader2, MessageSquare, Paperclip, Phone, RefreshCw, Reply, Search, Send, StickyNote, UserCheck, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, CheckCheck, FileText, Inbox, LayoutTemplate, Loader2, MessageSquare, Paperclip, Phone, RefreshCw, Reply, Search, Send, StickyNote, UserCheck, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CallButton } from "@/components/whatsapp-calls/CallButton";
 import { CallsPanel } from "@/components/whatsapp-calls/CallsPanel";
@@ -17,6 +17,9 @@ import { useToast } from "@/hooks/use-toast";
 import { appLanguage } from "@/utils/appLocale";
 import { EmojiPicker } from "@/components/team-inbox/EmojiPicker";
 import { MessageMedia } from "@/components/team-inbox/MessageMedia";
+import { ReactionChips, ReactionPicker } from "@/components/team-inbox/Reactions";
+import { TemplatePicker } from "@/components/team-inbox/TemplatePicker";
+import { VoiceRecorder } from "@/components/team-inbox/VoiceRecorder";
 import { ACCEPT, CAPTION_KINDS, LIMIT_MB, MAX_FILES, checkFile, type FileKind } from "@/components/team-inbox/attachments";
 import { dayLabel, fileSize, isEmojiOnly, linkify, sameDay } from "@/components/team-inbox/format";
 import {
@@ -39,6 +42,7 @@ const TEXT = {
     dropHere: "Dondosha faili hapa kuzituma", fileType: "WhatsApp inapokea picha (JPG, PNG), video (MP4), sauti (MP3, M4A, AAC, AMR, OGG) na hati (PDF, Word, Excel, PowerPoint, TXT).",
     fileSize: (mb: number) => `Faili hii ni kubwa mno. Kikomo ni ${mb} MB.`, fileEmpty: "Faili hii ni tupu.", tooManyFiles: `Unaweza kutuma hadi faili ${MAX_FILES} kwa mara moja.`,
     removeFile: "Ondoa faili", captionPlaceholder: "Ongeza maelezo (si lazima) kisha tuma", sendFiles: "Tuma faili", notSentFile: "Haikutumwa. Ambatisha tena.",
+    template: "Tuma kiolezo", react: "Weka hisia", removeReaction: "Ondoa", templateTag: "Kiolezo", reactFailed: "Hisia haikutumwa.",
   },
   en: {
     title: "Team Inbox", chats: "Chats", calls: "Calls", replyTo: "Reply to this message", replyingTo: "Replying to", cancelReply: "Cancel reply", original: "Original message", all: "All conversations", mine: "My conversations", unassigned: "Unassigned", open: "Open", pending: "Pending", resolved: "Resolved", archived: "Archived",
@@ -55,6 +59,7 @@ const TEXT = {
     dropHere: "Drop files here to send them", fileType: "WhatsApp accepts photos (JPG, PNG), video (MP4), audio (MP3, M4A, AAC, AMR, OGG) and documents (PDF, Word, Excel, PowerPoint, TXT).",
     fileSize: (mb: number) => `This file is too large. The limit is ${mb} MB.`, fileEmpty: "This file is empty.", tooManyFiles: `You can send up to ${MAX_FILES} files at once.`,
     removeFile: "Remove file", captionPlaceholder: "Add a caption (optional), then send", sendFiles: "Send files", notSentFile: "Not sent. Attach it again.",
+    template: "Send a template", react: "React", removeReaction: "Remove", templateTag: "Template", reactFailed: "The reaction was not sent.",
   },
 } as const;
 
@@ -132,6 +137,8 @@ const TeamInbox = () => {
   type PendingFile = { id: string; file: File; kind: FileKind; previewUrl: string };
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const urlsRef = useRef<string[]>([]);
   const localFiles = useRef<Map<string, PendingFile>>(new Map());
@@ -301,12 +308,12 @@ const TeamInbox = () => {
 
   /** Send the chosen files one after another (WhatsApp takes one file per message). The caption rides on the first photo or video; when
    *  none of the files can carry one (audio, documents) it goes as its own message after them. */
-  const sendFiles = async (caption: string) => {
+  const sendFiles = async (caption: string, queue: PendingFile[] = files) => {
     if (!activeId) return;
     const threadId = activeId;
-    const queue = files;
     const quoted = replyingTo;
-    setFiles([]); setDraft(""); setReplyingTo(null);
+    if (queue === files) { setFiles([]); setDraft(""); }  // a recorded voice note leaves the typed text and the chosen files alone
+    setReplyingTo(null);
     const captionIndex = caption ? queue.findIndex((f) => CAPTION_KINDS.includes(f.kind)) : -1;
     for (let i = 0; i < queue.length; i++) {
       const item = queue[i];
@@ -361,6 +368,34 @@ const TeamInbox = () => {
     setReplyingTo(null);
     await sendText(text, quoted);
     setSending(false);
+    void loadList(1);
+  };
+
+  /** A finished voice note goes out at once, as an audio message (the server converts the browser's format when WhatsApp needs another). */
+  const sendVoice = async (file: File) => {
+    if (!activeId || sending) return;
+    const previewUrl = URL.createObjectURL(file);
+    urlsRef.current.push(previewUrl);
+    setSending(true);
+    await sendFiles("", [{ id: token(), file, kind: "audio", previewUrl }]);
+    setSending(false);
+  };
+
+  const react = async (m: InboxMessage, emoji: string) => {
+    if (!activeId) return;
+    const res = await teamInboxApi.react(activeId, m.id, emoji);
+    const updated = (res.data as { message?: InboxMessage } | undefined)?.message;
+    if (res.success && updated) { mergeMessages([updated]); return; }
+    const code = errorCode(res);
+    toast({ title: code === "window_closed" ? T.window : res.message || T.reactFailed, variant: "destructive" });
+    if (code === "window_closed") void refreshActive(activeId);
+  };
+
+  const templateSent = (message: InboxMessage, warning: { name: string; at: string } | null, error?: string) => {
+    mergeMessages([message]);
+    if (warning) toast({ title: T.recent(warning.name) });
+    if (error) toast({ title: error, variant: "destructive" });
+    if (activeId) void refreshActive(activeId);
     void loadList(1);
   };
 
@@ -515,6 +550,8 @@ const TeamInbox = () => {
     const showText = !!m.text && !(m.has_media && placeholder) && !(m.has_media && m.kind === "document");
     const big = !m.has_media && !m.reply_to && isEmojiOnly(m.text);
     const meta = "text-[#667781] dark:text-[#8696a0]";
+    const myReaction = m.reactions?.find((r) => r.side === "business")?.emoji;
+    const canReact = canQuote && !!active?.window_open && !m.id.startsWith("call:");
     return (
       <div key={m.id} id={`msg-${m.id}`} className={`group flex items-center gap-1 rounded-lg transition-colors ${mine ? "flex-row-reverse" : ""}`}>
         <div className={`max-w-[80%] rounded-lg px-2.5 py-1.5 text-sm shadow-sm ${mine ? "rounded-tr-none bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]" : "rounded-tl-none bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef]"} ${m.status === "failed" ? "ring-2 ring-red-500" : ""}`}>
@@ -532,6 +569,7 @@ const TeamInbox = () => {
               <div className="h-1 rounded bg-[#00a884] transition-all" style={{ width: `${m.progress}%` }} />
             </div>
           )}
+          {m.kind === "template" && <p className="mb-0.5 text-[11px] font-medium uppercase tracking-wide text-[#667781] dark:text-[#8696a0]">{T.templateTag}{m.template ? ` · ${m.template}` : ""}</p>}
           {showText && <p className={`whitespace-pre-wrap break-words ${big ? "text-4xl leading-tight" : ""}`}>{big ? m.text : linkify(m.text)}</p>}
           <p className={`mt-0.5 flex items-center justify-end gap-1 text-[11px] ${meta}`}>
             {clock(m.created_at)} {mine && <Ticks status={m.status} />}
@@ -542,7 +580,9 @@ const TeamInbox = () => {
               <button type="button" className="font-semibold underline" onClick={() => void retry(m)}>{T.retry}</button>
             </p>
           )}
+          <ReactionChips reactions={m.reactions} mine={mine} />
         </div>
+        {canReact && <ReactionPicker current={myReaction} label={T.react} removeLabel={T.removeReaction} onPick={(emoji) => void react(m, emoji)} />}
         {canQuote && (
           <button type="button" aria-label={T.replyTo} title={T.replyTo} onClick={() => { setReplyingTo(m); composerRef.current?.focus(); }}
             className="shrink-0 rounded-full p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-black/5 focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
@@ -558,6 +598,7 @@ const TeamInbox = () => {
       onDragOver={(e) => { if (mode === "reply" && canWrite && e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDragging(true); } }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false); }}
       onDrop={(e) => { if (e.dataTransfer.files.length) { e.preventDefault(); setDragging(false); if (mode === "reply" && canWrite) addFiles(e.dataTransfer.files); } }}>
+      {active && <TemplatePicker threadId={active.id} open={templatesOpen} onClose={() => setTemplatesOpen(false)} onSent={templateSent} />}
       {dragging && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-[#00a884] bg-[#00a884]/10 text-sm font-medium text-[#1f7a5a]">
           <Paperclip className="mr-2 h-5 w-5" />{T.dropHere}
@@ -619,7 +660,12 @@ const TeamInbox = () => {
           <footer className="space-y-1.5 border-t p-2">
             {detail?.typing && detail.typing.length > 0 && <p className="px-1 text-xs italic text-muted-foreground">{T.typing(detail.typing.join(", "))}</p>}
             {detail?.recent_reply && mode === "reply" && <p className="flex items-center gap-1 px-1 text-xs text-amber-700"><AlertTriangle className="h-3.5 w-3.5" />{T.recent(detail.recent_reply.name)}</p>}
-            {mode === "reply" && !active.window_open && <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-900">{T.window}</p>}
+            {mode === "reply" && !active.window_open && (
+              <p className="flex flex-wrap items-center gap-2 rounded-md bg-amber-50 p-2 text-xs text-amber-900">
+                <span className="min-w-0 flex-1">{T.window}</span>
+                {perms?.can_reply && <Button size="sm" className="bg-[#00a884] text-white hover:bg-[#008f72]" onClick={() => setTemplatesOpen(true)}><LayoutTemplate className="mr-1 h-3.5 w-3.5" />{T.template}</Button>}
+              </p>
+            )}
             {mode === "reply" && perms && !perms.can_reply && <p className="rounded-md bg-muted p-2 text-xs">{T.noReply}</p>}
             <div className="flex gap-1">
               <Button size="sm" variant={mode === "reply" ? "default" : "ghost"} className={mode === "reply" ? "bg-[#00a884] text-white hover:bg-[#008f72]" : ""} onClick={() => setMode("reply")}><MessageSquare className="mr-1 h-3.5 w-3.5" />{T.reply}</Button>
@@ -653,10 +699,17 @@ const TeamInbox = () => {
               <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground" disabled={!canWrite || mode !== "reply" || sending}
                 aria-label={T.attach} title={T.attach} onClick={() => fileInputRef.current?.click()}><Paperclip className="h-5 w-5" /></Button>
               <EmojiPicker onPick={insertEmoji} disabled={!canWrite} label={T.emoji} />
+              {mode === "reply" && perms?.can_reply && (
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground" disabled={recording || sending}
+                  aria-label={T.template} title={T.template} onClick={() => setTemplatesOpen(true)}><LayoutTemplate className="h-5 w-5" /></Button>
+              )}
+              {mode === "reply" && canWrite && files.length === 0 && !draft.trim() && (
+                <VoiceRecorder disabled={sending} onBusyChange={setRecording} onRecorded={(f) => void sendVoice(f)} onNotice={(title) => toast({ title, variant: "destructive" })} />
+              )}
               <Textarea ref={composerRef} value={draft} onChange={(e) => onDraft(e.target.value)} onKeyDown={onKey} onPaste={onPaste} rows={2} disabled={!canWrite}
                 placeholder={mode === "note" ? T.notePlaceholder : files.length ? T.captionPlaceholder : T.replyPlaceholder} maxLength={4096}
-                className={`min-h-[44px] flex-1 resize-none ${mode === "note" ? "border-amber-300 bg-amber-50" : ""}`} aria-label={mode === "note" ? T.note : T.reply} />
-              <Button onClick={() => void send()} disabled={!canWrite || sending || (!draft.trim() && !(mode === "reply" && files.length > 0))} aria-label={mode === "note" ? T.addNote : files.length ? T.sendFiles : T.send}
+                className={`min-h-[44px] flex-1 resize-none ${mode === "note" ? "border-amber-300 bg-amber-50" : ""} ${recording ? "hidden" : ""}`} aria-label={mode === "note" ? T.note : T.reply} />
+              <Button onClick={() => void send()} disabled={!canWrite || sending || recording || (!draft.trim() && !(mode === "reply" && files.length > 0))} aria-label={mode === "note" ? T.addNote : files.length ? T.sendFiles : T.send}
                 className="h-10 w-10 shrink-0 rounded-full bg-[#00a884] p-0 text-white hover:bg-[#008f72] disabled:bg-[#00a884]/40">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "note" ? <StickyNote className="h-4 w-4" /> : <Send className="h-4 w-4" />}
               </Button>

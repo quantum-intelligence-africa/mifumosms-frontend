@@ -37,6 +37,10 @@ export interface InboxMessage {
   has_media?: boolean;
   /** The earlier message this one answers (a quoted reply). */
   reply_to?: { id: string; direction: "in" | "out"; kind: string; text: string; author: string } | null;
+  /** Set on an approved-template message: the template's name. */
+  template?: string | null;
+  /** Emoji reactions: at most one from the customer and one from the business. */
+  reactions?: Array<{ side: "customer" | "business"; emoji: string }>;
   /** Browser only: a preview of a file this person is sending (or just sent), shown without downloading it again. */
   local_url?: string;
   /** Browser only: how much of a file being sent has reached the server, 0-100. */
@@ -56,6 +60,11 @@ export interface InboxEventRow { id: number; type: string; thread_id: string | n
 export interface InboxSettings {
   agents_see_all: boolean; agents_reply_any: boolean; agents_can_claim: boolean; agents_can_change_status: boolean;
   agents_can_note: boolean; agents_can_assign: boolean; auto_assign: "manual" | "round_robin" | "least_busy"; reopen_on_inbound: boolean;
+}
+
+export interface InboxTemplate {
+  name: string; language: string; category: string; header: string; body: string; footer: string; buttons: string[];
+  body_variables: number; header_variables: number; supported: boolean; reason: string;
 }
 
 /** The stable error code the server sent (`window_closed`, `already_assigned`, ...), when there is one. */
@@ -111,6 +120,10 @@ export const teamInboxApi = {
     apiClient.call<{ has_more: boolean; results: InboxMessage[] }>(`${BASE}/threads/${id}/messages/${qs({ before })}`),
   send: (id: string, text: string, clientToken: string, replyTo?: string) =>
     post<{ message: InboxMessage; warning: { name: string; at: string } | null }>(`/threads/${id}/messages/`, { text, client_token: clientToken, ...(replyTo ? { reply_to: replyTo } : {}) }),
+  templates: (id: string) => apiClient.call<{ results: InboxTemplate[] }>(`${BASE}/threads/${id}/templates/`),
+  sendTemplate: (id: string, t: { name: string; language: string; variables: string[]; header_variables: string[]; client_token: string }) =>
+    post<{ message: InboxMessage; warning: { name: string; at: string } | null }>(`/threads/${id}/templates/`, t),
+  react: (id: string, messageId: string, emoji: string) => post<{ message: InboxMessage }>(`/threads/${id}/messages/${messageId}/react/`, { emoji }),
   retry: (id: string, messageId: string) => post<{ message: InboxMessage }>(`/threads/${id}/messages/${messageId}/retry/`),
   assign: (id: string, userId: string | null) => post<{ thread: InboxThread }>(`/threads/${id}/assign/`, { user_id: userId }),
   claim: (id: string) => post<{ thread: InboxThread }>(`/threads/${id}/claim/`),

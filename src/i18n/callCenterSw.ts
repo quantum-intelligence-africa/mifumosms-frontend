@@ -399,6 +399,8 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.agents.audio_mode": "Anapokea simu kwenye",
   "cc.agents.always_online": "Yupo mtandaoni kila wakati",
   "cc.agents.always_online_hint": "Mweke mhudumu huyu Anapatikana kila wakati, hata kama hajaingia. Simu zinapigwa kwenye namba yake. Bado anaweza kuchagua Mbali au Usisumbue.",
+  "cc.agents.ai_transfers": "Apokee simu zinazohamishwa na msaidizi wa AI",
+  "cc.agents.ai_transfers_hint": "Mpigaji akimwomba msaidizi wa AI mtu, anaweza kumpigia mhudumu huyu. Zima ili asichaguliwe; bado anapokea simu za kawaida za kituo.",
   "cc.agents.always_needs_phone": "Weka namba ya simu ili mhudumu awe mtandaoni kila wakati.",
   "cc.agents.phone": "Namba ya simu",
   "cc.agents.teams": "Timu",
