@@ -21,7 +21,7 @@ export function EmojiPicker({ onPick, disabled, label }: { onPick: (emoji: strin
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" disabled={disabled} aria-label={label} title={label} className="h-9 w-9 text-muted-foreground hover:text-foreground">
+        <Button type="button" variant="ghost" size="icon" disabled={disabled} aria-label={label} title={label} className="h-9 w-9 shrink-0 rounded-full text-[#54656f] hover:bg-black/5 dark:text-[#8696a0]">
           <Smile className="h-5 w-5" />
         </Button>
       </PopoverTrigger>

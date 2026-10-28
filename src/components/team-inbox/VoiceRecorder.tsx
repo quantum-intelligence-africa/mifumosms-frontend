@@ -95,7 +95,7 @@ export function VoiceRecorder({ disabled, onRecorded, onNotice, onBusyChange }: 
 
   if (seconds === null) {
     return (
-      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground" disabled={disabled || !canRecord()}
+      <Button type="button" size="icon" className="h-11 w-11 shrink-0 rounded-full bg-[#00a884] text-white hover:bg-[#008f72] disabled:bg-[#00a884]/40" disabled={disabled || !canRecord()}
         aria-label={T.record} title={T.record} onClick={() => void start()}><Mic className="h-5 w-5" /></Button>
     );
   }

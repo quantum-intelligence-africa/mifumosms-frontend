@@ -43,7 +43,7 @@ const TEXT = {
     dropHere: "Dondosha faili hapa kuzituma", fileType: "WhatsApp inapokea picha (JPG, PNG), video (MP4), sauti (MP3, M4A, AAC, AMR, OGG) na hati (PDF, Word, Excel, PowerPoint, TXT).",
     fileSize: (mb: number) => `Faili hii ni kubwa mno. Kikomo ni ${mb} MB.`, fileEmpty: "Faili hii ni tupu.", tooManyFiles: `Unaweza kutuma hadi faili ${MAX_FILES} kwa mara moja.`,
     removeFile: "Ondoa faili", captionPlaceholder: "Ongeza maelezo (si lazima) kisha tuma", sendFiles: "Tuma faili", notSentFile: "Haikutumwa. Ambatisha tena.",
-    template: "Tuma kiolezo", replyShort: "Andika jibu...", react: "Weka hisia", removeReaction: "Ondoa", templateTag: "Kiolezo", reactFailed: "Hisia haikutumwa.",
+    template: "Tuma kiolezo", replyShort: "Andika ujumbe", react: "Weka hisia", removeReaction: "Ondoa", templateTag: "Kiolezo", reactFailed: "Hisia haikutumwa.",
   },
   en: {
     title: "Team Inbox", chats: "Chats", calls: "Calls", replyTo: "Reply to this message", replyingTo: "Replying to", cancelReply: "Cancel reply", original: "Original message", all: "All conversations", mine: "My conversations", unassigned: "Unassigned", open: "Open", pending: "Pending", resolved: "Resolved", archived: "Archived",
@@ -60,7 +60,7 @@ const TEXT = {
     dropHere: "Drop files here to send them", fileType: "WhatsApp accepts photos (JPG, PNG), video (MP4), audio (MP3, M4A, AAC, AMR, OGG) and documents (PDF, Word, Excel, PowerPoint, TXT).",
     fileSize: (mb: number) => `This file is too large. The limit is ${mb} MB.`, fileEmpty: "This file is empty.", tooManyFiles: `You can send up to ${MAX_FILES} files at once.`,
     removeFile: "Remove file", captionPlaceholder: "Add a caption (optional), then send", sendFiles: "Send files", notSentFile: "Not sent. Attach it again.",
-    template: "Send a template", replyShort: "Write a reply...", react: "React", removeReaction: "Remove", templateTag: "Template", reactFailed: "The reaction was not sent.",
+    template: "Send a template", replyShort: "Type a message", react: "React", removeReaction: "Remove", templateTag: "Template", reactFailed: "The reaction was not sent.",
   },
 } as const;
 
@@ -435,6 +435,14 @@ const TeamInbox = () => {
     if (accepted.length) setFiles((p) => [...p, ...accepted]);
   };
 
+  // The message field grows with what is typed (up to a few lines), like WhatsApp.
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 144)}px`;
+  }, [draft]);
+
   const insertEmoji = (emoji: string) => {
     const el = composerRef.current;
     const start = el?.selectionStart ?? draft.length;
@@ -658,7 +666,7 @@ const TeamInbox = () => {
             <div ref={bottomRef} />
           </div>
 
-          <footer className="space-y-1.5 border-t p-2" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
+          <footer className="space-y-1.5 border-t bg-[#f0f2f5] p-2 dark:bg-[#202c33]" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
             {detail?.typing && detail.typing.length > 0 && <p className="px-1 text-xs italic text-muted-foreground">{T.typing(detail.typing.join(", "))}</p>}
             {detail?.recent_reply && mode === "reply" && <p className="flex items-center gap-1 px-1 text-xs text-amber-700"><AlertTriangle className="h-3.5 w-3.5" />{T.recent(detail.recent_reply.name)}</p>}
             {mode === "reply" && !active.window_open && (
@@ -669,8 +677,8 @@ const TeamInbox = () => {
             )}
             {mode === "reply" && perms && !perms.can_reply && <p className="rounded-md bg-muted p-2 text-xs">{T.noReply}</p>}
             <div className="flex gap-1">
-              <Button size="sm" variant={mode === "reply" ? "default" : "ghost"} className={mode === "reply" ? "bg-[#00a884] text-white hover:bg-[#008f72]" : ""} onClick={() => setMode("reply")}><MessageSquare className="mr-1 h-3.5 w-3.5" />{T.reply}</Button>
-              {perms?.can_note && <Button size="sm" variant={mode === "note" ? "secondary" : "ghost"} onClick={() => setMode("note")}><StickyNote className="mr-1 h-3.5 w-3.5" />{T.note}</Button>}
+              <Button size="sm" variant={mode === "reply" ? "default" : "ghost"} className={`h-7 rounded-full px-3 text-xs ${mode === "reply" ? "bg-[#00a884] text-white hover:bg-[#008f72]" : ""}`} onClick={() => setMode("reply")}><MessageSquare className="mr-1 h-3.5 w-3.5" />{T.reply}</Button>
+              {perms?.can_note && <Button size="sm" variant={mode === "note" ? "secondary" : "ghost"} className="h-7 rounded-full px-3 text-xs" onClick={() => setMode("note")}><StickyNote className="mr-1 h-3.5 w-3.5" />{T.note}</Button>}
             </div>
             {replyingTo && mode === "reply" && (
               <div className="flex items-start gap-2 rounded-md border-l-4 border-[#00a884] bg-muted px-2 py-1.5 text-xs">
@@ -695,35 +703,34 @@ const TeamInbox = () => {
                 ))}
               </div>
             )}
-            <div className="flex items-end gap-1">
+            <div className="flex items-end gap-2">
               <input ref={fileInputRef} type="file" multiple accept={ACCEPT} className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
-              {/* On a phone the attach and template buttons fold into one "+" so the message box keeps its width. */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground sm:hidden" disabled={mode !== "reply" || sending || recording || (!canWrite && !perms?.can_reply)} aria-label={T.attach}><Plus className="h-5 w-5" /></Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="top" align="start">
-                  <DropdownMenuItem disabled={!canWrite} onSelect={() => fileInputRef.current?.click()}><Paperclip className="mr-2 h-4 w-4" />{T.attach}</DropdownMenuItem>
-                  {perms?.can_reply && <DropdownMenuItem onSelect={() => setTemplatesOpen(true)}><LayoutTemplate className="mr-2 h-4 w-4" />{T.template}</DropdownMenuItem>}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button type="button" variant="ghost" size="icon" className="hidden h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground sm:inline-flex" disabled={!canWrite || mode !== "reply" || sending}
-                aria-label={T.attach} title={T.attach} onClick={() => fileInputRef.current?.click()}><Paperclip className="h-5 w-5" /></Button>
-              <EmojiPicker onPick={insertEmoji} disabled={!canWrite} label={T.emoji} />
-              {mode === "reply" && perms?.can_reply && (
-                <Button type="button" variant="ghost" size="icon" className="hidden h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground sm:inline-flex" disabled={recording || sending}
-                  aria-label={T.template} title={T.template} onClick={() => setTemplatesOpen(true)}><LayoutTemplate className="h-5 w-5" /></Button>
-              )}
-              {mode === "reply" && canWrite && files.length === 0 && !draft.trim() && (
+              {/* One rounded bar, as in WhatsApp: attach menu and emoji on the left, a text field that grows with what is typed, and on the right a
+                  microphone that turns into the send button as soon as there is something to send. */}
+              <div className={`flex min-w-0 flex-1 items-end gap-0.5 rounded-3xl px-1.5 py-1 ${recording ? "hidden" : ""} ${mode === "note" ? "bg-amber-50 ring-1 ring-amber-300" : "bg-white shadow-sm dark:bg-[#2a3942]"}`}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-[#54656f] hover:bg-black/5 dark:text-[#8696a0]" disabled={mode !== "reply" || sending || (!canWrite && !perms?.can_reply)} aria-label={T.attach} title={T.attach}><Plus className="h-6 w-6" /></Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="top" align="start">
+                    <DropdownMenuItem disabled={!canWrite} onSelect={() => fileInputRef.current?.click()}><Paperclip className="mr-2 h-4 w-4" />{T.attach}</DropdownMenuItem>
+                    {perms?.can_reply && <DropdownMenuItem onSelect={() => setTemplatesOpen(true)}><LayoutTemplate className="mr-2 h-4 w-4" />{T.template}</DropdownMenuItem>}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <EmojiPicker onPick={insertEmoji} disabled={!canWrite} label={T.emoji} />
+                <Textarea ref={composerRef} value={draft} onChange={(e) => onDraft(e.target.value)} onKeyDown={onKey} onPaste={onPaste} rows={1} disabled={!canWrite}
+                  placeholder={mode === "note" ? T.notePlaceholder : files.length ? T.captionPlaceholder : T.replyShort} maxLength={4096}
+                  className="max-h-36 min-h-[36px] min-w-0 flex-1 resize-none !border-0 bg-transparent px-2 py-2 !shadow-none placeholder:text-[#667781] focus-visible:!ring-0 focus-visible:!ring-offset-0"
+                  aria-label={mode === "note" ? T.note : T.reply} />
+              </div>
+              {mode === "reply" && canWrite && files.length === 0 && (!draft.trim() || recording) ? (
                 <VoiceRecorder disabled={sending} onBusyChange={setRecording} onRecorded={(f) => void sendVoice(f)} onNotice={(title) => toast({ title, variant: "destructive" })} />
+              ) : (
+                <Button onClick={() => void send()} disabled={!canWrite || sending || recording || (!draft.trim() && !(mode === "reply" && files.length > 0))} aria-label={mode === "note" ? T.addNote : files.length ? T.sendFiles : T.send}
+                  className="h-11 w-11 shrink-0 rounded-full bg-[#00a884] p-0 text-white hover:bg-[#008f72] disabled:bg-[#00a884]/40">
+                  {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : mode === "note" ? <StickyNote className="h-5 w-5" /> : <Send className="h-5 w-5" />}
+                </Button>
               )}
-              <Textarea ref={composerRef} value={draft} onChange={(e) => onDraft(e.target.value)} onKeyDown={onKey} onPaste={onPaste} rows={2} disabled={!canWrite}
-                placeholder={mode === "note" ? T.notePlaceholder : files.length ? T.captionPlaceholder : isMobile ? T.replyShort : T.replyPlaceholder} maxLength={4096}
-                className={`min-h-[44px] min-w-0 flex-1 resize-none ${mode === "note" ? "border-amber-300 bg-amber-50" : ""} ${recording ? "hidden" : ""}`} aria-label={mode === "note" ? T.note : T.reply} />
-              <Button onClick={() => void send()} disabled={!canWrite || sending || recording || (!draft.trim() && !(mode === "reply" && files.length > 0))} aria-label={mode === "note" ? T.addNote : files.length ? T.sendFiles : T.send}
-                className="h-10 w-10 shrink-0 rounded-full bg-[#00a884] p-0 text-white hover:bg-[#008f72] disabled:bg-[#00a884]/40">
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "note" ? <StickyNote className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-              </Button>
             </div>
           </footer>
         </>
