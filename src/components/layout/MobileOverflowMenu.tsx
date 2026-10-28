@@ -10,6 +10,7 @@ import {
   Inbox,
   Languages,
   LogOut,
+  MessageSquare,
   Mic,
   Moon,
   Headphones,
@@ -31,6 +32,8 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCallCenter } from "@/contexts/CallCenterContext";
+import { useServices } from "@/hooks/useServices";
+import { OrganizationSwitcher } from "@/components/layout/OrganizationSwitcher";
 import { useDialer } from "@/contexts/DialerContext";
 import { useTheme } from "next-themes";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -104,7 +107,13 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
     navigate("/login");
   };
 
-  const callCenterOnly = hasIvrAccess(user) && !hasSmsAccess(user);
+  const services = useServices();
+  const callCenterOnly = hasIvrAccess(user) && !services.sms;
+  const inboxOnly = services.inboxOnly;
+  const inboxSection: MenuSection = {
+    title: "Team Inbox",
+    items: [{ key: "inbox", label: "Team Inbox", icon: MessageSquare, onClick: () => go("/conversations") }],
+  };
   const messagingSection: MenuSection = {
     title: "Messaging",
     items: [
@@ -134,8 +143,8 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
           ]
         : []),
       // A call-center-only account (call center on, SMS off) does not see the copilot entries.
-      ...(callCenterOnly ? [] : [{ key: "ai", label: "AI Copilots", icon: Bot, onClick: () => go("/ai-copilots"), badge: isComingSoon("ai_copilots") ? "Soon" : undefined }]),
-      ...(hasIvrAccess(user) && !callCenterOnly
+      ...(callCenterOnly || inboxOnly ? [] : [{ key: "ai", label: "AI Copilots", icon: Bot, onClick: () => go("/ai-copilots"), badge: isComingSoon("ai_copilots") ? "Soon" : undefined }]),
+      ...(hasIvrAccess(user) && !callCenterOnly && !inboxOnly
         ? [{ key: "voice", label: "Voice Copilots", icon: Mic, onClick: () => go("/voice-copilots") }]
         : []),
     ],
@@ -175,7 +184,6 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
     items: [
       { key: "notifications", label: "Notifications", icon: Bell, onClick: () => go("/notifications") },
       { key: "profile", label: "Profile", icon: UserIcon, onClick: () => go("/settings") },
-      { key: "integration", label: "Integration guide", icon: BookOpen, onClick: () => go("/integration-guide") },
     ],
   };
 
@@ -209,9 +217,10 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
   // Call-center-only agents see only their call center plus account/preferences.
   const agentOnly = getCallCenterRole(user) === "agent";
   const sections = [
+    ...(services.inbox ? [inboxSection] : []),
     ...(canUseCallCenter(user) ? [callCenterSection] : []),
-    ...(hasSmsAccess(user) ? [messagingSection, billingSection] : []),
-    ...(agentOnly ? [] : [automationSection]),
+    ...(services.sms ? [messagingSection, billingSection] : []),
+    ...(agentOnly || inboxOnly ? [] : [automationSection]),
     accountSection,
     preferencesSection,
   ];
@@ -273,6 +282,9 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
             <X className="w-[18px] h-[18px]" strokeWidth={2.2} />
           </button>
         </div>
+
+        {/* Which organization this is, and a switch when there are several. */}
+        <div className="px-4 pb-2"><OrganizationSwitcher /></div>
 
         {/* Compact sections — sized to fit standard mobile viewports without scrolling. */}
         <div className="flex-1 overflow-y-auto px-3 pb-2">

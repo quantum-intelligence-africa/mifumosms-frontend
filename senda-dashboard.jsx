@@ -12976,6 +12976,146 @@ function AnalysisAlertsTab() {
   );
 }
 
+// Inbox Data Deletion (super admin): organizations whose owner or admin asked for the shared Team Inbox data (conversations, messages, notes,
+// WhatsApp call records) to be erased. Only that data goes; accounts and everything else stay. Nothing is deleted until it is approved here,
+// approving needs the organization name typed out, and the erasure is permanent.
+function DeletionRequestsTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [status, setStatus]   = useState('pending');
+  const [search, setSearch]   = useState('');
+  const [rows, setRows]       = useState(null);
+  const [summary, setSummary] = useState({});
+  const [error, setError]     = useState(null);
+  const [openId, setOpenId]   = useState(null);
+  const [detail, setDetail]   = useState(null);
+  const [confirm, setConfirm] = useState('');
+  const [note, setNote]       = useState('');
+  const [busy, setBusy]       = useState(false);
+
+  const load = useCallback(() => {
+    const qs = new URLSearchParams({ status });
+    if (search.trim()) qs.set('search', search.trim());
+    adminFetch(`/inbox-deletion-requests?${qs}`, {}, onLogout)
+      .then(res => {
+        if (res.success) { setRows(res.data || []); setSummary(res.summary || {}); setError(null); }
+        else setError(res.error?.message || 'Could not load deletion requests.');
+      })
+      .catch(() => setError('Could not load deletion requests.'));
+  }, [status, search, onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  const open = (row) => {
+    if (openId === row.id) { setOpenId(null); return; }
+    setOpenId(row.id); setDetail(null); setConfirm(''); setNote('');
+    adminFetch(`/inbox-deletion-requests/${row.id}`, {}, onLogout)
+      .then(res => { if (res.success) setDetail(res.data); else showToast?.(res.error?.message || 'Could not load the details.', 'error'); })
+      .catch(() => showToast?.('Could not load the details.', 'error'));
+  };
+
+  const act = (row, action, body, okMessage) => {
+    setBusy(true);
+    adminFetch(`/inbox-deletion-requests/${row.id}/${action}`, { method: 'POST', body: JSON.stringify(body || {}) }, onLogout)
+      .then(res => {
+        if (res.success) { showToast?.(okMessage, 'success'); setOpenId(null); load(); }
+        else showToast?.(res.error?.message || 'That did not work.', 'error');
+      })
+      .catch(() => showToast?.('That did not work. Try again.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
+  const tone = (s) => ({
+    pending:   { bg:'#fef3c7', fg:'#b45309' }, approved: { bg:'#dbeafe', fg:'#1d4ed8' }, completed: { bg:'#dcfce7', fg:'#15803d' },
+    rejected:  { bg:'#f1f5f9', fg:'#475569' }, cancelled: { bg:'#f1f5f9', fg:'#64748b' }, failed: { bg:'#fee2e2', fg:'#dc2626' },
+  }[s] || { bg:'#f1f5f9', fg:'#475569' });
+  const STATUSES = ['pending', 'approved', 'failed', 'completed', 'rejected', 'cancelled'];
+
+  return (
+    <div style={{display:'grid',gap:16}}>
+      <div>
+        <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a'}}>Inbox Data Deletion</h2>
+        <p style={{fontSize:13,color:'#64748b',marginTop:2}}>Organizations whose owner or admin asked to delete the shared Team Inbox data (conversations, messages, notes, WhatsApp call records). Accounts and everything else stay. Nothing is removed until you approve it here, and approval is permanent.</p>
+      </div>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+        {STATUSES.map(s => (
+          <button key={s} className={`senda-btn senda-btn-sm${status===s?' senda-btn-primary':''}`} onClick={()=>{ setStatus(s); setOpenId(null); }}>
+            {s[0].toUpperCase()+s.slice(1)}{summary[s] ? ` (${summary[s]})` : ''}
+          </button>
+        ))}
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search organization or email" style={{marginLeft:'auto',padding:'7px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,minWidth:200}}/>
+      </div>
+      {error && <p style={{fontSize:13,color:'#dc2626'}}>{error}</p>}
+      {!rows && !error && <p style={{fontSize:13,color:'#94a3b8'}}>Loading…</p>}
+      {rows && rows.length === 0 && <div className="senda-card" style={{padding:24,textAlign:'center',color:'#64748b',fontSize:14}}>No {status} requests.</div>}
+      {rows && rows.map(r => {
+        const t = tone(r.status);
+        const isOpen = openId === r.id;
+        const d = isOpen ? detail : null;
+        return (
+          <div key={r.id} className="senda-card" style={{padding:18,borderLeft:`4px solid ${t.fg}`}}>
+            <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap',alignItems:'flex-start'}}>
+              <div style={{minWidth:0}}>
+                <span style={{background:t.bg,color:t.fg,fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:999}}>{r.status[0].toUpperCase()+r.status.slice(1)}</span>
+                <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',marginTop:8}}>{r.organization}</h3>
+                <p style={{fontSize:13,color:'#475569'}}>Requested by {r.requester_name || r.requester_email} ({r.requester_email})</p>
+              </div>
+              <button className="senda-btn senda-btn-sm" onClick={()=>open(r)}>{isOpen ? 'Close' : (r.status === 'pending' ? 'Review' : 'Details')}</button>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14,margin:'14px 0 0'}}>
+              <Field label="Requested" value={new Date(r.requested_at).toLocaleString()}/>
+              {r.reviewed_at && <Field label="Reviewed" value={`${new Date(r.reviewed_at).toLocaleString()}${r.reviewed_by ? ` by ${r.reviewed_by}` : ''}`}/>}
+              {r.completed_at && <Field label="Erased" value={new Date(r.completed_at).toLocaleString()}/>}
+            </div>
+            {r.reason && <p style={{fontSize:13,color:'#0f172a',marginTop:10}}><strong>Reason given:</strong> {r.reason}</p>}
+            {r.admin_note && <p style={{fontSize:13,color:'#475569',marginTop:6}}><strong>Admin note:</strong> {r.admin_note}</p>}
+            {r.status === 'failed' && (
+              <div style={{marginTop:10}}>
+                <p style={{fontSize:12.5,color:'#dc2626',wordBreak:'break-word'}}>The erasure did not complete and nothing was removed: {r.error}</p>
+                <button className="senda-btn senda-btn-sm senda-btn-primary" style={{marginTop:8}} disabled={busy} onClick={()=>act(r,'retry',{},'Erasure queued again.')}>Retry erasure</button>
+              </div>
+            )}
+            {r.status === 'completed' && r.result && (
+              <p style={{fontSize:12.5,color:'#475569',marginTop:10}}>
+                Erased {Number(r.result.total_rows || 0).toLocaleString()} records: {Number(r.result.conversations || 0).toLocaleString()} conversations, {Number(r.result.messages || 0).toLocaleString()} messages and {Number(r.result.calls || 0).toLocaleString()} call records.
+              </p>
+            )}
+            {isOpen && !d && <p style={{fontSize:13,color:'#94a3b8',marginTop:12}}>Counting what would be erased…</p>}
+            {isOpen && d && (
+              <div style={{marginTop:14,paddingTop:14,borderTop:'1px solid #e2e8f0'}}>
+                {d.impact && (
+                  <div style={{display:'grid',gap:10}}>
+                    <p style={{fontSize:13.5,fontWeight:700,color:'#0f172a'}}>Approving permanently erases the shared inbox data of {d.impact.organization.name}:</p>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14}}>
+                      <Field label="Conversations" value={Number(d.impact.conversations).toLocaleString()}/>
+                      <Field label="Messages" value={Number(d.impact.messages).toLocaleString()}/>
+                      <Field label="WhatsApp calls" value={Number(d.impact.calls).toLocaleString()}/>
+                      <Field label="Records in total" value={Number(d.impact.total_rows).toLocaleString()}/>
+                    </div>
+                    <p style={{fontSize:12.5,color:'#475569'}}>Not touched: user accounts, the organization, contacts, campaigns, SMS, WhatsApp and inbox settings, team and billing.</p>
+                  </div>
+                )}
+                {r.status === 'pending' && (
+                  <div style={{display:'grid',gap:10,marginTop:14}}>
+                    <input value={note} onChange={e=>setNote(e.target.value)} placeholder="Note (shown to the person if you reject)" style={{padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13}}/>
+                    <input value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder={`To approve, type: ${r.organization}`} style={{padding:'8px 10px',border:'1px solid #fca5a5',borderRadius:8,fontSize:13}}/>
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                      <button className="senda-btn senda-btn-sm" style={{background:'#dc2626',color:'#fff',borderColor:'#dc2626',opacity:(busy||confirm.trim().toLowerCase()!==r.organization.toLowerCase())?.5:1}}
+                        disabled={busy || confirm.trim().toLowerCase() !== r.organization.toLowerCase()}
+                        onClick={()=>{ if (window.confirm(`Permanently erase the shared inbox data of ${r.organization}? This cannot be undone.`)) act(r,'approve',{ confirm_name: confirm.trim(), note },'Approved. The inbox data is being erased.'); }}>
+                        Approve and erase inbox data
+                      </button>
+                      <button className="senda-btn senda-btn-sm" disabled={busy} onClick={()=>act(r,'reject',{ note },'Rejected. Nothing was removed.')}>Reject</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Analysis Emails (SENDA staff): per organization, the language of its call-analysis emails and exactly who receives them,
 // and the log of every email sent (who, when, which organization). The organization cannot change or see any of this.
 function AnalysisEmailsTab() {
@@ -18574,6 +18714,7 @@ const NAV_GROUPS = [
     { id:'idleusers',     Icon:Clock,        label:'Idle Users'       },
     { id:'engagement',    Icon:MessageSquare, label:'Engagement'      },
     { id:'featureaccess', Icon:UserCheck,    label:'Feature Access'   },
+    { id:'deletionrequests', Icon:Trash2,    label:'Inbox Data Deletion' },
   ]},
   { title: 'Partners', items: [
     { id:'partners',      Icon:Handshake,    label:'Partners'         },
@@ -22794,6 +22935,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     idleusers:    <RegisteredIdleTab/>,
     whatsapp:     <WhatsAppTab/>,
     loginactivity:<LoginActivityTab/>,
+    deletionrequests:<DeletionRequestsTab/>,
     callcenterplans:<CallCenterPlansTab/>,
     comingsoon:   <ComingSoonTab/>,
     packages:     <PackagesTab/>,

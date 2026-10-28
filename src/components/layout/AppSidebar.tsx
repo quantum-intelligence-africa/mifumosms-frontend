@@ -52,6 +52,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoles } from "@/hooks/useRoles";
 import { useFeatures } from "@/hooks/useFeatures";
+import { useServices } from "@/hooks/useServices";
+import { OrganizationSwitcher } from "@/components/layout/OrganizationSwitcher";
 import {
   canUseCallCenter, getCallCenterRole, hasIvrAccess, hasSmsAccess, isCallCenterAdmin, isCallCenterSupervisor,
 } from "@/utils/roleUtils";
@@ -119,6 +121,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const { outboxCount, sentCount, scheduledCount } = useMessageBadgeCounts();
   const { user, logout, isLoading } = useAuth();
   const { hasFeature } = useFeatures();
+  const services = useServices();
   const cc = useCallCenter();
   const missedSummary = useMissedSummary();
   const brand = useBranding();
@@ -152,7 +155,9 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   // Call-center-only agents get a deliberately small menu: their workspace, their
   // calls, and settings — not the rest of SENDA (spec §9: don't overload the agent).
   const agentOnly = getCallCenterRole(user) === "agent";
-  const callCenterOnly = hasIvrAccess(user) && !hasSmsAccess(user);
+  const callCenterOnly = hasIvrAccess(user) && !services.sms;
+  // Only the shared inbox: a small menu (the inbox, its settings, team invitations) with nothing from the other services.
+  const inboxOnly = services.inboxOnly;
 
   // Call center and Voice/IVR are one product: a single menu group. The call-center pages come
   // first (what people do day to day), then the IVR tools. Each half appears only for people
@@ -195,9 +200,12 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
         ];
 
   const navigation: NavItem[] = [
-    ...(agentOnly ? [] : [{ name: t("nav.dashboard"), href: "/dashboard", icon: Home }]),
+    ...(agentOnly || inboxOnly ? [] : [{ name: t("nav.dashboard"), href: "/dashboard", icon: Home }]),
+    // Team Inbox is its own entry (not tucked inside Messaging, which some accounts do not have). It exists only for organizations SENDA has switched it on for,
+    // and sits above the other services so someone with the inbox and the call center sees both at once.
+    ...(services.inbox ? [{ name: "Team Inbox", href: "/conversations", icon: MessageSquareText }] : []),
     ...callCenterGroup,
-    ...(inVoiceSection || !hasSmsAccess(user)
+    ...(inVoiceSection || !services.sms
       ? []
       : [
           {
@@ -219,19 +227,17 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             ],
           },
         ]),
-    // Team Inbox is its own entry (not tucked inside Messaging, which some accounts do not have). It exists only for organizations SENDA has switched it on for.
-    ...(hasFeature("team_inbox") ? [{ name: "Team Inbox", href: "/conversations", icon: MessageSquareText }] : []),
     // A call-center-only account (call center on, SMS off: the people who signed up through the call center link) never sees the AI / voice
     // copilot entries; they are not part of what it signed up for.
-    ...(inVoiceSection || agentOnly || callCenterOnly ? [] : [{ name: t("nav.ai_copilots"), href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
-    ...(hasIvrAccess(user) && !inVoiceSection && !callCenterOnly ? [{ name: t("nav.voice_copilots"), href: "/voice-copilots", icon: Mic }] : []),
+    ...(inVoiceSection || agentOnly || callCenterOnly || inboxOnly ? [] : [{ name: t("nav.ai_copilots"), href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
+    ...(hasIvrAccess(user) && !inVoiceSection && !callCenterOnly && !inboxOnly ? [{ name: t("nav.voice_copilots"), href: "/voice-copilots", icon: Mic }] : []),
     ...(isPartina()
       ? [
           { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },
           { name: t("nav.partner_reference"), href: "/partner-integration", icon: Server },
         ]
       : []),
-    ...(agentOnly ? [] : [{ name: t("nav.integration_guide"), href: "/integration-guide", icon: BookOpen }]),
+    ...(agentOnly || inboxOnly ? [] : [{ name: t("nav.integration_guide"), href: "/integration-guide", icon: BookOpen }]),
     { name: t("nav.settings"), href: "/settings", icon: Settings },
   ];
 
@@ -297,9 +303,12 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           )}
         </div>
 
+        {/* ── Which organization this is, and a switch when there are several ── */}
+        <div className="px-3 pb-3"><OrganizationSwitcher /></div>
+
         {/* ── Global CTAs: buy credits, place a call ─────── */}
         <div className="px-3 pb-3 space-y-2">
-          {hasSmsAccess(user) && (
+          {services.sms && (
             <button
               onClick={() => handleNavigation("/messaging/purchase")}
               className="w-full flex items-center justify-center gap-2 h-9 rounded-lg bg-primary text-primary-foreground text-[13px] font-semibold tracking-tight hover:opacity-90 active:scale-[0.98] transition-all duration-100"

@@ -10,6 +10,7 @@ import { CallCenterProvider } from "@/contexts/CallCenterContext";
 import { WhatsAppCallingProvider } from "@/contexts/WhatsAppCallingContext";
 import { CallOverlay } from "@/components/whatsapp-calls/CallOverlay";
 import { CallCenterOverlay } from "@/components/callcenter/CallCenterOverlay";
+import { useServices } from "@/hooks/useServices";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCallCenterRole, hasIvrAccess, hasSmsAccess } from "@/utils/roleUtils";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -192,6 +193,9 @@ const HistoryEntry = () => {
 
 const DashboardGate = () => {
   const { user } = useAuth();
+  const { inboxOnly } = useServices();
+  // Someone with only the shared inbox has no SMS dashboard: their home is the inbox.
+  if (inboxOnly) return <Navigate to="/conversations" replace />;
   // Only agents are sent away; owners/admins without SMS see the call center version of this dashboard (/call-center sends them back here).
   if (getCallCenterRole(user) === "agent" && !hasSmsAccess(user)) {
     return <Navigate to="/call-center" replace />;

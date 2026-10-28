@@ -462,9 +462,24 @@ const TeamInbox = () => {
   };
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Escape" && replyingTo) { setReplyingTo(null); return; }
+    if (e.key === "Escape" && replyingTo) { setReplyingTo(null); e.stopPropagation(); return; }  // the first Esc only cancels the reply
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
   };
+  // Esc leaves the open conversation and returns to the list, as in WhatsApp Web. It does nothing while a menu or dialog is open (those use Esc
+  // to close themselves) or while a voice note is being recorded.
+  useEffect(() => {
+    if (!activeId) return;
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || recording) return;
+      if (document.querySelector('[role="dialog"], [role="menu"], [data-radix-popper-content-wrapper]')) return;
+      activeRef.current = null;
+      setActiveId(null);
+      setDetail(null);
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [activeId, recording]);
+
   const onDraft = (value: string) => {
     setDraft(value);
     if (mode === "reply" && activeId && value && Date.now() - typingSent.current > 4000) { typingSent.current = Date.now(); void teamInboxApi.typing(activeId); }

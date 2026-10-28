@@ -49,6 +49,8 @@ export interface Membership {
   tenant_name?: string;
   role: UserRole;
   status: MembershipStatus;
+  /** The organization this person is working in right now (set when they switch). */
+  is_current?: boolean;
   joined_at?: string;
   created_at?: string;
 }

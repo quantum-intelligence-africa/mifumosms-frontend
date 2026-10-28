@@ -226,6 +226,10 @@ export const getHighestRole = (user: User | null | undefined): UserRole | null =
 		return null;
 	}
 
+	// Someone in several organizations has one role per organization: what they may do is decided by the one they are working in.
+	const current = activeMemberships.find((m: Membership) => m.is_current);
+	if (current) return current.role;
+
 	const roles: UserRole[] = ['owner', 'admin', 'supervisor', 'agent'];
 	for (const role of roles) {
 		if (activeMemberships.some((m: Membership) => m.role === role)) {

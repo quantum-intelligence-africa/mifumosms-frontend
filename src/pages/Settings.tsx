@@ -37,6 +37,8 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { EmailTwoFactorCard } from "@/components/settings/EmailTwoFactorCard";
+import { useServices } from "@/hooks/useServices";
+import { DeleteInboxDataCard } from "@/components/settings/DeleteInboxDataCard";
 import { PasskeysCard } from "@/components/settings/PasskeysCard";
 import { EmailVerificationCard } from "@/components/settings/EmailVerificationCard";
 import { Input } from "@/components/ui/input";
@@ -527,7 +529,8 @@ const Settings = () => {
     else toast({ title: t("pg.Settings.0012"), description: res.error || "", variant: "destructive" });
   };
 
-  const settingsCategories: SettingsCategory[] = [
+  const { inboxOnly, inbox: inboxOn } = useServices();
+  const allCategories: SettingsCategory[] = [
     {
       id: "profile",
       title: language === "sw" ? "Wasifu" : "Profile",
@@ -593,6 +596,13 @@ const Settings = () => {
       icon: MessageCircle,
       color: "bg-emerald-500"
     },
+    {
+      id: "delete_inbox_data",
+      title: language === "sw" ? "Futa data ya sanduku" : "Delete inbox data",
+      description: language === "sw" ? "Futa data ya sanduku la pamoja la timu" : "Delete the shared Team Inbox data",
+      icon: Trash2,
+      color: "bg-rose-600"
+    },
     // Platform-admin only: manage default + per-partner WhatsApp send credentials.
     ...((user?.is_staff || user?.is_superuser)
       ? [{
@@ -604,6 +614,13 @@ const Settings = () => {
         } as SettingsCategory]
       : [])
   ];
+
+  // Someone with only the shared inbox sees only the settings that belong to it, plus the everyday ones (profile, preferences, security) and the team
+  // (invitations). The delete-inbox-data request appears only where the inbox exists.
+  const inboxSettings = ["profile", "preferences", "notifications", "security", "team", "whatsapp", "delete_inbox_data"];
+  const settingsCategories = allCategories
+    .filter((c) => c.id !== "delete_inbox_data" || inboxOn)
+    .filter((c) => !inboxOnly || inboxSettings.includes(c.id));
 
   // Initialize profile data from user context
   useEffect(() => {
@@ -2564,6 +2581,9 @@ const Settings = () => {
 
       case "wa_admin":
         return <WhatsAppCredentialsAdmin />;
+
+      case "delete_inbox_data":
+        return <DeleteInboxDataCard />;
 
       case "whatsapp": {
         const handleWaCredentials = async (method: "PUT" | "PATCH") => {

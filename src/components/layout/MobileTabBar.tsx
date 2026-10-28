@@ -2,6 +2,7 @@ import { Home, Send as SendIcon, Tag, Users, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePageMeta, TabKey } from "@/hooks/usePageMeta";
+import { useServices } from "@/hooks/useServices";
 import { useLanguage } from "@/hooks/useLanguage";
 
 interface Tab {
@@ -26,8 +27,10 @@ export function MobileTabBar() {
   const navigate = useNavigate();
   const { tab, showTabBar, isPublicRoute } = usePageMeta();
   const TABS = getTabs(t);
+  const { inboxOnly } = useServices();
 
-  if (isPublicRoute || !showTabBar) return null;
+  // Someone with only the inbox has none of these SMS tabs; the menu button reaches the inbox and settings.
+  if (isPublicRoute || !showTabBar || inboxOnly) return null;
 
   return (
     <nav
