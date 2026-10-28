@@ -38,7 +38,7 @@ const TEXT = {
     window: "Zaidi ya saa 24 zimepita tangu mteja aandike mara ya mwisho. WhatsApp inaruhusu ujumbe wa kiolezo kilichoidhinishwa pekee sasa.",
     noReply: "Huna ruhusa ya kujibu mazungumzo haya.", contact: "Taarifa za mteja", noContact: "Hakuna taarifa zaidi za mteja zilizohifadhiwa.", notes: "Madokezo ya ndani", noNotes: "Hakuna madokezo.",
     reconnecting: "Inaunganisha upya...", live: "Moja kwa moja", you: "Wewe", unread: "Hayajasomwa", forbidden: "Huna ruhusa.", claimed: "Mazungumzo yamechukuliwa.", assignedOk: "Mazungumzo yamepewa.", statusOk: "Hali imebadilishwa.",
-    noAccess: "Akaunti yako haina ufikiaji wa sanduku hili.", back: "Rudi", fromPhone: "Imetumwa kwa simu", mediaLoading: "Inapakia faili...", mediaFailed: "Faili hii haiwezi kupakiwa sasa.",
+    noAccess: "Akaunti yako haina ufikiaji wa sanduku hili.", back: "Rudi", fromPhone: "Imetumwa kwa simu", chatbot: "Roboti ya mazungumzo", mediaLoading: "Inapakia faili...", mediaFailed: "Faili hii haiwezi kupakiwa sasa.",
     today: "Leo", yesterday: "Jana", attach: "Ambatisha faili", emoji: "Emoji", photo: "Picha", video: "Video", audio: "Sauti", document: "Hati", tapToLoad: "Bonyeza kufungua",
     dropHere: "Dondosha faili hapa kuzituma", fileType: "WhatsApp inapokea picha (JPG, PNG), video (MP4), sauti (MP3, M4A, AAC, AMR, OGG) na hati (PDF, Word, Excel, PowerPoint, TXT).",
     fileSize: (mb: number) => `Faili hii ni kubwa mno. Kikomo ni ${mb} MB.`, fileEmpty: "Faili hii ni tupu.", tooManyFiles: `Unaweza kutuma hadi faili ${MAX_FILES} kwa mara moja.`,
@@ -55,7 +55,7 @@ const TEXT = {
     window: "More than 24 hours have passed since the customer last wrote. WhatsApp only allows an approved template message now.",
     noReply: "You do not have permission to reply to this conversation.", contact: "Customer", noContact: "No further customer details are saved.", notes: "Internal notes", noNotes: "No notes yet.",
     reconnecting: "Reconnecting...", live: "Live", you: "You", unread: "Unread", forbidden: "You do not have permission.", claimed: "Conversation claimed.", assignedOk: "Conversation assigned.", statusOk: "Status changed.",
-    noAccess: "Your account does not have access to this inbox.", back: "Back", fromPhone: "Sent from the phone", mediaLoading: "Loading file...", mediaFailed: "This file cannot be loaded right now.",
+    noAccess: "Your account does not have access to this inbox.", back: "Back", fromPhone: "Sent from the phone", chatbot: "Chatbot", mediaLoading: "Loading file...", mediaFailed: "This file cannot be loaded right now.",
     today: "Today", yesterday: "Yesterday", attach: "Attach a file", emoji: "Emoji", photo: "Photo", video: "Video", audio: "Audio", document: "Document", tapToLoad: "Tap to open",
     dropHere: "Drop files here to send them", fileType: "WhatsApp accepts photos (JPG, PNG), video (MP4), audio (MP3, M4A, AAC, AMR, OGG) and documents (PDF, Word, Excel, PowerPoint, TXT).",
     fileSize: (mb: number) => `This file is too large. The limit is ${mb} MB.`, fileEmpty: "This file is empty.", tooManyFiles: `You can send up to ${MAX_FILES} files at once.`,
@@ -579,7 +579,7 @@ const TeamInbox = () => {
     return (
       <div key={m.id} id={`msg-${m.id}`} className={`group flex items-center gap-1 rounded-lg transition-colors ${mine ? "flex-row-reverse" : ""}`}>
         <div className={`max-w-[80%] rounded-lg px-2.5 py-1.5 text-sm shadow-sm ${mine ? "rounded-tr-none bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]" : "rounded-tl-none bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef]"} ${m.status === "failed" ? "ring-2 ring-red-500" : ""}`}>
-          {mine && <p className="mb-0.5 text-[11px] font-semibold text-[#1f7a5a] dark:text-[#7fd8b8]">{m.sent_by ? m.sent_by.name : T.fromPhone}</p>}
+          {mine && <p className="mb-0.5 text-[11px] font-semibold text-[#1f7a5a] dark:text-[#7fd8b8]">{m.sent_by ? m.sent_by.name : m.source === "chatbot" ? T.chatbot : T.fromPhone}</p>}
           {m.reply_to && (
             <button type="button" title={T.original} onClick={() => jumpTo(m.reply_to!.id)}
               className={`mb-1.5 block w-full rounded-md border-l-4 bg-black/5 px-2 py-1 text-left text-xs dark:bg-white/10 ${mine ? "border-[#1f7a5a] dark:border-[#7fd8b8]" : "border-[#027eb5] dark:border-[#53bdeb]"}`}>
@@ -598,6 +598,18 @@ const TeamInbox = () => {
           <p className={`mt-0.5 flex items-center justify-end gap-1 text-[11px] ${meta}`}>
             {clock(m.created_at)} {mine && <Ticks status={m.status} />}
           </p>
+          {!!m.buttons?.length && (
+            <div className="-mx-2.5 -mb-1.5 mt-1.5 divide-y divide-black/10 border-t border-black/10 dark:divide-white/15 dark:border-white/15">
+              {m.buttons.map((b, i) => {
+                const cls = "flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-center text-sm font-medium text-[#027eb5] dark:text-[#53bdeb]";
+                return b.url ? (
+                  <a key={i} href={b.url} target="_blank" rel="noopener noreferrer" className={`${cls} hover:bg-black/5 dark:hover:bg-white/10`}>{b.title}</a>
+                ) : (
+                  <span key={i} className={cls}><Reply className="h-3.5 w-3.5" />{b.title}</span>
+                );
+              })}
+            </div>
+          )}
           {m.status === "failed" && (
             <p className="mt-1 flex items-center gap-2 text-xs text-red-700 dark:text-red-300">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" /><span className="min-w-0 flex-1 break-words">{T.failedSend}{m.error ? `: ${m.error}` : ""}</span>

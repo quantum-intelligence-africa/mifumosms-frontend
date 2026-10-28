@@ -37,6 +37,10 @@ export interface InboxMessage {
   has_media?: boolean;
   /** The earlier message this one answers (a quoted reply). */
   reply_to?: { id: string; direction: "in" | "out"; kind: string; text: string; author: string } | null;
+  /** "chatbot" for an automatic reply from the SENDA chatbot (no agent behind it). */
+  source?: string;
+  /** The buttons or list choices the chatbot offered; url is set on a link button. */
+  buttons?: Array<{ title: string; url?: string }>;
   /** Set on an approved-template message: the template's name. */
   template?: string | null;
   /** Emoji reactions: at most one from the customer and one from the business. */
