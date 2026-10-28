@@ -117,6 +117,8 @@ export interface InvitationInfo {
   email_hint?: string;
   /** The organization's own portal; the invitation should be completed there. */
   portal_host?: string | null;
+  /** "new": nobody has set this account up yet (ask for name and password); "existing": the person signs in. */
+  account?: 'new' | 'existing';
 }
 
 export interface RegisterRequest {
@@ -1534,6 +1536,21 @@ class ApiClient {
       return (await res.json()) as InvitationInfo;
     } catch {
       return { valid: false, reason: 'invalid' };
+    }
+  }
+
+  /** First-time setup for someone invited by email who has no account yet: their name and a password. Signing in and joining come next. */
+  async setupInvitedAccount(token: string, details: { first_name: string; last_name: string; password: string; confirm_password: string }): Promise<{ success: boolean; email?: string; code?: string; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/tenants/invite/${encodeURIComponent(token)}/setup/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(details),
+      });
+      const body = (await res.json().catch(() => ({}))) as { success?: boolean; email?: string; code?: string; error?: string };
+      return res.ok ? { success: true, email: body.email } : { success: false, code: body.code, error: body.error };
+    } catch {
+      return { success: false, error: 'Could not reach the server. Check your connection and try again.' };
     }
   }
 

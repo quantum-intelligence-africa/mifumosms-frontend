@@ -223,13 +223,20 @@ export function useTeam(tenantId: string | null, token?: string) {
     return result;
   }, [base, tenantId, token, listMembers]);
 
-  const resendInvitation = useCallback(async (memberId: string): Promise<ApiResult<{ message: string }>> => {
+  /** Resend a pending invitation. When the email cannot be sent the server still returns the invitation link, so it comes back in `data` either way. */
+  const resendInvitation = useCallback(async (memberId: string): Promise<ApiResult<{ message: string; invitation_url?: string }>> => {
     if (!tenantId) return { success: false, error: 'Missing tenantId' };
     const res = await fetch(`${base}${API_CONFIG.ENDPOINTS.TENANTS.TEAM.RESEND_INVITATION(tenantId, memberId)}`, {
       method: 'POST',
       headers: jsonHeaders(token),
     });
-    return withResult<{ message: string }>(res);
+    const copy = res.clone();
+    const result = await withResult<{ message: string; invitation_url?: string }>(res);
+    if (!result.success) {
+      const body = (await copy.json().catch(() => ({}))) as { invitation_url?: string };
+      return { ...result, data: { message: '', invitation_url: body.invitation_url } };
+    }
+    return result;
   }, [base, tenantId, token]);
 
   const transferOwnership = useCallback(async (memberId: string): Promise<ApiResult<{ message: string }>> => {

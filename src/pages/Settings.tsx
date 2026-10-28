@@ -18,6 +18,7 @@ import {
   Copy,
   Plus,
   Trash2,
+  Loader2,
   Edit,
   MoreVertical,
   ArrowLeft,
@@ -523,10 +524,22 @@ const Settings = () => {
     if (!res.success) toast({ title: t("pg.Settings.0010"), description: res.error || "", variant: "destructive" });
   };
 
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const handleResendInvitation = async (member: TeamMember) => {
+    if (resendingId) return;
+    setResendingId(member.id);
     const res = await team.resendInvitation(member.id);
-    if (res.success) toast({ title: t("pg.Settings.0011"), description: member.user_email });
-    else toast({ title: t("pg.Settings.0012"), description: res.error || "", variant: "destructive" });
+    setResendingId(null);
+    if (res.success) { toast({ title: t("pg.Settings.0011"), description: member.user_email }); return; }
+    // The email could not be sent: say so, and put the invitation link on the clipboard so it can be shared another way.
+    const link = res.data?.invitation_url;
+    let copied = false;
+    if (link) { try { await navigator.clipboard.writeText(link); copied = true; } catch { /* clipboard blocked: the message still says what happened */ } }
+    toast({
+      title: t("pg.Settings.0012"),
+      description: `${res.error || ""}${copied ? (language === "sw" ? " Kiungo cha mwaliko kimenakiliwa: kitume wewe mwenyewe." : " The invitation link was copied: send it yourself.") : ""}`,
+      variant: "destructive",
+    });
   };
 
   const { inboxOnly, inbox: inboxOn } = useServices();
@@ -2346,6 +2359,13 @@ const Settings = () => {
                             <span className="ml-1 animate-pulse">⏳</span>
                           )}
                         </Badge>
+                        {member.status === "pending" && (
+                          <Button variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs" disabled={resendingId === member.id}
+                            onClick={() => void handleResendInvitation(member)} title={t("pg.Settings.0124")}>
+                            {resendingId === member.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+                            <span className="hidden sm:inline">{t("pg.Settings.0124")}</span>
+                          </Button>
+                        )}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-6 w-6">
