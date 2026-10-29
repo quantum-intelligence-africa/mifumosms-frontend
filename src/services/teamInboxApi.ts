@@ -71,6 +71,8 @@ export interface InboxTemplate {
   body_variables: number; header_variables: number; supported: boolean; reason: string;
 }
 
+export interface OutboundCheck { success: boolean; valid: boolean; phone?: string; name?: string; blocked?: "" | "opted_out" | "suppressed"; thread_id?: string | null; window_open?: boolean; message?: string }
+
 /** The stable error code the server sent (`window_closed`, `already_assigned`, ...), when there is one. */
 export function errorCode(res: ApiResponse<unknown>): string {
   return String((res.errors as unknown as { code?: string } | null)?.code || "");
@@ -127,6 +129,12 @@ export const teamInboxApi = {
   templates: (id: string) => apiClient.call<{ results: InboxTemplate[] }>(`${BASE}/threads/${id}/templates/`),
   sendTemplate: (id: string, t: { name: string; language: string; variables: string[]; header_variables: string[]; client_token: string }) =>
     post<{ message: InboxMessage; warning: { name: string; at: string } | null }>(`/threads/${id}/templates/`, t),
+  // The Send section: start a conversation from an approved template.
+  outboundNumbers: () => apiClient.call<{ results: Array<{ phone_number_id: string; label: string }> }>(`${BASE}/outbound/numbers/`),
+  outboundTemplates: (phoneNumberId: string) => apiClient.call<{ results: InboxTemplate[] }>(`${BASE}/outbound/templates/${qs({ phone_number_id: phoneNumberId })}`),
+  outboundCheck: (phoneNumberId: string, phone: string) => post<OutboundCheck>("/outbound/check/", { phone_number_id: phoneNumberId, phone }),
+  outboundSend: (b: { phone_number_id: string; phone: string; name: string; template_name: string; language: string; variables: string[]; header_variables: string[]; client_token: string }) =>
+    post<{ message: InboxMessage; thread_id: string; warning: { name: string; at: string } | null }>("/outbound/send/", b),
   react: (id: string, messageId: string, emoji: string) => post<{ message: InboxMessage }>(`/threads/${id}/messages/${messageId}/react/`, { emoji }),
   retry: (id: string, messageId: string) => post<{ message: InboxMessage }>(`/threads/${id}/messages/${messageId}/retry/`),
   assign: (id: string, userId: string | null) => post<{ thread: InboxThread }>(`/threads/${id}/assign/`, { user_id: userId }),

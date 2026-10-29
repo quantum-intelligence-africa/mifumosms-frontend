@@ -1,5 +1,7 @@
 // SENDA Team Inbox: one connected WhatsApp number, one shared inbox, many employees. Everything shown comes from the server (no sample data);
 // the server decides what each signed-in employee may see and do, the buttons here only reflect that.
+import { SendPanel } from "@/components/team-inbox/SendPanel";
+import { tr } from "@/i18n/waCampaigns";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, Check, CheckCheck, FileText, Inbox, LayoutTemplate, Plus, Loader2, MessageSquare, Paperclip, Phone, RefreshCw, Reply, Search, Send, StickyNote, UserCheck, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -111,7 +113,7 @@ const TeamInbox = () => {
   const calling = useWhatsAppCalling();
   const location = useLocation();
   const navigate = useNavigate();
-  const [section, setSection] = useState<"chats" | "calls">("chats");
+  const [section, setSection] = useState<"chats" | "calls" | "send">("chats");
   const [view, setView] = useState<InboxView | ThreadStatus>("all");
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -789,17 +791,17 @@ const TeamInbox = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         {reconnecting && <p className="flex items-center justify-center gap-2 bg-amber-100 py-1 text-xs text-amber-900"><Loader2 className="h-3 w-3 animate-spin" />{T.reconnecting}</p>}
         <div ref={wrapRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {calling.enabled && (
-            <div className="flex shrink-0 gap-1 border-b px-2" role="tablist" aria-label={T.title}>
-              {(["chats", "calls"] as const).map((k) => (
-                <button key={k} type="button" role="tab" aria-selected={section === k} onClick={() => setSection(k)}
-                  className={`px-3 py-2 text-sm ${section === k ? "border-b-2 border-primary font-medium text-primary" : "text-muted-foreground"}`}>
-                  {k === "chats" ? T.chats : T.calls}
-                </button>
-              ))}
-            </div>
-          )}
-          {section === "calls" && calling.enabled ? (
+          <div className="flex shrink-0 gap-1 border-b px-2" role="tablist" aria-label={T.title}>
+            {((calling.enabled ? ["chats", "calls", "send"] : ["chats", "send"]) as Array<"chats" | "calls" | "send">).map((k) => (
+              <button key={k} type="button" role="tab" aria-selected={section === k} onClick={() => setSection(k)}
+                className={`px-3 py-2 text-sm ${section === k ? "border-b-2 border-primary font-medium text-primary" : "text-muted-foreground"}`}>
+                {k === "chats" ? T.chats : k === "calls" ? T.calls : tr("Send a message")}
+              </button>
+            ))}
+          </div>
+          {section === "send" ? (
+            <SendPanel onOpenThread={(id) => { setSection("chats"); void open(id); }} />
+          ) : section === "calls" && calling.enabled ? (
             <CallsPanel canSeeTeam={!!calling.live?.me.is_manager}
               onOpenThread={(id) => { setSection("chats"); void open(id); }} />
           ) : (
