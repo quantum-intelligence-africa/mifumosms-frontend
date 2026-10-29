@@ -24,6 +24,7 @@ import {
   Tag,
   User as UserIcon,
   X,
+  Megaphone,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType, SVGAttributes } from "react";
@@ -123,6 +124,7 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
       { key: "sender-names", label: "Sender Names", icon: Tag, onClick: () => go("/messaging/sender-names") },
       { key: "campaigns", label: "Campaigns", icon: BarChart3, onClick: () => go("/messaging/campaigns") },
       { key: "whatsapp", label: "WhatsApp", icon: WhatsAppIcon, onClick: () => go("/whatsapp"), badge: isComingSoon("whatsapp") ? "Soon" : undefined },
+      { key: "wa-campaigns", label: "WhatsApp Campaigns", icon: Megaphone, onClick: () => go("/whatsapp/campaigns"), badge: isComingSoon("whatsapp") ? "Soon" : undefined },
     ],
   };
 

@@ -30,6 +30,7 @@ import {
   MessageSquareText,
   Headphones,
   PhoneMissed,
+  Megaphone,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { useBranding } from "@/contexts/BrandingContext";
@@ -219,6 +220,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               { name: "Outbox", href: "/messaging/outbox", icon: Inbox, badge: outboxCount },
               { name: "Sent", href: "/messaging/sent", icon: CheckCircle2, badge: sentCount },
               { name: "WhatsApp", href: "/whatsapp", icon: WhatsAppIcon, comingSoon: isComingSoon("whatsapp") },
+              { name: "WhatsApp Campaigns", href: "/whatsapp/campaigns", icon: Megaphone, comingSoon: isComingSoon("whatsapp") },
               { name: t("nav.campaigns"), href: "/messaging/campaigns", icon: BarChart3 },
               { name: t("nav.contacts"), href: "/messaging/contacts", icon: Users },
               { name: t("nav.sender_names"), href: "/messaging/sender-names", icon: Tag },

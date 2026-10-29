@@ -94,6 +94,7 @@ const CallCenterPlans = lazy(() => import("./pages/callcenter/Plans"));
 const WhatsAppCloud = lazy(() => import("./pages/WhatsAppCloud"));
 const CreateWhatsAppTemplate = lazy(() => import("./pages/CreateWhatsAppTemplate"));
 const WhatsAppBroadcast = lazy(() => import("./pages/WhatsAppBroadcast"));
+const WhatsAppCampaigns = lazy(() => import("./pages/WhatsAppCampaigns"));
 // @ts-ignore — standalone JSX admin dashboard
 const SendaAdmin = lazy(() => import("../senda-dashboard.jsx"));
 
@@ -476,6 +477,11 @@ const AppContent = () => {
               <Route path="/whatsapp" element={
                 <ProtectedRoute comingSoonKey="whatsapp">
                   <WhatsAppCloud />
+                </ProtectedRoute>
+              } />
+              <Route path="/whatsapp/campaigns" element={
+                <ProtectedRoute comingSoonKey="whatsapp">
+                  <WhatsAppCampaigns />
                 </ProtectedRoute>
               } />
               <Route path="/whatsapp/templates/new" element={
