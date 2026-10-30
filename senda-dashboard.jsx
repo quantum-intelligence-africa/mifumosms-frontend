@@ -15406,15 +15406,29 @@ function FeatureAccessTab() {
 function WaOtpTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [form, setForm]       = useState({ enabled:false, template_name:'', template_language:'en', phone_number_id:'' });
-  const [info, setInfo]       = useState({ active:false, has_credential:false, saved:false, updated_at:null });
+  const [info, setInfo]       = useState({ active:false, has_credential:false, saved:false, updated_at:null, numbers:[] });
+  const [templates, setTemplates] = useState([]);
+  const [tplState, setTplState]   = useState({ loading:false, error:null });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState(null);
 
   const apply = (d) => {
-    setForm({ enabled:!!d.enabled, template_name:d.template_name||'', template_language:d.template_language||'en', phone_number_id:d.phone_number_id||'' });
-    setInfo({ active:!!d.active, has_credential:!!d.has_credential, saved:!!d.saved, updated_at:d.updated_at });
+    setForm({ enabled:!!d.enabled, template_name:d.template_name||'', template_language:d.template_language||'en', phone_number_id:d.phone_number_id||(d.numbers?.[0]?.phone_number_id)||'' });
+    setInfo({ active:!!d.active, has_credential:!!d.has_credential, saved:!!d.saved, updated_at:d.updated_at, numbers:d.numbers||[] });
   };
+
+  // The templates are read live from WhatsApp for the chosen number, so nothing is typed from memory.
+  const loadTemplates = useCallback((pid) => {
+    if (!pid) { setTemplates([]); return; }
+    setTplState({ loading:true, error:null });
+    adminFetch(`/wa-otp-settings/templates?phone_number_id=${encodeURIComponent(pid)}`, {}, onLogout)
+      .then(res => {
+        if (res.success) { setTemplates(res.data || []); setTplState({ loading:false, error:null }); }
+        else { setTemplates([]); setTplState({ loading:false, error:res.error?.message || 'Could not load the templates.' }); }
+      })
+      .catch(e => { setTemplates([]); setTplState({ loading:false, error:e.message }); });
+  }, [onLogout]);
 
   useEffect(() => {
     adminFetch('/wa-otp-settings', {}, onLogout)
@@ -15422,6 +15436,8 @@ function WaOtpTab() {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [onLogout]);
+
+  useEffect(() => { if (!loading) loadTemplates(form.phone_number_id); }, [loading, form.phone_number_id, loadTemplates]);
 
   const save = () => {
     setSaving(true);
@@ -15435,12 +15451,13 @@ function WaOtpTab() {
   };
 
   const label = { fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:4 };
-  const input = { width:'100%', padding:'9px 11px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:13, boxSizing:'border-box' };
+  const input = { width:'100%', padding:'9px 11px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:13, boxSizing:'border-box', background:'#fff' };
   const hint  = { fontSize:11.5, color:'#94a3b8', margin:'4px 0 0' };
-  const status = !info.saved && !form.enabled ? ['Off', '#f1f5f9', '#475569']
-    : info.active && info.has_credential ? ['Live', '#d1fae5', '#065f46']
-    : info.active ? ['On, but no WhatsApp number found', '#fef3c7', '#92400e']
-    : ['Off', '#f1f5f9', '#475569'];
+  const chosen = `${form.template_name}|${form.template_language}`;
+  const inList = templates.some(t => `${t.name}|${t.language}` === chosen);
+  const blocked = saving || (form.enabled && !inList);
+  const status = info.active && info.has_credential ? ['Live', '#d1fae5', '#065f46']
+    : info.active ? ['On, but no WhatsApp number found', '#fef3c7', '#92400e'] : ['Off', '#f1f5f9', '#475569'];
 
   return (
     <div style={{padding:24,maxWidth:640}}>
@@ -15448,8 +15465,8 @@ function WaOtpTab() {
         <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>WhatsApp Verification Codes</h2>
         <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
           Send sign-up, account-confirmation and password-reset codes over WhatsApp. If WhatsApp cannot deliver, the
-          code goes by SMS as before. The code is made and checked by the existing verification and is never stored
-          or logged here. WhatsApp only allows an approved <b>Authentication</b> template for codes.
+          code goes by SMS as before. Your WhatsApp number and its approved templates are read directly from the
+          credentials you saved under WhatsApp Credentials, so there is nothing to type.
         </p>
       </div>
       {error ? (
@@ -15471,27 +15488,40 @@ function WaOtpTab() {
               {form.enabled ? 'On' : 'Off'}
             </button>
           </div>
-          <div>
-            <label style={label} htmlFor="wa-otp-name">Approved authentication template name</label>
-            <input id="wa-otp-name" style={input} value={form.template_name} placeholder="e.g. senda_verification_code"
-              onChange={e=>setForm(f=>({...f,template_name:e.target.value}))}/>
-            <p style={hint}>Exactly as it appears in your WhatsApp Manager. It must be approved, category Authentication, with the code in the body and a "copy code" button.</p>
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:12}}>
+
+          {info.numbers.length === 0 ? (
+            <div style={{fontSize:13,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'10px 14px'}}>
+              No active platform WhatsApp number is saved yet. Add one under <b>WhatsApp Credentials</b> (Phone Number ID, access token and WABA ID), then come back.
+            </div>
+          ) : (<>
             <div>
-              <label style={label} htmlFor="wa-otp-lang">Language code</label>
-              <input id="wa-otp-lang" style={input} value={form.template_language} placeholder="en"
-                onChange={e=>setForm(f=>({...f,template_language:e.target.value}))}/>
+              <label style={label} htmlFor="wa-otp-pid">Send from this WhatsApp number</label>
+              <select id="wa-otp-pid" style={input} value={form.phone_number_id}
+                onChange={e=>setForm(f=>({...f,phone_number_id:e.target.value,template_name:'',template_language:'en'}))}>
+                {info.numbers.map(n => <option key={n.phone_number_id} value={n.phone_number_id}>{n.label}{n.display_phone_number ? ` · ${n.display_phone_number}` : ''} ({n.phone_number_id})</option>)}
+              </select>
             </div>
             <div>
-              <label style={label} htmlFor="wa-otp-pid">WhatsApp number ID (optional)</label>
-              <input id="wa-otp-pid" style={input} value={form.phone_number_id} placeholder="Leave blank to use the platform's active number"
-                onChange={e=>setForm(f=>({...f,phone_number_id:e.target.value}))}/>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <label style={label} htmlFor="wa-otp-tpl">Approved authentication template</label>
+                <button onClick={()=>loadTemplates(form.phone_number_id)} disabled={tplState.loading} className="senda-btn senda-btn-sm"
+                  style={{background:'#f1f5f9',color:'#475569',border:'none',marginBottom:4}}>{tplState.loading ? 'Loading…' : 'Refresh from WhatsApp'}</button>
+              </div>
+              <select id="wa-otp-tpl" style={input} value={inList ? chosen : ''} disabled={tplState.loading || templates.length===0}
+                onChange={e=>{ const [name, language] = e.target.value.split('|'); setForm(f=>({...f,template_name:name||'',template_language:language||'en'})); }}>
+                <option value="">{tplState.loading ? 'Loading templates…' : templates.length ? 'Choose a template…' : 'No approved authentication templates found'}</option>
+                {templates.map(t => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name} ({t.language}){t.has_copy_button ? '' : ' - no copy-code button'}</option>)}
+              </select>
+              {tplState.error && <p style={{...hint,color:'#b91c1c'}}>{tplState.error}</p>}
+              {!tplState.error && !tplState.loading && templates.length===0 && <p style={hint}>Create an <b>Authentication</b> template in WhatsApp Manager and wait for its approval. It will then appear here.</p>}
+              {form.template_name && !inList && !tplState.loading && !tplState.error && <p style={{...hint,color:'#92400e'}}>The saved template "{form.template_name}" ({form.template_language}) is no longer in the approved list. Choose another.</p>}
             </div>
-          </div>
+          </>)}
+
           <div style={{display:'flex',alignItems:'center',gap:12}}>
-            <button onClick={save} disabled={saving} className="senda-btn"
-              style={{background:'#0f172a',color:'#fff',border:'none',opacity:saving?.6:1}}>{saving ? 'Saving…' : 'Save'}</button>
+            <button onClick={save} disabled={blocked} className="senda-btn"
+              style={{background:'#0f172a',color:'#fff',border:'none',opacity:blocked?.6:1}}>{saving ? 'Saving…' : 'Save'}</button>
+            {form.enabled && !inList && <span style={{fontSize:11.5,color:'#92400e'}}>Choose a template to turn this on.</span>}
             {info.updated_at && <span style={{fontSize:11.5,color:'#94a3b8'}}>Last saved {new Date(info.updated_at).toLocaleString()}</span>}
           </div>
         </div>
