@@ -16632,7 +16632,284 @@ function smsSegments(text) {
   return { len, segments };
 }
 
+// ─── WhatsApp broadcast (admin) ─────────────────────────────────────────────────
+// Broadcast to SENDA users over WhatsApp, the way the SMS broadcast does over SMS. It uses the same campaign engine as the WhatsApp campaigns page
+// (consent and opt-out rules, per-recipient tracking, retries, delivery reports), sending from the platform WhatsApp number saved under WhatsApp
+// Credentials and an approved template read live from WhatsApp.
+const WA_PURPOSES = [
+  ['marketing', 'Marketing / promotion', true], ['reactivation', 'Customer reactivation', true], ['product_update', 'Product update', true],
+  ['account', 'Account notification', false], ['payment_reminder', 'Payment reminder', false], ['outage', 'Service outage notice', false], ['other', 'Other', false],
+];
+const WA_STATUS = {
+  draft:['#f1f5f9','#475569'], scheduled:['#dbeafe','#1e40af'], queued:['#dbeafe','#1e40af'], sending:['#fef3c7','#92400e'], paused:['#fde68a','#92400e'],
+  completed:['#d1fae5','#065f46'], failed:['#fee2e2','#991b1b'], cancelled:['#f1f5f9','#475569'],
+};
+
+function WaBroadcastPanel() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const call = useCallback(async (method, path, body) => {
+    const res = await adminFetch(`/api/wa-campaigns${path}`, { method, body: body === undefined ? undefined : JSON.stringify(body) }, onLogout);
+    return res;
+  }, [onLogout]);
+
+  const [numbers, setNumbers]     = useState(null);
+  const [kinds, setKinds]         = useState([]);
+  const [numberId, setNumberId]   = useState('');
+  const [templates, setTemplates] = useState([]);
+  const [tplState, setTplState]   = useState({ loading:false, error:null });
+  const [tplKey, setTplKey]       = useState('');
+  const [map, setMap]             = useState({});
+  const [audMode, setAudMode]     = useState('senda');
+  const [kind, setKind]           = useState('inactive');
+  const [days, setDays]           = useState('30');
+  const [threshold, setThreshold] = useState('10');
+  const [phones, setPhones]       = useState('');
+  const [name, setName]           = useState('');
+  const [purpose, setPurpose]     = useState('marketing');
+  const [consent, setConsent]     = useState(false);
+  const [preview, setPreview]     = useState(null);
+  const [draftId, setDraftId]     = useState(null);
+  const [busy, setBusy]           = useState('');
+  const [error, setError]         = useState(null);
+  const [recent, setRecent]       = useState([]);
+
+  const template = templates.find(t => `${t.name}|${t.language}` === tplKey);
+  const isMarketing = WA_PURPOSES.find(p => p[0] === purpose)?.[2];
+  const field = { width:'100%', padding:'9px 11px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:13, boxSizing:'border-box', background:'#fff' };
+  const lbl   = { fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:4 };
+  const card  = { background:'#fff', border:'1px solid #eef2f7', borderRadius:12, padding:18, display:'grid', gap:14 };
+
+  const loadRecent = useCallback(() => {
+    call('GET', '/').then(r => { if (r.results) setRecent(r.results.slice(0, 8)); }).catch(() => {});
+  }, [call]);
+
+  useEffect(() => {
+    call('GET', '/numbers/').then(r => {
+      const list = r.results || [];
+      setNumbers(list);
+      if (list[0]) setNumberId(list[0].phone_number_id);
+      if (r.success === false) setError(r.message || 'WhatsApp broadcasting is not available to your account.');
+    }).catch(e => { setNumbers([]); setError(e.message); });
+    call('GET', '/senda-users/kinds/').then(r => setKinds(r.kinds || [])).catch(() => {});
+    loadRecent();
+  }, [call, loadRecent]);
+
+  const loadTemplates = useCallback((pid, refresh) => {
+    if (!pid) return;
+    setTplState({ loading:true, error:null });
+    call('GET', `/templates/?phone_number_id=${encodeURIComponent(pid)}${refresh ? '&refresh=1' : ''}`).then(r => {
+      if (r.success === false) { setTemplates([]); setTplState({ loading:false, error:r.message || 'Could not load the templates.' }); return; }
+      setTemplates((r.results || []).filter(t => t.supported)); setTplState({ loading:false, error:null });
+    }).catch(e => { setTemplates([]); setTplState({ loading:false, error:e.message }); });
+  }, [call]);
+
+  useEffect(() => { setTplKey(''); setMap({}); loadTemplates(numberId); }, [numberId, loadTemplates]);
+  useEffect(() => { setPreview(null); }, [numberId, tplKey, map, audMode, kind, days, threshold, phones, purpose, consent]);
+
+  const pick = (key) => {
+    setTplKey(key);
+    const t = templates.find(x => `${x.name}|${x.language}` === key);
+    setMap(Object.fromEntries((t?.tokens || []).map((tok, i) => [tok, { source: i === 0 ? 'name' : 'static', text: '' }])));
+  };
+
+  const draft = () => ({
+    name: name.trim() || `Admin broadcast ${new Date().toLocaleDateString()}`, purpose, phone_number_id: numberId,
+    template_name: template?.name, language_code: template?.language, consent_attested: !!consent,
+    param_map: (template?.tokens || []).map(tok => { const m = map[tok] || { source:'name', text:'' }; return { token: tok, source: m.source === 'static' ? `static:${m.text}` : m.source, default: m.default || '' }; }),
+    audience: audMode === 'senda' ? { senda_users: { kind, days: Number(days) || 0, threshold: Number(threshold) || 0 } }
+      : { phones: phones.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean) },
+  });
+
+  const check = async () => {
+    setBusy('check'); setError(null);
+    try {
+      const body = draft();
+      const saved = draftId ? await call('PATCH', `/${draftId}/`, body) : await call('POST', '/', body);
+      if (!saved.campaign) { setError(saved.message || 'Could not save the draft.'); return; }
+      setDraftId(saved.campaign.id);
+      const p = await call('POST', '/preview/', { ...body, campaign_id: saved.campaign.id });
+      if (p.success === false) setError(p.message || 'Could not check the recipients.'); else setPreview(p);
+    } catch (e) { setError(e.message); } finally { setBusy(''); }
+  };
+
+  const send = async () => {
+    if (!preview || !draftId) return;
+    if (!window.confirm(`Send this WhatsApp message to ${preview.eligible} people now?`)) return;
+    setBusy('send');
+    try {
+      const r = await call('POST', `/${draftId}/launch/`, { launch_token: `${draftId}-${Date.now()}`, confirm_recipients: preview.eligible });
+      if (r.campaign) {
+        showToast?.('WhatsApp broadcast started.', 'success');
+        setDraftId(null); setPreview(null); setName(''); loadRecent();
+      } else setError(r.message || 'Could not start the broadcast.');
+    } catch (e) { setError(e.message); } finally { setBusy(''); }
+  };
+
+  const canCheck = !!template && !busy && (audMode === 'senda' || phones.trim()) && (!isMarketing || consent)
+    && (template.tokens || []).every(tok => (map[tok]?.source !== 'static') || (map[tok]?.text || '').trim());
+
+  if (numbers === null) return <div style={{padding:24,color:'#94a3b8',fontSize:13}}>Loading…</div>;
+  if (numbers.length === 0) return (
+    <div style={{padding:24,maxWidth:640}}>
+      <div style={{fontSize:13,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'12px 16px'}}>
+        {error || <>No WhatsApp number is available for broadcasting. Save the platform number under <b>WhatsApp Credentials</b> (with its WABA ID) while signed in with the account that owns it.</>}
+      </div>
+    </div>);
+
+  return (
+    <div style={{padding:24,maxWidth:760,display:'grid',gap:16}}>
+      <div>
+        <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>WhatsApp Broadcast</h2>
+        <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
+          Message SENDA users over WhatsApp with an approved template. People who opted out, are suppressed or have an invalid number are left out automatically,
+          and you see exactly who before anything is sent.
+        </p>
+      </div>
+      {error && <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px'}}>{error}</div>}
+
+      <div style={card}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <div>
+            <label style={lbl} htmlFor="wab-num">Send from</label>
+            <select id="wab-num" style={field} value={numberId} onChange={e=>setNumberId(e.target.value)}>
+              {numbers.map(n => <option key={n.phone_number_id} value={n.phone_number_id}>{n.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl} htmlFor="wab-purpose">What is this message?</label>
+            <select id="wab-purpose" style={field} value={purpose} onChange={e=>setPurpose(e.target.value)}>
+              {WA_PURPOSES.map(p => <option key={p[0]} value={p[0]}>{p[1]}</option>)}
+            </select>
+          </div>
+        </div>
+        <div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <label style={lbl} htmlFor="wab-tpl">Approved template</label>
+            <button className="senda-btn senda-btn-sm" disabled={tplState.loading} onClick={()=>loadTemplates(numberId, true)}
+              style={{background:'#f1f5f9',color:'#475569',border:'none',marginBottom:4}}>{tplState.loading ? 'Loading…' : 'Refresh from WhatsApp'}</button>
+          </div>
+          <select id="wab-tpl" style={field} value={tplKey} disabled={tplState.loading || templates.length===0} onChange={e=>pick(e.target.value)}>
+            <option value="">{tplState.loading ? 'Loading templates…' : templates.length ? 'Choose a template…' : 'No usable approved templates found'}</option>
+            {templates.map(t => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name} ({t.language}) · {t.category.charAt(0) + t.category.slice(1).toLowerCase()}</option>)}
+          </select>
+          {tplState.error && <p style={{fontSize:11.5,color:'#b91c1c',margin:'4px 0 0'}}>{tplState.error}</p>}
+        </div>
+
+        {template && (<>
+          <div style={{background:'#ecfdf5',border:'1px solid #bbf7d0',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#14532d',whiteSpace:'pre-wrap'}}>
+            {template.header && <div style={{fontWeight:700}}>{template.header}</div>}
+            {template.body}
+            {template.footer && <div style={{fontSize:11.5,color:'#4d7c5b',marginTop:6}}>{template.footer}</div>}
+          </div>
+          {(template.tokens || []).map(tok => (
+            <div key={tok} style={{display:'grid',gridTemplateColumns:'70px 1fr 1fr',gap:10,alignItems:'center'}}>
+              <div style={{fontSize:12.5,fontWeight:700,color:'#334155'}}>{`{{${tok}}}`}</div>
+              <select style={field} aria-label={`Value for ${tok}`} value={map[tok]?.source || 'name'} onChange={e=>setMap(m=>({...m,[tok]:{...m[tok],source:e.target.value}}))}>
+                <option value="name">Each person's name</option><option value="phone">Phone number</option><option value="email">Email</option><option value="static">Same text for everyone…</option>
+              </select>
+              {map[tok]?.source === 'static'
+                ? <input style={field} placeholder="Text" value={map[tok]?.text || ''} onChange={e=>setMap(m=>({...m,[tok]:{...m[tok],text:e.target.value}}))}/>
+                : <input style={field} placeholder="If empty, use (optional)" value={map[tok]?.default || ''} onChange={e=>setMap(m=>({...m,[tok]:{...m[tok],default:e.target.value}}))}/>}
+            </div>
+          ))}
+        </>)}
+      </div>
+
+      <div style={card}>
+        <div style={{display:'flex',gap:6}}>
+          {[['senda','SENDA users'],['phones','Phone numbers']].map(([id,label]) => (
+            <button key={id} onClick={()=>setAudMode(id)} className="senda-btn senda-btn-sm"
+              style={{background:audMode===id?'#0f172a':'#f1f5f9',color:audMode===id?'#fff':'#475569',border:'none'}}>{label}</button>))}
+        </div>
+        {audMode === 'senda' ? (
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:12}}>
+            <div>
+              <label style={lbl} htmlFor="wab-kind">Who</label>
+              <select id="wab-kind" style={field} value={kind} onChange={e=>setKind(e.target.value)}>
+                {kinds.map(k => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+              </select>
+            </div>
+            <div><label style={lbl} htmlFor="wab-days">Days (N)</label><input id="wab-days" style={field} inputMode="numeric" value={days} onChange={e=>setDays(e.target.value)}/></div>
+            <div><label style={lbl} htmlFor="wab-thr">Credits (N)</label><input id="wab-thr" style={field} inputMode="numeric" value={threshold} onChange={e=>setThreshold(e.target.value)}/></div>
+          </div>
+        ) : (
+          <div>
+            <label style={lbl} htmlFor="wab-ph">Phone numbers (international format, one per line)</label>
+            <textarea id="wab-ph" style={{...field,minHeight:90}} value={phones} placeholder={'+255712345678\n+255754000111'} onChange={e=>setPhones(e.target.value)}/>
+          </div>
+        )}
+        <div><label style={lbl} htmlFor="wab-name">Broadcast name (optional)</label><input id="wab-name" style={field} value={name} maxLength={160} onChange={e=>setName(e.target.value)} placeholder="e.g. Reactivation, November"/></div>
+        {isMarketing && (
+          <label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:12.5,color:'#334155'}}>
+            <input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} style={{marginTop:3}}/>
+            <span>I confirm these people agreed to receive marketing messages from SENDA on WhatsApp.</span>
+          </label>)}
+        <div>
+          <button className="senda-btn" disabled={!canCheck} onClick={check} style={{background:'#0f172a',color:'#fff',border:'none',opacity:canCheck?1:.5}}>
+            {busy==='check' ? 'Checking…' : 'Check who will receive it'}
+          </button>
+        </div>
+      </div>
+
+      {preview && (
+        <div style={card}>
+          <div style={{display:'flex',gap:18,flexWrap:'wrap'}}>
+            <div><div style={{fontSize:22,fontWeight:800,color:'#065f46'}}>{preview.eligible}</div><div style={{fontSize:11.5,color:'#64748b'}}>will receive it</div></div>
+            <div><div style={{fontSize:22,fontWeight:800,color:'#92400e'}}>{preview.skipped}</div><div style={{fontSize:11.5,color:'#64748b'}}>left out</div></div>
+            <div><div style={{fontSize:22,fontWeight:800,color:'#0f172a'}}>{preview.audience}</div><div style={{fontSize:11.5,color:'#64748b'}}>in the audience</div></div>
+          </div>
+          {(preview.skipped_by_reason || []).length > 0 && (
+            <div style={{fontSize:12,color:'#475569'}}>Left out: {preview.skipped_by_reason.map(r => `${r.label} (${r.count})`).join(' · ')}</div>)}
+          {(preview.problems || []).map((p, i) => <div key={i} style={{fontSize:12.5,color:'#b91c1c'}}>{p}</div>)}
+          {(preview.samples || []).slice(0, 2).map(s => (
+            <div key={s.phone} style={{background:'#ecfdf5',border:'1px solid #bbf7d0',borderRadius:10,padding:'8px 12px',fontSize:12.5,color:'#14532d',whiteSpace:'pre-wrap'}}>
+              <div style={{fontSize:11,color:'#4d7c5b',marginBottom:3}}>Example for {s.name || s.phone}</div>{s.text}
+            </div>))}
+          {preview.credits && !preview.credits.enough && <div style={{fontSize:12.5,color:'#b91c1c'}}>Not enough WhatsApp credits: needs {preview.credits.required}, you have {preview.credits.available}.</div>}
+          <div>
+            <button className="senda-btn" disabled={!preview.can_launch || preview.eligible === 0 || !!busy} onClick={send}
+              style={{background:'#16a34a',color:'#fff',border:'none',opacity:(!preview.can_launch || preview.eligible === 0 || busy)?.5:1}}>
+              {busy==='send' ? 'Starting…' : `Send to ${preview.eligible} people`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={card}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div style={{fontSize:13.5,fontWeight:700,color:'#0f172a'}}>Recent WhatsApp broadcasts</div>
+          <button className="senda-btn senda-btn-sm" onClick={loadRecent} style={{background:'#f1f5f9',color:'#475569',border:'none'}}>Refresh</button>
+        </div>
+        {recent.length === 0 ? <div style={{fontSize:12.5,color:'#94a3b8'}}>Nothing sent yet.</div> : recent.map(c => (
+          <div key={c.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,borderTop:'1px solid #f1f5f9',paddingTop:10}}>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:'#0f172a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</div>
+              <div style={{fontSize:11.5,color:'#94a3b8'}}>{c.template_name} · {c.stats.recipients} people · sent {c.stats.submitted} · delivered {c.stats.delivered} · read {c.stats.read} · failed {c.stats.failed}</div>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <span style={{padding:'2px 9px',borderRadius:99,fontSize:11,fontWeight:700,background:(WA_STATUS[c.status]||WA_STATUS.draft)[0],color:(WA_STATUS[c.status]||WA_STATUS.draft)[1]}}>{c.status}</span>
+              <a href={`/whatsapp/campaigns?c=${c.id}`} target="_blank" rel="noreferrer" style={{fontSize:12,color:'#2563eb'}}>Full report</a>
+            </div>
+          </div>))}
+      </div>
+    </div>
+  );
+}
+
 function BroadcastTab() {
+  const [channel, setChannel] = useState('sms');
+  const pill = (id, label) => (
+    <button onClick={()=>setChannel(id)} className="senda-btn senda-btn-sm"
+      style={{background:channel===id?'#0f172a':'#f1f5f9',color:channel===id?'#fff':'#475569',border:'none'}}>{label}</button>);
+  return (
+    <>
+      <div style={{display:'flex',gap:6,padding:'18px 24px 0'}}>{pill('sms','SMS')}{pill('whatsapp','WhatsApp')}</div>
+      {channel === 'sms' ? <SmsBroadcastTab/> : <WaBroadcastPanel/>}
+    </>
+  );
+}
+
+function SmsBroadcastTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
