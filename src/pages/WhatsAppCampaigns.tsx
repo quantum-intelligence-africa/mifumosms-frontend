@@ -1,5 +1,6 @@
 // WhatsApp campaigns: overview, campaign list, a step-by-step wizard, a live detail view, and the opt-out list. Every number shown here comes from the
 // server's real recipient rows; anything WhatsApp has not reported is shown as "waiting for report" or "unavailable", never guessed.
+import { PageFrame } from "@/components/callcenter/PageFrame";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
@@ -518,10 +519,9 @@ export default function WhatsAppCampaigns() {
   const open = (id: string | null) => setParams(id ? { c: id } : {}, { replace: true });
   const noAccess = useMemo(() => probe.data && !probe.data.ok && probe.data.status === 403, [probe.data]);
 
-  if (noAccess) return <div className="mx-auto max-w-lg p-8 text-center"><Megaphone className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-3 font-semibold">{tr("WhatsApp campaigns are not available to your role")}</p><p className="mt-1 text-sm text-muted-foreground">{tr("Ask an owner or admin of your organization.")}</p></div>;
+  if (noAccess) return <PageFrame title={tr("WhatsApp campaigns")} width="max-w-lg"><div className="p-8 text-center"><Megaphone className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-3 font-semibold">{tr("WhatsApp campaigns are not available to your role")}</p><p className="mt-1 text-sm text-muted-foreground">{tr("Ask an owner or admin of your organization.")}</p></div></PageFrame>;
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-4 p-3 sm:p-6">
-      <div className="flex items-center gap-2"><CheckCheck className="h-5 w-5 text-[#25D366]" /><div><h1 className="text-lg font-semibold sm:text-xl">{tr("WhatsApp campaigns")}</h1><p className="text-xs text-muted-foreground sm:text-sm">{tr("Send approved templates to your contacts and follow every message.")}</p></div></div>
+    <PageFrame title={tr("WhatsApp campaigns")} subtitle={tr("Send approved templates to your contacts and follow every message.")}>
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="h-auto w-full justify-start overflow-x-auto"><TabsTrigger value="campaigns">{tr("Campaigns")}</TabsTrigger><TabsTrigger value="overview">{tr("Overview")}</TabsTrigger><TabsTrigger value="contacts">{tr("Contacts")}</TabsTrigger><TabsTrigger value="schedules">{tr("Schedules")}</TabsTrigger><TabsTrigger value="optouts">{tr("Opt-outs")}</TabsTrigger><TabsTrigger value="settings">{tr("Limits & cost")}</TabsTrigger>{me?.is_superuser && <TabsTrigger value="automations">{tr("Automations")}</TabsTrigger>}</TabsList>
         <TabsContent value="campaigns" className="mt-3"><CampaignsTab onNew={() => setWizard({ open: true, resume: null })} onOpen={(c) => (c.status === "draft" ? void editDraft(c.id) : open(c.id))} /></TabsContent>
@@ -535,6 +535,6 @@ export default function WhatsAppCampaigns() {
       <Wizard open={wizard.open} resume={wizard.resume} onClose={() => setWizard({ open: false, resume: null })}
         onDone={(c) => { void qc.invalidateQueries({ queryKey: ["wa-campaigns"] }); if (c.status && c.status !== "draft") open(c.id); }} />
       {openId && <Detail id={openId} onClose={() => open(null)} onEdit={(c) => { open(null); setWizard({ open: true, resume: c }); }} />}
-    </div>
+    </PageFrame>
   );
 }
