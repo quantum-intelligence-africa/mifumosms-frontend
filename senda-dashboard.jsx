@@ -15399,6 +15399,107 @@ function FeatureAccessTab() {
   );
 }
 
+// ─── WhatsApp verification codes (mifumosms_backend / wa_campaigns.WAPlatformSettings) ─────
+// Where a SENDA super admin decides whether sign-up / password-reset codes are delivered over WhatsApp
+// (falling back to SMS when WhatsApp cannot deliver). Nothing is read from the server's .env file.
+// The codes are still generated and checked by the existing verification; this only picks the channel.
+function WaOtpTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [form, setForm]       = useState({ enabled:false, template_name:'', template_language:'en', phone_number_id:'' });
+  const [info, setInfo]       = useState({ active:false, has_credential:false, saved:false, updated_at:null });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState(null);
+
+  const apply = (d) => {
+    setForm({ enabled:!!d.enabled, template_name:d.template_name||'', template_language:d.template_language||'en', phone_number_id:d.phone_number_id||'' });
+    setInfo({ active:!!d.active, has_credential:!!d.has_credential, saved:!!d.saved, updated_at:d.updated_at });
+  };
+
+  useEffect(() => {
+    adminFetch('/wa-otp-settings', {}, onLogout)
+      .then(res => { if (res.success) apply(res.data); else setError(res.error?.message || 'Failed to load the settings.'); })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout]);
+
+  const save = () => {
+    setSaving(true);
+    adminFetch('/wa-otp-settings', { method:'PUT', body: JSON.stringify(form) }, onLogout)
+      .then(res => {
+        if (res.success) { apply(res.data); showToast?.('WhatsApp verification settings saved.', 'success'); }
+        else showToast?.(res.error?.message || 'Failed to save the settings.', 'error');
+      })
+      .catch(() => showToast?.('Failed to save the settings.', 'error'))
+      .finally(() => setSaving(false));
+  };
+
+  const label = { fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:4 };
+  const input = { width:'100%', padding:'9px 11px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:13, boxSizing:'border-box' };
+  const hint  = { fontSize:11.5, color:'#94a3b8', margin:'4px 0 0' };
+  const status = !info.saved && !form.enabled ? ['Off', '#f1f5f9', '#475569']
+    : info.active && info.has_credential ? ['Live', '#d1fae5', '#065f46']
+    : info.active ? ['On, but no WhatsApp number found', '#fef3c7', '#92400e']
+    : ['Off', '#f1f5f9', '#475569'];
+
+  return (
+    <div style={{padding:24,maxWidth:640}}>
+      <div style={{marginBottom:18}}>
+        <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>WhatsApp Verification Codes</h2>
+        <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
+          Send sign-up, account-confirmation and password-reset codes over WhatsApp. If WhatsApp cannot deliver, the
+          code goes by SMS as before. The code is made and checked by the existing verification and is never stored
+          or logged here. WhatsApp only allows an approved <b>Authentication</b> template for codes.
+        </p>
+      </div>
+      {error ? (
+        <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px'}}>{error}</div>
+      ) : loading ? (
+        <div style={{padding:24,textAlign:'center',color:'#94a3b8',fontSize:13}}>Loading…</div>
+      ) : (
+        <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:18,display:'grid',gap:16}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+            <div>
+              <div style={{fontSize:13.5,fontWeight:600,color:'#0f172a'}}>Deliver codes over WhatsApp</div>
+              <div style={{fontSize:11.5,marginTop:3}}>
+                <span style={{display:'inline-block',padding:'2px 9px',borderRadius:99,fontWeight:700,background:status[1],color:status[2]}}>{status[0]}</span>
+              </div>
+            </div>
+            <button onClick={()=>setForm(f=>({...f,enabled:!f.enabled}))}
+              style={{padding:'6px 14px',borderRadius:99,border:'none',cursor:'pointer',fontSize:12,fontWeight:700,
+                background:form.enabled?'#d1fae5':'#f1f5f9',color:form.enabled?'#065f46':'#475569'}}>
+              {form.enabled ? 'On' : 'Off'}
+            </button>
+          </div>
+          <div>
+            <label style={label} htmlFor="wa-otp-name">Approved authentication template name</label>
+            <input id="wa-otp-name" style={input} value={form.template_name} placeholder="e.g. senda_verification_code"
+              onChange={e=>setForm(f=>({...f,template_name:e.target.value}))}/>
+            <p style={hint}>Exactly as it appears in your WhatsApp Manager. It must be approved, category Authentication, with the code in the body and a "copy code" button.</p>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:12}}>
+            <div>
+              <label style={label} htmlFor="wa-otp-lang">Language code</label>
+              <input id="wa-otp-lang" style={input} value={form.template_language} placeholder="en"
+                onChange={e=>setForm(f=>({...f,template_language:e.target.value}))}/>
+            </div>
+            <div>
+              <label style={label} htmlFor="wa-otp-pid">WhatsApp number ID (optional)</label>
+              <input id="wa-otp-pid" style={input} value={form.phone_number_id} placeholder="Leave blank to use the platform's active number"
+                onChange={e=>setForm(f=>({...f,phone_number_id:e.target.value}))}/>
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <button onClick={save} disabled={saving} className="senda-btn"
+              style={{background:'#0f172a',color:'#fff',border:'none',opacity:saving?.6:1}}>{saving ? 'Saving…' : 'Save'}</button>
+            {info.updated_at && <span style={{fontSize:11.5,color:'#94a3b8'}}>Last saved {new Date(info.updated_at).toLocaleString()}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Coming Soon (mifumosms_backend / billing.FeatureComingSoon) ──────────────
 // Platform-wide "Coming Soon" toggles — unlike Feature Access above, these
 // apply to every user at once (not per-user, not per-tenant plan). When on,
@@ -18733,6 +18834,7 @@ const NAV_GROUPS = [
   { title: 'System', items: [
     { id:'loginactivity', Icon:ShieldCheck,  label:'Login Activity'   },
     { id:'comingsoon',    Icon:Hourglass,    label:'Coming Soon'      },
+    { id:'waotp',         Icon:ShieldCheck,  label:'WhatsApp Codes'   },
     { id:'settings',      Icon:Settings,     label:'Settings'         },
     { id:'operations',    Icon:Globe,        label:'Operations'       },
   ]},
@@ -22938,6 +23040,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     deletionrequests:<DeletionRequestsTab/>,
     callcenterplans:<CallCenterPlansTab/>,
     comingsoon:   <ComingSoonTab/>,
+    waotp:        <WaOtpTab/>,
     packages:     <PackagesTab/>,
     creditalerts: <CreditAlertsTab/>,
     netprofit:    <NetProfitTab/>,
