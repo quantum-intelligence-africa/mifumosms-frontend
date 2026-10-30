@@ -6111,6 +6111,38 @@ function UsersTab() {
     if (which === 'from') setJoinedFrom(value); else setJoinedTo(value);
   };
   const clearJoined = () => { setJoinedMonth(''); setJoinedFrom(''); setJoinedTo(''); setPage(1); };
+  // Download the users the current filters select as a CSV file (the file needs the sign-in header, so it is fetched and saved, not opened as a link).
+  const [exporting, setExporting] = useState(false);
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const qs = new URLSearchParams();
+      if (filterRole !== 'all')   qs.set('role', filterRole);
+      if (filterStatus !== 'all') qs.set('status', filterStatus);
+      if (filter2fa !== 'all')    qs.set('two_factor', filter2fa);
+      if (joinedFrom)             qs.set('joined_from', joinedFrom);
+      if (joinedTo)               qs.set('joined_to', joinedTo);
+      if (search.trim())          qs.set('search', search.trim());
+      const token = getToken();
+      const res = await fetch(`${BASE_URL}/api/admin/v1/users/export?${qs}`, { headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials: 'include' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        showToast?.(body?.error?.message || (res.status === 403 ? 'Only a super admin can export users.' : 'Could not export the users.'), 'error');
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'senda-users.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      showToast?.(`Exported ${total} users.`, 'success');
+    } catch {
+      showToast?.('Could not export the users.', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
   const joinedActive = !!(joinedFrom || joinedTo);
   const dateField = { padding:'5px 8px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:12.5, background:'#fff', color:'#334155' };
 
@@ -6306,9 +6338,16 @@ function UsersTab() {
         </div>
         <span style={{fontSize:12,color:'#94a3b8',marginLeft: isSuperAdmin ? 0 : 'auto'}}>{total} users{joinedActive ? ' registered in this period' : ''}</span>
         {isSuperAdmin && (
-          <button className="senda-btn senda-btn-primary senda-btn-sm" style={{marginLeft:'auto'}} onClick={()=>setFormModal('create')}>
-            <UserPlus size={14} strokeWidth={2.3}/> Add user
-          </button>
+          <div style={{marginLeft:'auto',display:'flex',gap:8}}>
+            <button className="senda-btn senda-btn-sm" disabled={exporting || total === 0} onClick={exportCsv}
+              title="Download the users shown by the current filters as a CSV file"
+              style={{background:'#f1f5f9',color:'#334155',border:'none',opacity:(exporting || total === 0)?.6:1}}>
+              <Download size={14} strokeWidth={2.3}/> {exporting ? 'Exporting…' : 'Export CSV'}
+            </button>
+            <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={()=>setFormModal('create')}>
+              <UserPlus size={14} strokeWidth={2.3}/> Add user
+            </button>
+          </div>
         )}
       </div>
 
