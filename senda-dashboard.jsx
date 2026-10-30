@@ -15503,18 +15503,19 @@ function WaOtpTab() {
             </div>
             <div>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                <label style={label} htmlFor="wa-otp-tpl">Approved authentication template</label>
+                <label style={label} htmlFor="wa-otp-tpl">Approved template</label>
                 <button onClick={()=>loadTemplates(form.phone_number_id)} disabled={tplState.loading} className="senda-btn senda-btn-sm"
                   style={{background:'#f1f5f9',color:'#475569',border:'none',marginBottom:4}}>{tplState.loading ? 'Loading…' : 'Refresh from WhatsApp'}</button>
               </div>
               <select id="wa-otp-tpl" style={input} value={inList ? chosen : ''} disabled={tplState.loading || templates.length===0}
                 onChange={e=>{ const [name, language] = e.target.value.split('|'); setForm(f=>({...f,template_name:name||'',template_language:language||'en'})); }}>
-                <option value="">{tplState.loading ? 'Loading templates…' : templates.length ? 'Choose a template…' : 'No approved authentication templates found'}</option>
-                {templates.map(t => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name} ({t.language}){t.has_copy_button ? '' : ' - no copy-code button'}</option>)}
+                <option value="">{tplState.loading ? 'Loading templates…' : templates.length ? 'Choose a template…' : 'No approved templates found'}</option>
+                {templates.map(t => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name} ({t.language}) · {({AUTHENTICATION:'Authentication',UTILITY:'Utility',MARKETING:'Marketing'})[t.category] || t.category}{t.has_copy_button ? ' · copy-code button' : ''}</option>)}
               </select>
               {tplState.error && <p style={{...hint,color:'#b91c1c'}}>{tplState.error}</p>}
-              {!tplState.error && !tplState.loading && templates.length===0 && <p style={hint}>Create an <b>Authentication</b> template in WhatsApp Manager and wait for its approval. It will then appear here.</p>}
+              {!tplState.error && !tplState.loading && templates.length===0 && <p style={hint}>No approved template was found on this number's WhatsApp Business Account. Check that the WABA ID under WhatsApp Credentials is the account that owns the template.</p>}
               {form.template_name && !inList && !tplState.loading && !tplState.error && <p style={{...hint,color:'#92400e'}}>The saved template "{form.template_name}" ({form.template_language}) is no longer in the approved list. Choose another.</p>}
+              {inList && templates.find(t=>`${t.name}|${t.language}`===chosen)?.category !== 'AUTHENTICATION' && <p style={{...hint,color:'#92400e'}}>WhatsApp designs <b>Authentication</b> templates for codes. This one is not, so it works only if its body takes the code as {'{{1}}'}.</p>}
             </div>
           </>)}
 
