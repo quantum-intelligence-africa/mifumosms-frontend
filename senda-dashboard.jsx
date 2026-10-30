@@ -6061,6 +6061,10 @@ function UsersTab() {
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filter2fa, setFilter2fa] = useState('all');
+  // Registration date: a month, or any from/to dates (YYYY-MM-DD). Picking a month fills both dates with its first and last day.
+  const [joinedMonth, setJoinedMonth] = useState('');
+  const [joinedFrom, setJoinedFrom]   = useState('');
+  const [joinedTo, setJoinedTo]       = useState('');
   const [items, setItems]         = useState([]);
   const [meta, setMeta]           = useState({});
   const [page, setPage]           = useState(1);
@@ -6077,6 +6081,8 @@ function UsersTab() {
     if (filterRole !== 'all')   qs.set('role', filterRole);
     if (filterStatus !== 'all') qs.set('status', filterStatus);
     if (filter2fa !== 'all')    qs.set('two_factor', filter2fa);
+    if (joinedFrom)             qs.set('joined_from', joinedFrom);
+    if (joinedTo)               qs.set('joined_to', joinedTo);
     if (search.trim())          qs.set('search', search.trim());
     adminFetch(`/users?${qs}`, {}, onLogout)
       .then(res => {
@@ -6085,12 +6091,28 @@ function UsersTab() {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, [page, filterRole, filterStatus, filter2fa, search, onLogout]);
+  }, [page, filterRole, filterStatus, filter2fa, joinedFrom, joinedTo, search, onLogout]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const total = meta.total || 0;
   const pages = meta.total_pages || 1;
+
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const pickMonth = (value) => {
+    setJoinedMonth(value); setPage(1);
+    if (!value) { setJoinedFrom(''); setJoinedTo(''); return; }
+    const [y, m] = value.split('-').map(Number);
+    setJoinedFrom(`${y}-${pad2(m)}-01`);
+    setJoinedTo(`${y}-${pad2(m)}-${pad2(new Date(y, m, 0).getDate())}`);
+  };
+  const pickDate = (which, value) => {
+    setJoinedMonth(''); setPage(1);
+    if (which === 'from') setJoinedFrom(value); else setJoinedTo(value);
+  };
+  const clearJoined = () => { setJoinedMonth(''); setJoinedFrom(''); setJoinedTo(''); setPage(1); };
+  const joinedActive = !!(joinedFrom || joinedTo);
+  const dateField = { padding:'5px 8px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:12.5, background:'#fff', color:'#334155' };
 
   // Admin-granted per-user IVR/SMS access (independent of tenant role/plan) —
   // optimistic toggle with rollback on failure, mirrors senda_voice_backend's
@@ -6271,7 +6293,18 @@ function UsersTab() {
             </button>
           ))}
         </div>
-        <span style={{fontSize:12,color:'#94a3b8',marginLeft: isSuperAdmin ? 0 : 'auto'}}>{total} users</span>
+        <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}} title="Filter by the date people registered">
+          <span style={{fontSize:11,fontWeight:700,color:'#94a3b8'}}>Registered</span>
+          <input type="month" aria-label="Registered in month" value={joinedMonth} onChange={e=>pickMonth(e.target.value)} style={dateField}/>
+          <span style={{fontSize:11,color:'#94a3b8'}}>or</span>
+          <input type="date" aria-label="Registered from" value={joinedFrom} max={joinedTo || undefined} onChange={e=>pickDate('from', e.target.value)} style={dateField}/>
+          <span style={{fontSize:11,color:'#94a3b8'}}>to</span>
+          <input type="date" aria-label="Registered to" value={joinedTo} min={joinedFrom || undefined} onChange={e=>pickDate('to', e.target.value)} style={dateField}/>
+          {joinedActive && (
+            <button className="senda-btn senda-btn-sm" onClick={clearJoined} style={{background:'#fee2e2',color:'#dc2626',border:'none'}}>Clear</button>
+          )}
+        </div>
+        <span style={{fontSize:12,color:'#94a3b8',marginLeft: isSuperAdmin ? 0 : 'auto'}}>{total} users{joinedActive ? ' registered in this period' : ''}</span>
         {isSuperAdmin && (
           <button className="senda-btn senda-btn-primary senda-btn-sm" style={{marginLeft:'auto'}} onClick={()=>setFormModal('create')}>
             <UserPlus size={14} strokeWidth={2.3}/> Add user
