@@ -255,7 +255,7 @@ const builderTemplates: BuilderTemplate[] = [
     summaryKey: "pages.ai_agents.templates.sms_sales.summary",
     setup: {
       name: "Kuza Sales Copilot",
-      business: "Mifumo Labs",
+      business: "SENDA",
       industry: "Retail",
       language: "mixed",
       tone: "Sales",
@@ -266,7 +266,7 @@ const builderTemplates: BuilderTemplate[] = [
       {
         id: "step-start",
         name: "START",
-        message: "Karibu Mifumo Labs. I can help with pricing, SMS packages, or connect you to sales. Choose one option below.",
+        message: "Karibu SENDA. I can help with pricing, SMS packages, or connect you to sales. Choose one option below.",
         options: [
           { id: "option-start-1", label: "View packages", nextStateId: "step-packages" },
           { id: "option-start-2", label: "Talk to sales", nextStateId: "step-sales" },
@@ -314,7 +314,7 @@ const builderTemplates: BuilderTemplate[] = [
     summaryKey: "pages.ai_agents.templates.support.summary",
     setup: {
       name: "Kuza Support Copilot",
-      business: "Mifumo Labs",
+      business: "SENDA",
       industry: "Technology",
       language: "en",
       tone: "Support",
@@ -363,7 +363,7 @@ const builderTemplates: BuilderTemplate[] = [
     summaryKey: "pages.ai_agents.templates.booking.summary",
     setup: {
       name: "Kuza Booking Copilot",
-      business: "Mifumo Labs",
+      business: "SENDA",
       industry: "Hospitality",
       language: "sw",
       tone: "Friendly",
