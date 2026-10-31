@@ -6181,6 +6181,23 @@ function UsersTab() {
       });
   };
 
+  // Team Inbox is off for every new account until staff switch it on here.
+  const toggleInboxAccess = (u) => {
+    const next = u.team_inbox_access_enabled !== true;
+    setItems(prev => prev.map(x => x.id === u.id ? { ...x, team_inbox_access_enabled: next } : x));
+    adminFetch(`/users/${u.id}/team-inbox-access`, { method: 'PATCH', body: JSON.stringify({ enabled: next }) }, onLogout)
+      .then(res => {
+        if (!res.success) {
+          setItems(prev => prev.map(x => x.id === u.id ? { ...x, team_inbox_access_enabled: !next } : x));
+          showToast?.(res.error?.message || 'Failed to update Team Inbox access.', 'error');
+        }
+      })
+      .catch(() => {
+        setItems(prev => prev.map(x => x.id === u.id ? { ...x, team_inbox_access_enabled: !next } : x));
+        showToast?.('Failed to update Team Inbox access.', 'error');
+      });
+  };
+
   const toggleStatus = (u) => {
     const next = u.status === 'active' ? 'suspended' : 'active';
     if (next === 'suspended' && !window.confirm(`Suspend ${u.name}? They will be signed out immediately.`)) return;
@@ -6356,7 +6373,7 @@ function UsersTab() {
           <div style={{overflowX:'auto'}}>
             <table className="senda-table" style={{minWidth:1180}}>
               <thead>
-                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>SMS Access</th><th>IVR Access</th><th>2FA</th><th>Joined</th><th>Actions</th></tr>
+                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>SMS Access</th><th>IVR Access</th><th>Team Inbox</th><th>2FA</th><th>Joined</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {items.map(u=>{
@@ -6432,6 +6449,19 @@ function UsersTab() {
                           color:u.ivr_access_enabled?'#065f46':'#64748b'}}>
                         <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
                         {u.ivr_access_enabled ? 'Granted' : 'Off'}
+                      </button>
+                    </td>
+                    <td>
+                      <button
+                        onClick={()=>toggleInboxAccess(u)}
+                        disabled={trashed}
+                        title={u.team_inbox_access_enabled ? 'Click to revoke Team Inbox access' : 'Click to grant Team Inbox access'}
+                        style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:99,
+                          border:'none',cursor:trashed?'default':'pointer',fontSize:11,fontWeight:700,opacity:trashed?.5:1,
+                          background:u.team_inbox_access_enabled?'#d1fae5':'#f1f5f9',
+                          color:u.team_inbox_access_enabled?'#065f46':'#64748b'}}>
+                        <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
+                        {u.team_inbox_access_enabled ? 'Granted' : 'Off'}
                       </button>
                     </td>
                     <td>
@@ -7129,6 +7159,7 @@ function UserDetailView({ user, onClose, onChanged, isSuperAdmin }) {
                     <Field label="Phone verified" value={d.phone_verified ? 'Yes' : 'No'}/>
                     <Field label="SMS access" value={d.sms_access_enabled !== false ? 'Granted' : 'Off'}/>
                     <Field label="IVR access" value={d.ivr_access_enabled ? 'Granted' : 'Off'}/>
+                    <Field label="Team Inbox access" value={d.team_inbox_access_enabled ? 'Granted' : 'Off'}/>
                     <Field label="Joined" value={d.joined_at ? new Date(d.joined_at).toLocaleString() : '—'}/>
                     <Field label="Last seen" value={d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'Never'}/>
                   </div>
@@ -15002,6 +15033,9 @@ const FEATURE_ACCESS_FIELDS = [
   { key: 'ivr_access_enabled', endpoint: 'ivr-access', label: 'IVR Access', defaultOn: false,
     grantedTitle: 'Click to revoke Voice/IVR flow access', offTitle: 'Click to grant Voice/IVR flow access',
     grantedToast: 'IVR access granted to', revokedToast: 'IVR access revoked from', failToast: 'Failed to update IVR access.' },
+  { key: 'team_inbox_access_enabled', endpoint: 'team-inbox-access', label: 'Team Inbox', defaultOn: false,
+    grantedTitle: 'Click to revoke Team Inbox access', offTitle: 'Click to grant Team Inbox access',
+    grantedToast: 'Team Inbox access granted to', revokedToast: 'Team Inbox access revoked from', failToast: 'Failed to update Team Inbox access.' },
 ];
 
 const isFeatureGranted = (u, field) => field.defaultOn ? u[field.key] !== false : u[field.key] === true;
