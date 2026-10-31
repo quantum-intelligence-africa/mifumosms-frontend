@@ -21,7 +21,7 @@ Content-Type: application/json
 {
   "recipients": ["+255614853618"],
   "message": "Karibu Senda — hello from the API",
-  "sender_id": "Mifumosms"
+  "sender_id": "SENDA"
 }`;
 
 const getUseCases = (
@@ -157,7 +157,7 @@ const CodeSnippet = ({ t }: { t: TFn }) => {
           {"\n  "}
           <span className="text-sky-300">"sender_id"</span>
           <span className="text-white">: </span>
-          <span className="text-emerald-300">"Mifumosms"</span>
+          <span className="text-emerald-300">"SENDA"</span>
           {"\n"}
           <span className="text-white">{"}"}</span>
         </code>

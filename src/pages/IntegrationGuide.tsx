@@ -290,7 +290,7 @@ const IntegrationGuide = () => {
                       request={`{
   "recipients": ["+255614853618"],
   "message": "Hello from API",
-  "sender_id": "Mifumosms",
+  "sender_id": "SENDA",
   "schedule_time": "2026-04-10T08:00:00+03:00"
 }`}
                       response={`{
