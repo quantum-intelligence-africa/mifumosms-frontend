@@ -17092,7 +17092,7 @@ function WaBroadcastPanel() {
                 <select id="wab-kind" style={field} value={kind} onChange={e=>setKind(e.target.value)}>
                   {kinds.map(k => <option key={k.kind} value={k.kind}>{k.label}</option>)}
                 </select>
-                {kind === 'all' && <p style={hint}>Every active account with a phone number, except staff. You can remove people from the list before sending.</p>}
+                {kind === 'all' && <p style={hint}>Every active direct SENDA user with a phone number (partners' clients and staff are not included). You can remove people from the list before sending.</p>}
               </div>
               {kind !== 'all' && <div><label style={lbl} htmlFor="wab-days">Days (N)</label><input id="wab-days" style={field} inputMode="numeric" value={days} onChange={e=>setDays(e.target.value)}/></div>}
               {kind !== 'all' && <div><label style={lbl} htmlFor="wab-thr">Credits (N)</label><input id="wab-thr" style={field} inputMode="numeric" value={threshold} onChange={e=>setThreshold(e.target.value)}/></div>}
