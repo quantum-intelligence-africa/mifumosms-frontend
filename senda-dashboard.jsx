@@ -17943,6 +17943,24 @@ function SmsBroadcastTab() {
 
           {/* Right column: preview / live progress */}
           <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+            {/* Nothing to show yet: say what this side is for instead of leaving it blank */}
+            {!progress && !stats && (
+              <div className="senda-card" style={{ padding:'28px 24px', background:'#fff', border:'1.5px dashed #dbe3ee' }}>
+                <div style={{ width:44, height:44, borderRadius:12, background:`${BRAND}12`, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
+                  <Users size={22} color={BRAND} strokeWidth={2}/>
+                </div>
+                <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a', margin:0 }}>Who will receive this?</h3>
+                <p style={{ fontSize:13, color:'#64748b', margin:'6px 0 16px', lineHeight:1.55 }}>
+                  Choose your audience and write the message, then click <b>Preview recipients</b>. You will see here:
+                </p>
+                {['How many people are eligible, and why anyone is left out', 'A sample of the message as each person will get it', 'The live progress once you send'].map((t, i) => (
+                  <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start', fontSize:13, color:'#334155', marginBottom:10 }}>
+                    <span style={{ width:20, height:20, borderRadius:'50%', background:`${BRAND}14`, color:BRAND, fontSize:11, fontWeight:800, display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{i + 1}</span>
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {progress && (
               <div className="senda-card" style={{ padding:20 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
