@@ -23452,6 +23452,69 @@ function EngagementTab() {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
+// ─── WhatsApp chatbot switch (mifumosms_backend / chatbot.pause) ───────────────────
+// Turn the automatic WhatsApp chatbot off (or back on) for each platform number. A paused number still RECEIVES messages (they appear in Team Inbox);
+// the chatbot just does not answer them. Only a super admin can change it.
+function WhatsAppChatbotSwitch() {
+  const { showToast, onLogout, adminInfo } = React.useContext(AppContext);
+  const canChange = adminInfo?.role === 'super_admin';
+  const [data, setData]       = useState(null);
+  const [error, setError]     = useState(null);
+  const [busyId, setBusyId]   = useState(null);
+
+  const load = useCallback(() => {
+    adminFetch('/wa-chatbot', {}, onLogout)
+      .then(res => { if (res.success) setData(res.data); else setError(res.error?.message || 'Failed to load the chatbot status.'); })
+      .catch(e => setError(e.message));
+  }, [onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  const setPaused = (n, paused) => {
+    if (paused && !window.confirm(`Stop the chatbot on ${n.label}? Customers who message this number will get no automatic reply until you switch it back on. Their messages still arrive in Team Inbox.`)) return;
+    setBusyId(n.phone_number_id);
+    adminFetch('/wa-chatbot', { method:'PUT', body: JSON.stringify({ phone_number_id: n.phone_number_id, paused }) }, onLogout)
+      .then(res => {
+        if (res.success) { setData(res.data); showToast?.(paused ? 'Chatbot stopped.' : 'Chatbot is running again.', 'success'); }
+        else showToast?.(res.error?.message || 'Failed to change the chatbot.', 'error');
+      })
+      .catch(() => showToast?.('Failed to change the chatbot.', 'error'))
+      .finally(() => setBusyId(null));
+  };
+
+  if (error) return <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px',maxWidth:720}}>{error}</div>;
+  if (!data) return <div style={{padding:40,textAlign:'center',color:'#94a3b8',fontSize:13}}>Loading…</div>;
+  return (
+    <div style={{display:'grid',gap:14,maxWidth:720}}>
+      <p style={{fontSize:13,color:'#64748b',margin:0,lineHeight:1.55}}>
+        The chatbot answers customers who message your WhatsApp number (the menu with <b>View packages</b>, <b>Talk to sales</b> and so on). Stop it here when you want to
+        reply yourself. <b>Messages still arrive</b> and show in Team Inbox; only the automatic replies stop. It takes effect within a few seconds.
+      </p>
+      {data.numbers.length === 0 && (
+        <div style={{fontSize:13,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'12px 16px'}}>
+          No platform WhatsApp number is saved yet. Add one under <b>Credentials</b> first.
+        </div>)}
+      {data.numbers.map(n => (
+        <div key={n.phone_number_id} style={{background:'#fff',border:'1px solid #e8edf3',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,.04)',padding:'16px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,flexWrap:'wrap'}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:14.5,fontWeight:700,color:'#0f172a'}}>{n.label}</div>
+            <div style={{fontSize:12,color:'#94a3b8',margin:'2px 0 8px'}}>{n.display_phone_number || n.phone_number_id}</div>
+            <span style={{display:'inline-flex',alignItems:'center',gap:6,padding:'3px 11px',borderRadius:99,fontSize:12,fontWeight:700,
+              background:n.paused?'#fef3c7':'#dcfce7',color:n.paused?'#92400e':'#166534'}}>
+              <span style={{width:6,height:6,borderRadius:'50%',background:'currentColor'}}/>{n.paused ? 'Chatbot stopped: not replying' : 'Chatbot running: replying to customers'}
+            </span>
+          </div>
+          {canChange ? (
+            <button className="senda-btn senda-btn-sm" disabled={busyId === n.phone_number_id} onClick={()=>setPaused(n, !n.paused)}
+              style={{height:38,padding:'0 18px',fontWeight:700,border:'none',opacity:busyId === n.phone_number_id ? .6 : 1,
+                background:n.paused?'#16a34a':'#dc2626',color:'#fff'}}>
+              {busyId === n.phone_number_id ? 'Saving…' : n.paused ? 'Start chatbot' : 'Stop chatbot'}
+            </button>
+          ) : <span style={{fontSize:12,color:'#94a3b8'}}>Only a super admin can change this.</span>}
+        </div>))}
+    </div>
+  );
+}
+
 function WhatsAppSend({ partners }) {
   const { onLogout, showToast } = React.useContext(AppContext);
   const [scope, setScope]         = useState('default');
@@ -23632,7 +23695,7 @@ function WhatsAppTab() {
 
       {/* Sub-tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
-        {[{ id: 'credentials', label: 'Credentials' }, { id: 'send', label: 'Send Message' }].map(t => (
+        {[{ id: 'credentials', label: 'Credentials' }, { id: 'send', label: 'Send Message' }, { id: 'chatbot', label: 'Chatbot' }].map(t => (
           <button key={t.id} onClick={() => setSub(t.id)}
             style={{ height: 36, padding: '0 16px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
               border: sub === t.id ? `1px solid ${BRAND}` : '1px solid #e2e8f0',
@@ -23646,6 +23709,8 @@ function WhatsAppTab() {
         <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Loading…</div>
       ) : sub === 'send' ? (
         <WhatsAppSend partners={partners} />
+      ) : sub === 'chatbot' ? (
+        <WhatsAppChatbotSwitch />
       ) : (
         <>
           {/* Platform default */}
