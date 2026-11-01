@@ -16977,7 +16977,7 @@ function WaBroadcastPanel() {
   const sourceLabel = { name:"Each person's name", phone:'Phone number', email:'Email', static:'Same text for everyone…' };
 
   return (
-    <div style={{padding:'0 0 48px',maxWidth:1120,display:'grid',gap:18}}>
+    <div style={{padding:'0 0 48px',maxWidth:1440,display:'grid',gap:18}}>
       <div>
         <h2 style={{fontSize:20,fontWeight:800,color:'#0f172a',margin:0}}>WhatsApp Broadcast</h2>
         <p style={{fontSize:13,color:'#64748b',margin:'4px 0 0',maxWidth:760,lineHeight:1.55}}>
@@ -16987,6 +16987,9 @@ function WaBroadcastPanel() {
       </div>
       {error && <div role="alert" style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px'}}>{error}</div>}
 
+      <style>{`.wab-grid{display:grid;gap:18px;align-items:start;grid-template-columns:minmax(0,1fr)}.wab-form,.wab-preview{display:grid;gap:18px;min-width:0}@media (min-width:1100px){.wab-grid{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}.wab-preview{order:-1}}`}</style>
+      <div className="wab-grid">
+      <div className="wab-form">
       {/* 1 — the message */}
       <WaStep n="1" title="Message" sub="Pick the WhatsApp number and the approved template to send.">
         <div style={stepBody}>
@@ -17152,6 +17155,8 @@ function WaBroadcastPanel() {
         </div>
       </WaStep>
 
+      </div>
+      <div className="wab-preview">
       {/* 3 — review and send */}
       <WaStep n="3" title="Review and send" sub="Preview who will receive it, remove anyone you do not want, then send.">
         <div style={stepBody}>
@@ -17259,6 +17264,8 @@ function WaBroadcastPanel() {
           </>)}
         </div>
       </WaStep>
+      </div>
+      </div>
 
       {schedules.length > 0 && (
         <WaStep title="Repeating broadcasts" sub="These run automatically.">
@@ -17753,7 +17760,7 @@ function SmsBroadcastTab() {
       </div>
 
       {view === 'compose' && (
-        <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'minmax(0,1.1fr) minmax(0,1fr)', gap:18, alignItems:'start' }}>
+        <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'minmax(0,1.6fr) minmax(0,1fr)', gap:18, alignItems:'start' }}>
           {/* Compose card */}
           <div className="senda-card" style={{ padding:22 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
