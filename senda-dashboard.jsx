@@ -16788,14 +16788,18 @@ function WaBroadcastPanel() {
   const [tplState, setTplState]   = useState({ loading:false, error:null });
   const [tplKey, setTplKey]       = useState('');
   const [map, setMap]             = useState({});
-  const [audMode, setAudMode]     = useState('segment');
+  const [audMode, setAudMode]     = useState('senda');
   // Same audiences and segments as the SMS broadcast: direct users, or one partner's clients, narrowed by how they use SMS.
   const [segAudience, setSegAudience] = useState('direct_users');
   const [partnerId, setPartnerId]     = useState('');
   const [partners, setPartners]       = useState([]);
   const [segment, setSegment]         = useState('all');
   const [needSender, setNeedSender]   = useState(true);
-  const [kind, setKind]           = useState('inactive');
+  const [kind, setKind]           = useState('all');
+  // People the admin removed from the list (by number). They are never messaged; "Add back" returns them.
+  const [excluded, setExcluded]   = useState([]);
+  const [peopleQuery, setPeopleQuery] = useState('');
+  const [peoplePage, setPeoplePage]   = useState(1);
   const [days, setDays]           = useState('30');
   const [threshold, setThreshold] = useState('10');
   const [phones, setPhones]       = useState('');
@@ -16841,6 +16845,9 @@ function WaBroadcastPanel() {
 
   useEffect(() => { setTplKey(''); setMap({}); loadTemplates(numberId); }, [numberId, loadTemplates]);
   useEffect(() => { setPreview(null); }, [numberId, tplKey, map, audMode, segAudience, partnerId, segment, needSender, kind, days, threshold, phones, purpose, consent]);
+  // A different audience starts with a clean list; removing or adding back a person re-checks the list straight away.
+  useEffect(() => { setExcluded([]); setPeopleQuery(''); setPeoplePage(1); }, [audMode, segAudience, partnerId, segment, needSender, kind, days, threshold, phones]);
+  useEffect(() => { if (preview && draftId) { void check(); } }, [excluded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = (key) => {
     setTplKey(key);
@@ -16852,9 +16859,9 @@ function WaBroadcastPanel() {
     name: name.trim() || `Admin broadcast ${new Date().toLocaleDateString()}`, purpose, phone_number_id: numberId,
     template_name: template?.name, language_code: template?.language, consent_attested: !!consent,
     param_map: (template?.tokens || []).map(tok => { const m = map[tok] || { source:'name', text:'' }; return { token: tok, source: m.source === 'static' ? `static:${m.text}` : m.source, default: m.default || '' }; }),
-    audience: audMode === 'segment' ? { segment_users: { audience: segAudience, partner_id: segAudience === 'partners' ? partnerId : '', segment, require_sender: needSender } }
+    audience: { excluded_phones: excluded, ...(audMode === 'segment' ? { segment_users: { audience: segAudience, partner_id: segAudience === 'partners' ? partnerId : '', segment, require_sender: needSender } }
       : audMode === 'senda' ? { senda_users: { kind, days: Number(days) || 0, threshold: Number(threshold) || 0 } }
-      : { phones: phones.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean) },
+      : { phones: phones.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean) }) },
   });
 
   const check = async () => {
@@ -16954,7 +16961,7 @@ function WaBroadcastPanel() {
 
       <div style={card}>
         <div style={{display:'flex',gap:6}}>
-          {[['segment','Users by SMS segment'],['senda','SENDA users by activity'],['phones','Phone numbers']].map(([id,label]) => (
+          {[['senda','All users / by activity'],['segment','Users by SMS segment'],['phones','Phone numbers']].map(([id,label]) => (
             <button key={id} onClick={()=>setAudMode(id)} className="senda-btn senda-btn-sm"
               style={{background:audMode===id?'#0f172a':'#f1f5f9',color:audMode===id?'#fff':'#475569',border:'none'}}>{label}</button>))}
         </div>
@@ -16996,8 +17003,8 @@ function WaBroadcastPanel() {
                 {kinds.map(k => <option key={k.kind} value={k.kind}>{k.label}</option>)}
               </select>
             </div>
-            <div><label style={lbl} htmlFor="wab-days">Days (N)</label><input id="wab-days" style={field} inputMode="numeric" value={days} onChange={e=>setDays(e.target.value)}/></div>
-            <div><label style={lbl} htmlFor="wab-thr">Credits (N)</label><input id="wab-thr" style={field} inputMode="numeric" value={threshold} onChange={e=>setThreshold(e.target.value)}/></div>
+            {kind !== 'all' && <div><label style={lbl} htmlFor="wab-days">Days (N)</label><input id="wab-days" style={field} inputMode="numeric" value={days} onChange={e=>setDays(e.target.value)}/></div>}
+            {kind !== 'all' && <div><label style={lbl} htmlFor="wab-thr">Credits (N)</label><input id="wab-thr" style={field} inputMode="numeric" value={threshold} onChange={e=>setThreshold(e.target.value)}/></div>}
           </div>
         ) : (
           <div>
@@ -17028,23 +17035,58 @@ function WaBroadcastPanel() {
           {(preview.skipped_by_reason || []).length > 0 && (
             <div style={{fontSize:12,color:'#475569'}}>Left out: {preview.skipped_by_reason.map(r => `${r.label} (${r.count})`).join(' · ')}</div>)}
           {(preview.problems || []).map((p, i) => <div key={i} style={{fontSize:12.5,color:'#b91c1c'}}>{p}</div>)}
-          {(preview.people || []).length > 0 && (
-            <div style={{border:'1px solid #eef2f7',borderRadius:10,overflow:'hidden'}}>
-              <div style={{overflowX:'auto',maxHeight:320,overflowY:'auto'}}>
-                <table className="senda-table" style={{minWidth:640,fontSize:12.5}}>
-                  <thead><tr><th>Name</th><th>Business</th><th>Phone</th><th>Credits</th><th>Purchased</th><th>Used</th><th>WhatsApp</th></tr></thead>
-                  <tbody>
-                    {preview.people.map((u, i) => (
-                      <tr key={i}>
-                        <td>{u.name || '—'}</td><td>{u.business}</td><td style={{fontFamily:'monospace'}}>{u.phone}</td>
-                        <td>{u.credits}</td><td>{u.purchased}</td><td>{u.used}</td>
-                        <td>{u.will_receive ? <span style={{color:'#065f46',fontWeight:700}}>Will receive</span> : <span style={{color:'#92400e'}}>Left out · {u.reason}</span>}</td>
-                      </tr>))}
-                  </tbody>
-                </table>
-              </div>
-              {preview.people.length >= 300 && <div style={{fontSize:11.5,color:'#94a3b8',padding:'6px 12px'}}>Showing the first 300 people. Everyone eligible still receives it.</div>}
-            </div>)}
+          {(preview.people || []).length > 0 && (() => {
+            const all = preview.people;
+            const q = peopleQuery.trim().toLowerCase();
+            const shown = q ? all.filter(u => `${u.name} ${u.email} ${u.business} ${u.phone}`.toLowerCase().includes(q)) : all;
+            const PER_PAGE = 25;
+            const pages = Math.max(1, Math.ceil(shown.length / PER_PAGE));
+            const page = Math.min(peoplePage, pages);
+            const rows = shown.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+            const has = (k) => all.some(u => u[k] !== undefined && u[k] !== '');
+            const isOut = (u) => excluded.includes(u.id);
+            const toggle = (u) => setExcluded(x => x.includes(u.id) ? x.filter(i => i !== u.id) : [...x, u.id]);
+            const removeShown = () => setExcluded(x => Array.from(new Set([...x, ...shown.filter(u => u.will_receive).map(u => u.id)])));
+            return (
+              <div style={{border:'1px solid #eef2f7',borderRadius:10,overflow:'hidden'}}>
+                <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'10px 12px',background:'#f8fafc',borderBottom:'1px solid #eef2f7'}}>
+                  <input style={{...field,width:240,padding:'6px 10px'}} placeholder="Search name, email or business" aria-label="Search people" value={peopleQuery}
+                    onChange={e=>{setPeopleQuery(e.target.value);setPeoplePage(1);}}/>
+                  <span style={{fontSize:12,color:'#64748b'}}>{shown.length} {q ? 'found' : 'people'}</span>
+                  <span style={{marginLeft:'auto',display:'flex',gap:6}}>
+                    {q && shown.some(u => u.will_receive) && <button className="senda-btn senda-btn-sm" onClick={removeShown} style={{background:'#fee2e2',color:'#dc2626',border:'none'}}>Remove these {shown.filter(u => u.will_receive).length}</button>}
+                    {excluded.length > 0 && <button className="senda-btn senda-btn-sm" onClick={()=>setExcluded([])} style={{background:'#f1f5f9',color:'#334155',border:'none'}}>Add back all removed ({excluded.length})</button>}
+                  </span>
+                </div>
+                <div style={{overflowX:'auto'}}>
+                  <table className="senda-table" style={{minWidth:700,fontSize:12.5}}>
+                    <thead><tr><th>Name</th>{has('email') && <th>Email</th>}{has('business') && <th>Business</th>}<th>Phone</th>
+                      {has('registered') && <th>Registered</th>}{has('last_seen') && <th>Last seen</th>}{has('credits') && <th>Credits</th>}{has('used') && <th>SMS used</th>}<th>WhatsApp</th><th></th></tr></thead>
+                    <tbody>
+                      {rows.map(u => (
+                        <tr key={u.id} style={{opacity:isOut(u)?.55:1}}>
+                          <td>{u.name || '—'}</td>{has('email') && <td>{u.email}</td>}{has('business') && <td>{u.business}</td>}<td style={{fontFamily:'monospace'}}>{u.phone}</td>
+                          {has('registered') && <td>{u.registered || '—'}</td>}{has('last_seen') && <td>{u.last_seen || 'never'}</td>}{has('credits') && <td>{u.credits}</td>}{has('used') && <td>{u.used}</td>}
+                          <td>{u.will_receive ? <span style={{color:'#065f46',fontWeight:700}}>Will receive</span> : <span style={{color:'#92400e'}}>Left out · {u.reason}</span>}</td>
+                          <td style={{textAlign:'right'}}>
+                            {(u.will_receive || isOut(u)) && (
+                              <button className="senda-btn senda-btn-sm" onClick={()=>toggle(u)}
+                                style={{background:isOut(u)?'#e0f2fe':'#fee2e2',color:isOut(u)?'#0369a1':'#dc2626',border:'none'}}>{isOut(u) ? 'Add back' : 'Remove'}</button>)}
+                          </td>
+                        </tr>))}
+                      {rows.length === 0 && <tr><td colSpan={9} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>Nobody matches.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',borderTop:'1px solid #eef2f7',fontSize:12,color:'#64748b'}}>
+                  <span>{all.length >= 3000 ? 'Showing the first 3,000 people; everyone eligible still receives it.' : `Page ${page} of ${pages}`}</span>
+                  <span style={{display:'flex',gap:6}}>
+                    <button className="senda-btn senda-btn-sm" disabled={page<=1} onClick={()=>setPeoplePage(page-1)} style={{background:'#f1f5f9',color:'#334155',border:'none',opacity:page<=1?.5:1}}>Previous</button>
+                    <button className="senda-btn senda-btn-sm" disabled={page>=pages} onClick={()=>setPeoplePage(page+1)} style={{background:'#f1f5f9',color:'#334155',border:'none',opacity:page>=pages?.5:1}}>Next</button>
+                  </span>
+                </div>
+              </div>);
+          })()}
           {(preview.samples || []).slice(0, 2).map(s => (
             <div key={s.phone} style={{background:'#ecfdf5',border:'1px solid #bbf7d0',borderRadius:10,padding:'8px 12px',fontSize:12.5,color:'#14532d',whiteSpace:'pre-wrap'}}>
               <div style={{fontSize:11,color:'#4d7c5b',marginBottom:3}}>Example for {s.name || s.phone}</div>{s.text}
