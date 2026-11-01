@@ -16977,7 +16977,7 @@ function WaBroadcastPanel() {
   const sourceLabel = { name:"Each person's name", phone:'Phone number', email:'Email', static:'Same text for everyone…' };
 
   return (
-    <div style={{padding:'24px 24px 48px',maxWidth:1120,display:'grid',gap:18}}>
+    <div style={{padding:'0 0 48px',maxWidth:1120,display:'grid',gap:18}}>
       <div>
         <h2 style={{fontSize:20,fontWeight:800,color:'#0f172a',margin:0}}>WhatsApp Broadcast</h2>
         <p style={{fontSize:13,color:'#64748b',margin:'4px 0 0',maxWidth:760,lineHeight:1.55}}>
@@ -17303,7 +17303,7 @@ function BroadcastTab() {
       style={{background:channel===id?'#0f172a':'#f1f5f9',color:channel===id?'#fff':'#475569',border:'none'}}>{label}</button>);
   return (
     <>
-      <div style={{display:'flex',gap:6,padding:'18px 24px 0'}}>{pill('sms','SMS')}{pill('whatsapp','WhatsApp')}</div>
+      <div style={{display:'flex',gap:6,marginBottom:14}}>{pill('sms','SMS')}{pill('whatsapp','WhatsApp')}</div>
       {channel === 'sms' ? <SmsBroadcastTab/> : <WaBroadcastPanel/>}
     </>
   );
