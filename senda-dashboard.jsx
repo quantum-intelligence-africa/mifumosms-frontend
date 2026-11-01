@@ -16924,6 +16924,14 @@ function WaBroadcastPanel() {
   const removeSchedule = async (row) => { if (window.confirm('Stop and remove this repeating broadcast?')) { await call('DELETE', `/recurring/${row.id}/`); loadRecent(); } };
 
   const canSend = !!preview && preview.can_launch && preview.eligible > 0 && !busy;
+  // Say what is missing, so a greyed-out button is never a mystery.
+  const missing = [
+    !template && 'Choose an approved template.',
+    audMode === 'segment' && segAudience === 'partners' && !partnerId && 'Choose the partner.',
+    audMode === 'phones' && !phones.trim() && 'Enter at least one phone number.',
+    template && isMarketing && !consent && 'Tick the box confirming these people agreed to receive marketing messages from SENDA on WhatsApp.',
+    template && (template.tokens || []).some(tok => map[tok]?.source === 'static' && !(map[tok]?.text || '').trim()) && 'Fill in the text for every template value.',
+  ].filter(Boolean);
   const canCheck = !!template && !busy && (audMode === 'senda' || (audMode === 'segment' && (segAudience === 'direct_users' || partnerId)) || (audMode === 'phones' && phones.trim())) && (!isMarketing || consent)
     && (template.tokens || []).every(tok => (map[tok]?.source !== 'static') || (map[tok]?.text || '').trim());
 
@@ -17103,7 +17111,8 @@ function WaBroadcastPanel() {
               <Send size={15} strokeWidth={2.2} style={{marginRight:6}}/>{busy==='send' ? 'Starting…' : 'Send Broadcast'}
             </button>)}
         </div>
-        {!scheduleOn && !preview && <div style={{fontSize:12,color:'#94a3b8'}}>Run a preview to see how many recipients are eligible before sending.</div>}
+        {missing.length > 0 && <div style={{fontSize:12.5,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'8px 12px'}}>{missing.map((m, i) => <div key={i}>• {m}</div>)}</div>}
+        {missing.length === 0 && !scheduleOn && !preview && <div style={{fontSize:12,color:'#94a3b8'}}>Run a preview to see how many recipients are eligible before sending.</div>}
         {scheduleOn && <div style={{fontSize:12,color:'#94a3b8'}}>Save schedule checks the recipients first, then schedules it. Repeating ones are listed below.</div>}
       </div>
 
