@@ -14307,6 +14307,7 @@ function VoiceNumbersTab() {
   const [helpNumber, setHelpNumber] = useState('');                   // the number on the website's "Need help? Call us" button
   const [helpSaved, setHelpSaved]   = useState('');
   const [diarizeMono, setDiarizeMono] = useState(false);              // speaker separation on short single-channel recordings
+  const [enforcePlan, setEnforcePlan] = useState(true);       // organizations with no active plan hear two beeps (and plan limits apply)
   const [builtInMusic, setBuiltInMusic] = useState(true);   // SENDA's own waiting-music file on or off for the whole platform
   const [defaultMsg, setDefaultMsg] = useState('');   // what callers hear on any switched-off number without its own message
   const [defaultDraft, setDefaultDraft] = useState('');
@@ -14375,6 +14376,7 @@ function VoiceNumbersTab() {
     voiceAdminFetch('/voice/admin/settings/', {}, onLogout).then(res => {
       if (res.success) {
         setBuiltInMusic(res.data?.built_in_waiting_music !== false);
+        setEnforcePlan(res.data?.enforce_plan !== false);
         setCallSummaryEmails(res.data?.call_summary_emails === true);
         setDiarizeMono(res.data?.diarize_mono_calls === true);
         setHelpNumber(res.data?.help_call_number || ''); setHelpSaved(res.data?.help_call_number || '');
@@ -14389,6 +14391,15 @@ function VoiceNumbersTab() {
   }, [onLogout]);
 
   // Takes effect on the next call, without restarting anything.
+  const saveEnforcePlan = (on) => {
+    const before = enforcePlan;
+    setEnforcePlan(on);
+    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ enforce_plan: on }) }, onLogout).then(res => {
+      if (!res.success) { setEnforcePlan(before); showToast?.(res.error || 'Could not save the plan setting.', 'error'); return; }
+      showToast?.(on ? 'Plans are enforced: organizations with no active plan hear two beeps.' : 'Plans are not enforced: every number works, plan or not.', 'success');
+    });
+  };
+
   const saveBuiltInMusic = (on) => {
     const before = builtInMusic;
     setBuiltInMusic(on);
@@ -14724,6 +14735,18 @@ function VoiceNumbersTab() {
         <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
           Applies to new transcriptions only, and only to recordings of about 30 seconds or less; longer ones keep the plain transcript. Recordings with a voice on each channel are always labelled.
           Earlier results are not changed. Not yet measured on SENDA recordings: try it on a few test calls first.
+        </p>
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Plans</div>
+        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
+          <input type="checkbox" checked={enforcePlan} onChange={e => saveEnforcePlan(e.target.checked)} style={{marginTop:3}}/>
+          <span><b>Require an active plan</b>: a caller to an organization with no active plan hears two beeps instead of its call flow.</span>
+        </label>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
+          Two beeps mean the number is connected and the organization simply has no active (paid or trial) plan. The moment a plan becomes active, its next call runs the flow:
+          nothing needs switching. Plan limits (agents, numbers, menus) follow the same switch. Switch it off to let every number work whatever its plan; it applies from the next call.
         </p>
       </div>
 
@@ -16765,7 +16788,13 @@ function WaBroadcastPanel() {
   const [tplState, setTplState]   = useState({ loading:false, error:null });
   const [tplKey, setTplKey]       = useState('');
   const [map, setMap]             = useState({});
-  const [audMode, setAudMode]     = useState('senda');
+  const [audMode, setAudMode]     = useState('segment');
+  // Same audiences and segments as the SMS broadcast: direct users, or one partner's clients, narrowed by how they use SMS.
+  const [segAudience, setSegAudience] = useState('direct_users');
+  const [partnerId, setPartnerId]     = useState('');
+  const [partners, setPartners]       = useState([]);
+  const [segment, setSegment]         = useState('all');
+  const [needSender, setNeedSender]   = useState(true);
   const [kind, setKind]           = useState('inactive');
   const [days, setDays]           = useState('30');
   const [threshold, setThreshold] = useState('10');
@@ -16797,6 +16826,7 @@ function WaBroadcastPanel() {
       if (r.success === false) setError(r.message || 'WhatsApp broadcasting is not available to your account.');
     }).catch(e => { setNumbers([]); setError(e.message); });
     call('GET', '/senda-users/kinds/').then(r => setKinds(r.kinds || [])).catch(() => {});
+    adminFetch(`${BROADCAST_API}/broadcasts/partinas`, { method:'GET' }, onLogout).then(r => { if (r.success) setPartners(r.data || []); }).catch(() => {});
     loadRecent();
   }, [call, loadRecent]);
 
@@ -16810,7 +16840,7 @@ function WaBroadcastPanel() {
   }, [call]);
 
   useEffect(() => { setTplKey(''); setMap({}); loadTemplates(numberId); }, [numberId, loadTemplates]);
-  useEffect(() => { setPreview(null); }, [numberId, tplKey, map, audMode, kind, days, threshold, phones, purpose, consent]);
+  useEffect(() => { setPreview(null); }, [numberId, tplKey, map, audMode, segAudience, partnerId, segment, needSender, kind, days, threshold, phones, purpose, consent]);
 
   const pick = (key) => {
     setTplKey(key);
@@ -16822,7 +16852,8 @@ function WaBroadcastPanel() {
     name: name.trim() || `Admin broadcast ${new Date().toLocaleDateString()}`, purpose, phone_number_id: numberId,
     template_name: template?.name, language_code: template?.language, consent_attested: !!consent,
     param_map: (template?.tokens || []).map(tok => { const m = map[tok] || { source:'name', text:'' }; return { token: tok, source: m.source === 'static' ? `static:${m.text}` : m.source, default: m.default || '' }; }),
-    audience: audMode === 'senda' ? { senda_users: { kind, days: Number(days) || 0, threshold: Number(threshold) || 0 } }
+    audience: audMode === 'segment' ? { segment_users: { audience: segAudience, partner_id: segAudience === 'partners' ? partnerId : '', segment, require_sender: needSender } }
+      : audMode === 'senda' ? { senda_users: { kind, days: Number(days) || 0, threshold: Number(threshold) || 0 } }
       : { phones: phones.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean) },
   });
 
@@ -16851,7 +16882,7 @@ function WaBroadcastPanel() {
     } catch (e) { setError(e.message); } finally { setBusy(''); }
   };
 
-  const canCheck = !!template && !busy && (audMode === 'senda' || phones.trim()) && (!isMarketing || consent)
+  const canCheck = !!template && !busy && (audMode === 'senda' || (audMode === 'segment' && (segAudience === 'direct_users' || partnerId)) || (audMode === 'phones' && phones.trim())) && (!isMarketing || consent)
     && (template.tokens || []).every(tok => (map[tok]?.source !== 'static') || (map[tok]?.text || '').trim());
 
   if (numbers === null) return <div style={{padding:24,color:'#94a3b8',fontSize:13}}>Loading…</div>;
@@ -16923,11 +16954,41 @@ function WaBroadcastPanel() {
 
       <div style={card}>
         <div style={{display:'flex',gap:6}}>
-          {[['senda','SENDA users'],['phones','Phone numbers']].map(([id,label]) => (
+          {[['segment','Users by SMS segment'],['senda','SENDA users by activity'],['phones','Phone numbers']].map(([id,label]) => (
             <button key={id} onClick={()=>setAudMode(id)} className="senda-btn senda-btn-sm"
               style={{background:audMode===id?'#0f172a':'#f1f5f9',color:audMode===id?'#fff':'#475569',border:'none'}}>{label}</button>))}
         </div>
-        {audMode === 'senda' ? (
+        {audMode === 'segment' ? (
+          <div style={{display:'grid',gap:12}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <div>
+                <label style={lbl} htmlFor="wab-seg-aud">Audience</label>
+                <select id="wab-seg-aud" style={field} value={segAudience} onChange={e=>setSegAudience(e.target.value)}>
+                  {AUDIENCES.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+                </select>
+              </div>
+              {segAudience === 'partners' && (
+                <div>
+                  <label style={lbl} htmlFor="wab-seg-partner">Partner</label>
+                  <select id="wab-seg-partner" style={field} value={partnerId} onChange={e=>setPartnerId(e.target.value)}>
+                    <option value="">Choose a partner…</option>
+                    {partners.map(p => <option key={p.partner_id} value={p.partner_id}>{p.name} ({p.clients_count} clients)</option>)}
+                  </select>
+                </div>)}
+            </div>
+            <div>
+              <label style={lbl} htmlFor="wab-seg">Recipient segment</label>
+              <select id="wab-seg" style={field} value={segment} onChange={e=>setSegment(e.target.value)}>
+                {SEGMENTS.map(sg => <option key={sg.id} value={sg.id}>{sg.label}</option>)}
+              </select>
+              <p style={{fontSize:11.5,color:'#94a3b8',margin:'4px 0 0'}}>{SEGMENTS.find(sg => sg.id === segment)?.desc}</p>
+            </div>
+            <label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:12.5,color:'#334155'}}>
+              <input type="checkbox" checked={needSender} onChange={e=>setNeedSender(e.target.checked)} style={{marginTop:3}}/>
+              <span>Only people with an approved SMS sender ID (exactly the people the SMS broadcast would reach). Untick to include everyone with a phone number.</span>
+            </label>
+          </div>
+        ) : audMode === 'senda' ? (
           <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:12}}>
             <div>
               <label style={lbl} htmlFor="wab-kind">Who</label>
@@ -16967,6 +17028,23 @@ function WaBroadcastPanel() {
           {(preview.skipped_by_reason || []).length > 0 && (
             <div style={{fontSize:12,color:'#475569'}}>Left out: {preview.skipped_by_reason.map(r => `${r.label} (${r.count})`).join(' · ')}</div>)}
           {(preview.problems || []).map((p, i) => <div key={i} style={{fontSize:12.5,color:'#b91c1c'}}>{p}</div>)}
+          {(preview.people || []).length > 0 && (
+            <div style={{border:'1px solid #eef2f7',borderRadius:10,overflow:'hidden'}}>
+              <div style={{overflowX:'auto',maxHeight:320,overflowY:'auto'}}>
+                <table className="senda-table" style={{minWidth:640,fontSize:12.5}}>
+                  <thead><tr><th>Name</th><th>Business</th><th>Phone</th><th>Credits</th><th>Purchased</th><th>Used</th><th>WhatsApp</th></tr></thead>
+                  <tbody>
+                    {preview.people.map((u, i) => (
+                      <tr key={i}>
+                        <td>{u.name || '—'}</td><td>{u.business}</td><td style={{fontFamily:'monospace'}}>{u.phone}</td>
+                        <td>{u.credits}</td><td>{u.purchased}</td><td>{u.used}</td>
+                        <td>{u.will_receive ? <span style={{color:'#065f46',fontWeight:700}}>Will receive</span> : <span style={{color:'#92400e'}}>Left out · {u.reason}</span>}</td>
+                      </tr>))}
+                  </tbody>
+                </table>
+              </div>
+              {preview.people.length >= 300 && <div style={{fontSize:11.5,color:'#94a3b8',padding:'6px 12px'}}>Showing the first 300 people. Everyone eligible still receives it.</div>}
+            </div>)}
           {(preview.samples || []).slice(0, 2).map(s => (
             <div key={s.phone} style={{background:'#ecfdf5',border:'1px solid #bbf7d0',borderRadius:10,padding:'8px 12px',fontSize:12.5,color:'#14532d',whiteSpace:'pre-wrap'}}>
               <div style={{fontSize:11,color:'#4d7c5b',marginBottom:3}}>Example for {s.name || s.phone}</div>{s.text}
