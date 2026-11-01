@@ -16845,6 +16845,7 @@ function WaBroadcastPanel() {
   const [busy, setBusy]           = useState('');
   const [error, setError]         = useState(null);
   const [recent, setRecent]       = useState([]);
+  const [reportId, setReportId]   = useState(null);
 
   const template = templates.find(t => `${t.name}|${t.language}` === tplKey);
   const isMarketing = WA_PURPOSES.find(p => p[0] === purpose)?.[2];
@@ -17284,6 +17285,7 @@ function WaBroadcastPanel() {
           </div>
         </WaStep>)}
 
+      {reportId && <WaReport id={reportId} onClose={()=>setReportId(null)}/>}
       <WaStep title="Recent WhatsApp broadcasts" sub="The latest ones, with how they are going." action={<button className="senda-btn senda-btn-sm" onClick={loadRecent} style={{background:'#f1f5f9',color:'#475569',border:'none'}}>Refresh</button>}>
         <div style={{...stepBody,gap:0,padding:'4px 20px 10px'}}>
           {recent.length === 0 ? <div style={{fontSize:13,color:'#94a3b8',padding:'12px 0'}}>Nothing sent yet.</div> : recent.map(c => (
@@ -17294,11 +17296,90 @@ function WaBroadcastPanel() {
               </div>
               <div style={{display:'flex',alignItems:'center',gap:10}}>
                 <span style={{padding:'3px 10px',borderRadius:99,fontSize:11.5,fontWeight:700,background:(WA_STATUS[c.status]||WA_STATUS.draft)[0],color:(WA_STATUS[c.status]||WA_STATUS.draft)[1]}}>{c.status}</span>
-                <a href={`/whatsapp/campaigns?c=${c.id}`} target="_blank" rel="noreferrer" style={{fontSize:12.5,color:'#2563eb',fontWeight:600}}>Full report</a>
+                <button onClick={()=>setReportId(c.id)} style={{background:'none',border:'none',padding:0,cursor:'pointer',fontSize:12.5,color:'#2563eb',fontWeight:600}}>Full report</button>
               </div>
             </div>))}
         </div>
       </WaStep>
+    </div>
+  );
+}
+
+// One WhatsApp broadcast's report inside the admin portal (the customer app's report page needs a separate customer sign-in).
+function WaReport({ id, onClose }) {
+  const { onLogout } = React.useContext(AppContext);
+  const [c, setC]           = useState(null);
+  const [rows, setRows]     = useState([]);
+  const [count, setCount]   = useState(0);
+  const [page, setPage]     = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [status, setStatus] = useState('');
+  const [q, setQ]           = useState('');
+  const [error, setError]   = useState(null);
+  useEffect(() => { adminFetch(`/api/wa-campaigns/${id}/`, {}, onLogout).then(r => r.campaign ? setC(r.campaign) : setError(r.message || 'Could not load the report.')).catch(e => setError(e.message)); }, [id, onLogout]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      adminFetch(`/api/wa-campaigns/${id}/recipients/?page=${page}${status ? `&status=${status}` : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}`, {}, onLogout)
+        .then(r => { if (r.results) { setRows(r.results); setCount(r.count || 0); setPageSize(r.page_size || 25); } }).catch(() => {});
+    }, q ? 300 : 0);
+    return () => clearTimeout(t);
+  }, [id, page, status, q, onLogout]);
+  const st = c ? (WA_STATUS[c.status] || WA_STATUS.draft) : WA_STATUS.draft;
+  const stat = c?.stats || {};
+  const pages = Math.max(1, Math.ceil(count / pageSize));
+  const th = { textAlign:'left', padding:'9px 12px', fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', whiteSpace:'nowrap' };
+  const td = { padding:'10px 12px', fontSize:12.5, borderTop:'1px solid #f1f5f9', whiteSpace:'nowrap' };
+  const when = v => v ? new Date(v).toLocaleString() : '—';
+  const pageBtn = (label, disabled, go) => (
+    <button className="senda-btn senda-btn-sm" disabled={disabled} onClick={go} style={{background:'#f1f5f9',color:'#475569',border:'none',opacity:disabled?.5:1}}>{label}</button>);
+  return (
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',zIndex:1000,display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'4vh 16px',overflowY:'auto'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:16,width:'100%',maxWidth:980,boxShadow:'0 20px 50px rgba(15,23,42,.25)',overflow:'hidden'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12,padding:'16px 20px',borderBottom:'1px solid #eef2f7'}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:16,fontWeight:800,color:'#0f172a'}}>{c ? c.name : 'Report'}</div>
+            {c && <div style={{fontSize:12.5,color:'#64748b',marginTop:2}}>{c.template_name} · {c.audience_label || ''} · {when(c.started_at || c.scheduled_at || c.created_at)} · <span style={{padding:'2px 9px',borderRadius:99,fontSize:11.5,fontWeight:700,background:st[0],color:st[1]}}>{c.status}</span></div>}
+          </div>
+          <button className="senda-btn senda-btn-sm" onClick={onClose} style={{background:'#f1f5f9',color:'#475569',border:'none'}}>Close</button>
+        </div>
+        {error && <div style={{margin:16,fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px'}}>{error}</div>}
+        {c && (<div style={{padding:'16px 20px',display:'grid',gap:14}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:10}}>
+            <WaStat value={stat.recipients} label="People" tone="slate"/><WaStat value={stat.sent} label="Sent" tone="green"/><WaStat value={stat.delivered} label="Delivered" tone="green"/>
+            <WaStat value={stat.read} label="Read" tone="green"/><WaStat value={stat.failed} label="Failed" tone={stat.failed ? 'amber' : 'slate'}/><WaStat value={stat.skipped} label="Left out" tone="slate"/>
+          </div>
+          {(c.skipped_by_reason || []).length > 0 && <div style={{fontSize:12.5,color:'#64748b'}}>Left out: {c.skipped_by_reason.map(x => `${x.label} (${x.count})`).join(' · ')}</div>}
+          {(c.failures_by_error || []).length > 0 && <div style={{fontSize:12.5,color:'#991b1b',background:'#fef2f2',borderRadius:10,padding:'8px 12px'}}>Why some failed: {c.failures_by_error.map(x => `${x.message || x.code} (${x.count})`).join(' · ')}</div>}
+          {c.failure_reason && <div style={{fontSize:12.5,color:'#991b1b'}}>{c.failure_reason}</div>}
+          {c.returned && <div style={{fontSize:12.5,color:'#166534',background:'#f0fdf4',borderRadius:10,padding:'8px 12px'}}>{c.returned.count} of {c.returned.of} signed in afterwards. <span style={{color:'#64748b'}}>{c.returned.note}</span></div>}
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <input value={q} onChange={e=>{ setPage(1); setQ(e.target.value); }} placeholder="Search name or number" style={{padding:'8px 11px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,minWidth:200}}/>
+            <select value={status} onChange={e=>{ setPage(1); setStatus(e.target.value); }} style={{padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,background:'#fff'}}>
+              <option value="">All people</option>{['read','delivered','sent','submitted','failed','skipped','pending'].map(x => <option key={x} value={x}>{x}</option>)}
+            </select>
+            <span style={{fontSize:12.5,color:'#94a3b8',alignSelf:'center'}}>{count} people</span>
+          </div>
+          <div style={{overflowX:'auto',border:'1px solid #eef2f7',borderRadius:10}}>
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <thead><tr style={{background:'#fbfcfe'}}><th style={th}>Name</th><th style={th}>Phone</th><th style={th}>Status</th><th style={th}>Sent</th><th style={th}>Delivered</th><th style={th}>Read</th><th style={th}>Detail</th></tr></thead>
+              <tbody>
+                {rows.length === 0 && <tr><td colSpan={7} style={{...td,textAlign:'center',color:'#94a3b8',padding:24}}>No people match.</td></tr>}
+                {rows.map(r => (<tr key={r.id}>
+                  <td style={{...td,fontWeight:600}}>{r.name || '—'}</td><td style={{...td,fontFamily:'monospace'}}>{r.phone}</td>
+                  <td style={td}><span style={{fontWeight:700,color:r.status==='failed'?'#dc2626':r.status==='skipped'?'#92400e':'#0f172a'}}>{r.status}</span></td>
+                  <td style={{...td,color:'#64748b'}}>{when(r.submitted_at)}</td><td style={{...td,color:'#64748b'}}>{when(r.delivered_at)}</td><td style={{...td,color:'#64748b'}}>{when(r.read_at)}</td>
+                  <td style={{...td,color:'#64748b',maxWidth:260,overflow:'hidden',textOverflow:'ellipsis'}}>{r.error_message || r.skip_detail || r.skip_reason || ''}</td>
+                </tr>))}
+              </tbody>
+            </table>
+          </div>
+          {pages > 1 && (<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:12.5,color:'#64748b'}}>
+            <span>Page {page} of {pages}</span>
+            <div style={{display:'flex',gap:8}}>{pageBtn('Previous', page<=1, ()=>setPage(page-1))}{pageBtn('Next', page>=pages, ()=>setPage(page+1))}</div>
+          </div>)}
+        </div>)}
+        {!c && !error && <div style={{padding:40,textAlign:'center',color:'#94a3b8',fontSize:13}}>Loading…</div>}
+      </div>
     </div>
   );
 }
@@ -17311,6 +17392,7 @@ function WaHistory() {
   const [total, setTotal]     = useState(0);
   const [pageSize, setPageSize] = useState(25);
   const [status, setStatus]   = useState('');
+  const [openId, setOpenId]   = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
   const load = useCallback(() => {
@@ -17352,7 +17434,7 @@ function WaHistory() {
                 <td style={td}>{num(c.stats.delivered, '#2563eb')}</td>
                 <td style={td}>{num(c.stats.read, '#7c3aed')}</td>
                 <td style={td}>{num(c.stats.failed, c.stats.failed ? '#dc2626' : '#94a3b8')}</td>
-                <td style={td}><a href={`/whatsapp/campaigns?c=${c.id}`} target="_blank" rel="noreferrer" style={{fontSize:12.5,color:'#2563eb',fontWeight:700}}>Full report</a></td>
+                <td style={td}><button onClick={()=>setOpenId(c.id)} style={{background:'none',border:'none',padding:0,cursor:'pointer',fontSize:12.5,color:'#2563eb',fontWeight:700}}>Full report</button></td>
               </tr>); })}
           </tbody>
         </table>
@@ -17365,6 +17447,7 @@ function WaHistory() {
             <button className="senda-btn senda-btn-sm" disabled={page>=pages} onClick={()=>setPage(page+1)} style={{background:'#f1f5f9',color:'#475569',border:'none',opacity:page>=pages?.5:1}}>Next</button>
           </div>
         </div>)}
+      {openId && <WaReport id={openId} onClose={()=>setOpenId(null)}/>}
     </WaStep>
   );
 }
