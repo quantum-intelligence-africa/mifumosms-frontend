@@ -17303,15 +17303,90 @@ function WaBroadcastPanel() {
   );
 }
 
+// Every WhatsApp broadcast sent from the admin portal, newest first, with how each one went. "Full report" opens the per-person report.
+function WaHistory() {
+  const { onLogout } = React.useContext(AppContext);
+  const [rows, setRows]       = useState([]);
+  const [page, setPage]       = useState(1);
+  const [total, setTotal]     = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const [status, setStatus]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState(null);
+  const load = useCallback(() => {
+    setLoading(true); setError(null);
+    adminFetch(`/api/wa-campaigns/?page=${page}${status ? `&status=${status}` : ''}`, {}, onLogout)
+      .then(r => { if (r.results) { setRows(r.results); setTotal(r.count || 0); setPageSize(r.page_size || 25); } else setError(r.message || 'Could not load the history.'); })
+      .catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, [page, status, onLogout]);
+  useEffect(() => { load(); }, [load]);
+  const th = { textAlign:'left', padding:'10px 14px', fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'.04em', whiteSpace:'nowrap' };
+  const td = { padding:'12px 14px', fontSize:13, color:'#0f172a', borderTop:'1px solid #f1f5f9', whiteSpace:'nowrap' };
+  const num = (v, color) => <span style={{fontWeight:700,color}}>{Number(v || 0).toLocaleString()}</span>;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  return (
+    <WaStep title="WhatsApp broadcast history" sub="Everything sent from here, newest first."
+      action={<div style={{display:'flex',gap:8}}>
+        <select value={status} onChange={e=>{ setPage(1); setStatus(e.target.value); }} style={{padding:'7px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:12.5,background:'#fff'}}>
+          <option value="">All statuses</option>{['completed','sending','queued','scheduled','draft','paused','failed','cancelled'].map(x => <option key={x} value={x}>{x}</option>)}
+        </select>
+        <button className="senda-btn senda-btn-sm" onClick={load} style={{background:'#f1f5f9',color:'#475569',border:'none'}}>{loading ? 'Loading…' : 'Refresh'}</button>
+      </div>}>
+      {error && <div style={{margin:16,fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px'}}>{error}</div>}
+      <div style={{overflowX:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead><tr style={{background:'#fbfcfe'}}>
+            <th style={th}>Date</th><th style={th}>Name</th><th style={th}>Audience</th><th style={th}>Status</th><th style={th}>People</th>
+            <th style={th}>Sent</th><th style={th}>Delivered</th><th style={th}>Read</th><th style={th}>Failed</th><th style={th}></th>
+          </tr></thead>
+          <tbody>
+            {rows.length === 0 && <tr><td colSpan={10} style={{...td,textAlign:'center',color:'#94a3b8',padding:32}}>{loading ? 'Loading…' : 'No WhatsApp broadcasts yet.'}</td></tr>}
+            {rows.map(c => { const st = WA_STATUS[c.status] || WA_STATUS.draft; return (
+              <tr key={c.id}>
+                <td style={{...td,color:'#64748b'}}>{new Date(c.started_at || c.scheduled_at || c.created_at).toLocaleString()}</td>
+                <td style={{...td,maxWidth:240,overflow:'hidden',textOverflow:'ellipsis'}}><div style={{fontWeight:600,overflow:'hidden',textOverflow:'ellipsis'}}>{c.name}</div><div style={{fontSize:11.5,color:'#94a3b8'}}>{c.template_name}</div></td>
+                <td style={td}>{c.audience_label || '—'}</td>
+                <td style={td}><span style={{padding:'3px 10px',borderRadius:99,fontSize:11.5,fontWeight:700,background:st[0],color:st[1]}}>{c.status}</span></td>
+                <td style={td}>{num(c.stats.recipients, '#0f172a')}</td>
+                <td style={td}>{num(c.stats.sent, '#16a34a')}</td>
+                <td style={td}>{num(c.stats.delivered, '#2563eb')}</td>
+                <td style={td}>{num(c.stats.read, '#7c3aed')}</td>
+                <td style={td}>{num(c.stats.failed, c.stats.failed ? '#dc2626' : '#94a3b8')}</td>
+                <td style={td}><a href={`/whatsapp/campaigns?c=${c.id}`} target="_blank" rel="noreferrer" style={{fontSize:12.5,color:'#2563eb',fontWeight:700}}>Full report</a></td>
+              </tr>); })}
+          </tbody>
+        </table>
+      </div>
+      {pages > 1 && (
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderTop:'1px solid #f1f5f9',fontSize:12.5,color:'#64748b'}}>
+          <span>{total} broadcasts · page {page} of {pages}</span>
+          <div style={{display:'flex',gap:8}}>
+            <button className="senda-btn senda-btn-sm" disabled={page<=1} onClick={()=>setPage(page-1)} style={{background:'#f1f5f9',color:'#475569',border:'none',opacity:page<=1?.5:1}}>Previous</button>
+            <button className="senda-btn senda-btn-sm" disabled={page>=pages} onClick={()=>setPage(page+1)} style={{background:'#f1f5f9',color:'#475569',border:'none',opacity:page>=pages?.5:1}}>Next</button>
+          </div>
+        </div>)}
+    </WaStep>
+  );
+}
+
 function BroadcastTab() {
   const [channel, setChannel] = useState('sms');
+  const [waView, setWaView] = useState('compose');
   const pill = (id, label) => (
     <button onClick={()=>setChannel(id)} className="senda-btn senda-btn-sm"
       style={{background:channel===id?'#0f172a':'#f1f5f9',color:channel===id?'#fff':'#475569',border:'none'}}>{label}</button>);
   return (
     <>
-      <div style={{display:'flex',gap:6,marginBottom:14}}>{pill('sms','SMS')}{pill('whatsapp','WhatsApp')}</div>
-      {channel === 'sms' ? <SmsBroadcastTab/> : <WaBroadcastPanel/>}
+      <div style={{display:'flex',gap:6,marginBottom:14,alignItems:'center',flexWrap:'wrap'}}>
+        {pill('sms','SMS')}{pill('whatsapp','WhatsApp')}
+        {channel === 'whatsapp' && (<>
+          <span style={{width:1,height:20,background:'#e2e8f0',margin:'0 6px'}}/>
+          {[['compose','Compose'],['history','History']].map(([id,label]) => (
+            <button key={id} onClick={()=>setWaView(id)} className="senda-btn senda-btn-sm"
+              style={{background:waView===id?'#2563EB':'#fff',color:waView===id?'#fff':'#475569',border:waView===id?'none':'1px solid #e2e8f0'}}>{label}</button>))}
+        </>)}
+      </div>
+      {channel === 'sms' ? <SmsBroadcastTab/> : waView === 'history' ? <WaHistory/> : <WaBroadcastPanel/>}
     </>
   );
 }
