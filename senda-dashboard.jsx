@@ -16774,6 +16774,34 @@ const WA_STATUS = {
   completed:['#d1fae5','#065f46'], failed:['#fee2e2','#991b1b'], cancelled:['#f1f5f9','#475569'],
 };
 
+// A numbered section of the WhatsApp broadcast page: a title, a one-line explanation, and the content.
+function WaStep({ n, title, sub, action, children }) {
+  return (
+    <section style={{background:'#fff',border:'1px solid #e8edf3',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,.04)',overflow:'hidden'}}>
+      <header style={{display:'flex',alignItems:'center',gap:12,padding:'14px 20px',borderBottom:'1px solid #eef2f7',background:'#fbfcfe'}}>
+        {n && <span aria-hidden="true" style={{width:26,height:26,borderRadius:'50%',background:'#2563EB',color:'#fff',fontSize:13,fontWeight:800,display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{n}</span>}
+        <div style={{minWidth:0,flex:1}}>
+          <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>{title}</h3>
+          {sub && <div style={{fontSize:12.5,color:'#64748b',marginTop:2}}>{sub}</div>}
+        </div>
+        {action}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+// One big number with a label, coloured by meaning (green: good, amber: attention, slate: neutral).
+function WaStat({ value, label, tone }) {
+  const t = { green:['#f0fdf4','#bbf7d0','#166534'], amber:['#fffbeb','#fde68a','#92400e'], slate:['#f8fafc','#e2e8f0','#0f172a'] }[tone] || ['#f8fafc','#e2e8f0','#0f172a'];
+  return (
+    <div style={{background:t[0],border:`1px solid ${t[1]}`,borderRadius:12,padding:'12px 16px'}}>
+      <div style={{fontSize:28,fontWeight:800,lineHeight:1.1,color:t[2]}}>{Number(value || 0).toLocaleString()}</div>
+      <div style={{fontSize:12.5,color:'#64748b',marginTop:2}}>{label}</div>
+    </div>
+  );
+}
+
 function WaBroadcastPanel() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const call = useCallback(async (method, path, body) => {
@@ -16822,7 +16850,6 @@ function WaBroadcastPanel() {
   const isMarketing = WA_PURPOSES.find(p => p[0] === purpose)?.[2];
   const field = { width:'100%', padding:'9px 11px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:13, boxSizing:'border-box', background:'#fff' };
   const lbl   = { fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:4 };
-  const card  = { background:'#fff', border:'1px solid #eef2f7', borderRadius:12, padding:18, display:'grid', gap:14 };
 
   const loadRecent = useCallback(() => {
     call('GET', '/').then(r => { if (r.results) setRecent(r.results.slice(0, 8)); }).catch(() => {});
@@ -16943,282 +16970,328 @@ function WaBroadcastPanel() {
       </div>
     </div>);
 
+  const stepBody = { padding:'18px 20px', display:'grid', gap:16 };
+  const hint = { fontSize:12, color:'#94a3b8', margin:'4px 0 0', lineHeight:1.5 };
+  const pill = (bg, color) => ({ display:'inline-block', padding:'2px 10px', borderRadius:99, fontSize:11.5, fontWeight:700, background:bg, color, whiteSpace:'nowrap' });
+  const noWrap = { whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' };
+  const sourceLabel = { name:"Each person's name", phone:'Phone number', email:'Email', static:'Same text for everyone…' };
+
   return (
-    <div style={{padding:24,maxWidth:760,display:'grid',gap:16}}>
+    <div style={{padding:'24px 24px 48px',maxWidth:1120,display:'grid',gap:18}}>
       <div>
-        <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>WhatsApp Broadcast</h2>
-        <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
-          Message SENDA users over WhatsApp with an approved template. People who opted out, are suppressed or have an invalid number are left out automatically,
-          and you see exactly who before anything is sent.
+        <h2 style={{fontSize:20,fontWeight:800,color:'#0f172a',margin:0}}>WhatsApp Broadcast</h2>
+        <p style={{fontSize:13,color:'#64748b',margin:'4px 0 0',maxWidth:760,lineHeight:1.55}}>
+          Send an approved WhatsApp template to your users. People who opted out, are suppressed or have an invalid number are left out automatically,
+          and you see exactly who will receive it before anything is sent.
         </p>
       </div>
-      {error && <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px'}}>{error}</div>}
+      {error && <div role="alert" style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px'}}>{error}</div>}
 
-      <div style={card}>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-          <div>
-            <label style={lbl} htmlFor="wab-num">Send from</label>
-            <select id="wab-num" style={field} value={numberId} onChange={e=>setNumberId(e.target.value)}>
-              {numbers.map(n => <option key={n.phone_number_id} value={n.phone_number_id}>{n.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={lbl} htmlFor="wab-purpose">What is this message?</label>
-            <select id="wab-purpose" style={field} value={purpose} onChange={e=>setPurpose(e.target.value)}>
-              {WA_PURPOSES.map(p => <option key={p[0]} value={p[0]}>{p[1]}</option>)}
-            </select>
-          </div>
-        </div>
-        <div>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <label style={lbl} htmlFor="wab-tpl">Approved template</label>
-            <button className="senda-btn senda-btn-sm" disabled={tplState.loading} onClick={()=>loadTemplates(numberId, true)}
-              style={{background:'#f1f5f9',color:'#475569',border:'none',marginBottom:4}}>{tplState.loading ? 'Loading…' : 'Refresh from WhatsApp'}</button>
-          </div>
-          <select id="wab-tpl" style={field} value={tplKey} disabled={tplState.loading || templates.length===0} onChange={e=>pick(e.target.value)}>
-            <option value="">{tplState.loading ? 'Loading templates…' : templates.length ? 'Choose a template…' : 'No usable approved templates found'}</option>
-            {templates.map(t => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name} ({t.language}) · {t.category.charAt(0) + t.category.slice(1).toLowerCase()}</option>)}
-          </select>
-          {tplState.error && <p style={{fontSize:11.5,color:'#b91c1c',margin:'4px 0 0'}}>{tplState.error}</p>}
-        </div>
-
-        {template && (<>
-          <div style={{background:'#ecfdf5',border:'1px solid #bbf7d0',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#14532d',whiteSpace:'pre-wrap'}}>
-            {template.header && <div style={{fontWeight:700}}>{template.header}</div>}
-            {template.body}
-            {template.footer && <div style={{fontSize:11.5,color:'#4d7c5b',marginTop:6}}>{template.footer}</div>}
-          </div>
-          {(template.tokens || []).map(tok => (
-            <div key={tok} style={{display:'grid',gridTemplateColumns:'70px 1fr 1fr',gap:10,alignItems:'center'}}>
-              <div style={{fontSize:12.5,fontWeight:700,color:'#334155'}}>{`{{${tok}}}`}</div>
-              <select style={field} aria-label={`Value for ${tok}`} value={map[tok]?.source || 'name'} onChange={e=>setMap(m=>({...m,[tok]:{...m[tok],source:e.target.value}}))}>
-                <option value="name">Each person's name</option><option value="phone">Phone number</option><option value="email">Email</option><option value="static">Same text for everyone…</option>
+      {/* 1 — the message */}
+      <WaStep n="1" title="Message" sub="Pick the WhatsApp number and the approved template to send.">
+        <div style={stepBody}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:14}}>
+            <div>
+              <label style={lbl} htmlFor="wab-num">Send from</label>
+              <select id="wab-num" style={field} value={numberId} onChange={e=>setNumberId(e.target.value)}>
+                {numbers.map(n => <option key={n.phone_number_id} value={n.phone_number_id}>{n.label}</option>)}
               </select>
-              {map[tok]?.source === 'static'
-                ? <input style={field} placeholder="Text" value={map[tok]?.text || ''} onChange={e=>setMap(m=>({...m,[tok]:{...m[tok],text:e.target.value}}))}/>
-                : <input style={field} placeholder="If empty, use (optional)" value={map[tok]?.default || ''} onChange={e=>setMap(m=>({...m,[tok]:{...m[tok],default:e.target.value}}))}/>}
             </div>
-          ))}
-        </>)}
-      </div>
-
-      <div style={card}>
-        <div style={{display:'flex',gap:6}}>
-          {[['senda','All users / by activity'],['segment','Users by SMS segment'],['phones','Phone numbers']].map(([id,label]) => (
-            <button key={id} onClick={()=>setAudMode(id)} className="senda-btn senda-btn-sm"
-              style={{background:audMode===id?'#0f172a':'#f1f5f9',color:audMode===id?'#fff':'#475569',border:'none'}}>{label}</button>))}
-        </div>
-        {audMode === 'segment' ? (
-          <div style={{display:'grid',gap:12}}>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            <div>
+              <label style={lbl} htmlFor="wab-purpose">What is this message?</label>
+              <select id="wab-purpose" style={field} value={purpose} onChange={e=>setPurpose(e.target.value)}>
+                {WA_PURPOSES.map(p => <option key={p[0]} value={p[0]}>{p[1]}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+              <label style={lbl} htmlFor="wab-tpl">Approved template</label>
+              <button className="senda-btn senda-btn-sm" disabled={tplState.loading} onClick={()=>loadTemplates(numberId, true)}
+                style={{background:'#f1f5f9',color:'#475569',border:'none',marginBottom:4}}>{tplState.loading ? 'Loading…' : 'Refresh from WhatsApp'}</button>
+            </div>
+            <select id="wab-tpl" style={field} value={tplKey} disabled={tplState.loading || templates.length===0} onChange={e=>pick(e.target.value)}>
+              <option value="">{tplState.loading ? 'Loading templates…' : templates.length ? 'Choose a template…' : 'No usable approved templates found'}</option>
+              {templates.map(t => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name} ({t.language}) · {t.category.charAt(0) + t.category.slice(1).toLowerCase()}</option>)}
+            </select>
+            {tplState.error && <p style={{...hint,color:'#b91c1c'}}>{tplState.error}</p>}
+          </div>
+          {template && (
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:18,alignItems:'start'}}>
               <div>
-                <label style={lbl} htmlFor="wab-seg-aud">Audience</label>
-                <select id="wab-seg-aud" style={field} value={segAudience} onChange={e=>setSegAudience(e.target.value)}>
-                  {AUDIENCES.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
-                </select>
+                <div style={{fontSize:11,fontWeight:700,letterSpacing:'.06em',color:'#94a3b8',textTransform:'uppercase',marginBottom:6}}>How it looks</div>
+                <div style={{background:'#e7f5ec',borderRadius:14,padding:14}}>
+                  <div style={{background:'#fff',borderRadius:'4px 12px 12px 12px',padding:'10px 12px',fontSize:13.5,color:'#0f172a',whiteSpace:'pre-wrap',lineHeight:1.5,boxShadow:'0 1px 1px rgba(0,0,0,.08)',maxWidth:420}}>
+                    {template.header && <div style={{fontWeight:700,marginBottom:4}}>{template.header}</div>}
+                    {template.body}
+                    {template.footer && <div style={{fontSize:11.5,color:'#94a3b8',marginTop:6}}>{template.footer}</div>}
+                  </div>
+                </div>
               </div>
-              {segAudience === 'partners' && (
-                <div>
-                  <label style={lbl} htmlFor="wab-seg-partner">Partner</label>
-                  <select id="wab-seg-partner" style={field} value={partnerId} onChange={e=>setPartnerId(e.target.value)}>
-                    <option value="">Choose a partner…</option>
-                    {partners.map(p => <option key={p.partner_id} value={p.partner_id}>{p.name} ({p.clients_count} clients)</option>)}
-                  </select>
+              {(template.tokens || []).length > 0 && (
+                <div style={{display:'grid',gap:10}}>
+                  <div style={{fontSize:11,fontWeight:700,letterSpacing:'.06em',color:'#94a3b8',textTransform:'uppercase'}}>Fill in the template values</div>
+                  {template.tokens.map(tok => (
+                    <div key={tok} style={{display:'grid',gap:6,background:'#f8fafc',border:'1px solid #eef2f7',borderRadius:10,padding:10}}>
+                      <div style={{fontSize:12.5,fontWeight:700,color:'#334155'}}>{`{{${tok}}}`} <span style={{fontWeight:500,color:'#94a3b8'}}>becomes</span></div>
+                      <select style={field} aria-label={`Value for ${tok}`} value={map[tok]?.source || 'name'} onChange={e=>setMap(m=>({...m,[tok]:{...m[tok],source:e.target.value}}))}>
+                        {Object.entries(sourceLabel).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                      {map[tok]?.source === 'static'
+                        ? <input style={field} placeholder="Type the text" value={map[tok]?.text || ''} onChange={e=>setMap(m=>({...m,[tok]:{...m[tok],text:e.target.value}}))}/>
+                        : <input style={field} placeholder="If it is empty, use… (optional)" value={map[tok]?.default || ''} onChange={e=>setMap(m=>({...m,[tok]:{...m[tok],default:e.target.value}}))}/>}
+                    </div>))}
                 </div>)}
-            </div>
-            <div>
-              <label style={lbl} htmlFor="wab-seg">Recipient segment</label>
-              <select id="wab-seg" style={field} value={segment} onChange={e=>setSegment(e.target.value)}>
-                {SEGMENTS.map(sg => <option key={sg.id} value={sg.id}>{sg.label}</option>)}
-              </select>
-              <p style={{fontSize:11.5,color:'#94a3b8',margin:'4px 0 0'}}>{SEGMENTS.find(sg => sg.id === segment)?.desc}</p>
-            </div>
-            <label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:12.5,color:'#334155'}}>
-              <input type="checkbox" checked={needSender} onChange={e=>setNeedSender(e.target.checked)} style={{marginTop:3}}/>
-              <span>Only people with an approved SMS sender ID (exactly the people the SMS broadcast would reach). Untick to include everyone with a phone number.</span>
-            </label>
-          </div>
-        ) : audMode === 'senda' ? (
-          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:12}}>
-            <div>
-              <label style={lbl} htmlFor="wab-kind">Who</label>
-              <select id="wab-kind" style={field} value={kind} onChange={e=>setKind(e.target.value)}>
-                {kinds.map(k => <option key={k.kind} value={k.kind}>{k.label}</option>)}
-              </select>
-            </div>
-            {kind !== 'all' && <div><label style={lbl} htmlFor="wab-days">Days (N)</label><input id="wab-days" style={field} inputMode="numeric" value={days} onChange={e=>setDays(e.target.value)}/></div>}
-            {kind !== 'all' && <div><label style={lbl} htmlFor="wab-thr">Credits (N)</label><input id="wab-thr" style={field} inputMode="numeric" value={threshold} onChange={e=>setThreshold(e.target.value)}/></div>}
-          </div>
-        ) : (
-          <div>
-            <label style={lbl} htmlFor="wab-ph">Phone numbers (international format, one per line)</label>
-            <textarea id="wab-ph" style={{...field,minHeight:90}} value={phones} placeholder={'+255712345678\n+255754000111'} onChange={e=>setPhones(e.target.value)}/>
-          </div>
-        )}
-        <div><label style={lbl} htmlFor="wab-name">Broadcast name (optional)</label><input id="wab-name" style={field} value={name} maxLength={160} onChange={e=>setName(e.target.value)} placeholder="e.g. Reactivation, November"/></div>
-        {isMarketing && (
-          <label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:12.5,color:'#334155'}}>
-            <input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} style={{marginTop:3}}/>
-            <span>I confirm these people agreed to receive marketing messages from SENDA on WhatsApp.</span>
-          </label>)}
-        <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,color:'#334155'}}>
-          <input type="checkbox" checked={skipSent} onChange={e=>setSkipSent(e.target.checked)}/>
-          Skip recipients who already received this exact message
-        </label>
-        <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,color:'#334155'}}>
-          <input type="checkbox" checked={scheduleOn} onChange={e=>setScheduleOn(e.target.checked)}/>
-          <Clock size={14} color={scheduleOn ? BRAND : '#94a3b8'} strokeWidth={2.2}/>
-          Schedule this broadcast to run automatically (like a campaign)
-        </label>
-        {scheduleOn && (
-          <div style={{padding:16,borderRadius:12,border:`1.5px solid ${BRAND}33`,background:`${BRAND}08`,display:'grid',gap:12}}>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <div>
-                <label style={lbl} htmlFor="wab-first">First send</label>
-                <input id="wab-first" type="datetime-local" style={field} value={firstRun} onChange={e=>setFirstRun(e.target.value)}/>
-              </div>
-              <div>
-                <label style={lbl} htmlFor="wab-repeat">Repeat</label>
-                <select id="wab-repeat" style={field} value={repeat} onChange={e=>setRepeat(e.target.value)}>
-                  <option value="once">Once, at the chosen time</option><option value="daily">Every day</option>
-                  <option value="weekly">Every week (same weekday)</option><option value="monthly">Every month (same date)</option>
-                </select>
-              </div>
-            </div>
-            {repeat !== 'once' && (
-              <div>
-                <label style={lbl} htmlFor="wab-until">Stop repeating after (optional)</label>
-                <input id="wab-until" type="datetime-local" style={field} value={until} onChange={e=>setUntil(e.target.value)}/>
-              </div>)}
-            <div style={{fontSize:11,color:'#64748b',lineHeight:1.5}}>
-              Recipients are checked again at each run, so people who join later are included
-              {skipSent ? ', and people who already received this message are skipped.' : '. Tick “Skip recipients who already received this exact message” to avoid repeats.'} Times are in your browser's time zone.
-            </div>
-          </div>)}
-        <div style={{display:'flex',gap:10}}>
-          <button className="senda-btn senda-btn-sm" onClick={check} disabled={!canCheck}
-            style={{height:40,border:`1.5px solid ${BRAND}`,color:BRAND,background:'#fff',fontWeight:700,opacity:canCheck?1:.5,cursor:canCheck?'pointer':'not-allowed'}}>
-            {busy==='check' ? 'Checking…' : 'Preview recipients'}
-          </button>
-          {scheduleOn ? (
-            <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={saveSchedule} disabled={!canCheck || !firstRun}
-              style={{height:40,fontWeight:700,opacity:(canCheck && firstRun)?1:.5,cursor:(canCheck && firstRun)?'pointer':'not-allowed'}}>
-              <Clock size={15} strokeWidth={2.2} style={{marginRight:6}}/>{busy==='schedule' ? 'Saving…' : 'Save schedule'}
-            </button>
-          ) : (
-            <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={send} disabled={!canSend}
-              style={{height:40,fontWeight:700,opacity:canSend?1:.5,cursor:canSend?'pointer':'not-allowed'}}>
-              <Send size={15} strokeWidth={2.2} style={{marginRight:6}}/>{busy==='send' ? 'Starting…' : 'Send Broadcast'}
-            </button>)}
+            </div>)}
         </div>
-        {missing.length > 0 && <div style={{fontSize:12.5,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'8px 12px'}}>{missing.map((m, i) => <div key={i}>• {m}</div>)}</div>}
-        {missing.length === 0 && !scheduleOn && !preview && <div style={{fontSize:12,color:'#94a3b8'}}>Run a preview to see how many recipients are eligible before sending.</div>}
-        {scheduleOn && <div style={{fontSize:12,color:'#94a3b8'}}>Save schedule checks the recipients first, then schedules it. Repeating ones are listed below.</div>}
-      </div>
+      </WaStep>
 
-      {preview && (
-        <div style={card}>
-          <div style={{display:'flex',gap:18,flexWrap:'wrap'}}>
-            <div><div style={{fontSize:22,fontWeight:800,color:'#065f46'}}>{preview.eligible}</div><div style={{fontSize:11.5,color:'#64748b'}}>will receive it</div></div>
-            <div><div style={{fontSize:22,fontWeight:800,color:'#92400e'}}>{preview.skipped}</div><div style={{fontSize:11.5,color:'#64748b'}}>left out</div></div>
-            <div><div style={{fontSize:22,fontWeight:800,color:'#0f172a'}}>{preview.audience}</div><div style={{fontSize:11.5,color:'#64748b'}}>in the audience</div></div>
+      {/* 2 — who */}
+      <WaStep n="2" title="Who to send to" sub="Everyone, a group chosen by how they use SMS, or your own list of numbers.">
+        <div style={stepBody}>
+          <div role="tablist" style={{display:'inline-flex',gap:4,padding:4,background:'#f1f5f9',borderRadius:10,justifySelf:'start',flexWrap:'wrap'}}>
+            {[['senda','All users / by activity'],['segment','Users by SMS segment'],['phones','Phone numbers']].map(([id,label]) => (
+              <button key={id} role="tab" aria-selected={audMode===id} onClick={()=>setAudMode(id)}
+                style={{border:'none',cursor:'pointer',padding:'7px 14px',borderRadius:8,fontSize:13,fontWeight:700,background:audMode===id?'#fff':'transparent',color:audMode===id?'#0f172a':'#64748b',boxShadow:audMode===id?'0 1px 2px rgba(15,23,42,.12)':'none'}}>{label}</button>))}
           </div>
-          {(preview.skipped_by_reason || []).length > 0 && (
-            <div style={{fontSize:12,color:'#475569'}}>Left out: {preview.skipped_by_reason.map(r => `${r.label} (${r.count})`).join(' · ')}</div>)}
-          {(preview.problems || []).map((p, i) => <div key={i} style={{fontSize:12.5,color:'#b91c1c'}}>{p}</div>)}
-          {(preview.people || []).length > 0 && (() => {
-            const all = preview.people;
-            const q = peopleQuery.trim().toLowerCase();
-            const shown = q ? all.filter(u => `${u.name} ${u.email} ${u.business} ${u.phone}`.toLowerCase().includes(q)) : all;
-            const PER_PAGE = 25;
-            const pages = Math.max(1, Math.ceil(shown.length / PER_PAGE));
-            const page = Math.min(peoplePage, pages);
-            const rows = shown.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-            const has = (k) => all.some(u => u[k] !== undefined && u[k] !== '');
-            const isOut = (u) => excluded.includes(u.id);
-            const toggle = (u) => setExcluded(x => x.includes(u.id) ? x.filter(i => i !== u.id) : [...x, u.id]);
-            const removeShown = () => setExcluded(x => Array.from(new Set([...x, ...shown.filter(u => u.will_receive).map(u => u.id)])));
-            return (
-              <div style={{border:'1px solid #eef2f7',borderRadius:10,overflow:'hidden'}}>
-                <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'10px 12px',background:'#f8fafc',borderBottom:'1px solid #eef2f7'}}>
-                  <input style={{...field,width:240,padding:'6px 10px'}} placeholder="Search name, email or business" aria-label="Search people" value={peopleQuery}
-                    onChange={e=>{setPeopleQuery(e.target.value);setPeoplePage(1);}}/>
-                  <span style={{fontSize:12,color:'#64748b'}}>{shown.length} {q ? 'found' : 'people'}</span>
-                  <span style={{marginLeft:'auto',display:'flex',gap:6}}>
-                    {q && shown.some(u => u.will_receive) && <button className="senda-btn senda-btn-sm" onClick={removeShown} style={{background:'#fee2e2',color:'#dc2626',border:'none'}}>Remove these {shown.filter(u => u.will_receive).length}</button>}
-                    {excluded.length > 0 && <button className="senda-btn senda-btn-sm" onClick={()=>setExcluded([])} style={{background:'#f1f5f9',color:'#334155',border:'none'}}>Add back all removed ({excluded.length})</button>}
-                  </span>
+
+          {audMode === 'segment' ? (
+            <div style={{display:'grid',gap:14}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:14}}>
+                <div>
+                  <label style={lbl} htmlFor="wab-seg-aud">Audience</label>
+                  <select id="wab-seg-aud" style={field} value={segAudience} onChange={e=>setSegAudience(e.target.value)}>
+                    {AUDIENCES.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+                  </select>
                 </div>
-                <div style={{overflowX:'auto'}}>
-                  <table className="senda-table" style={{minWidth:700,fontSize:12.5}}>
-                    <thead><tr><th>Name</th>{has('email') && <th>Email</th>}{has('business') && <th>Business</th>}<th>Phone</th>
-                      {has('registered') && <th>Registered</th>}{has('last_seen') && <th>Last seen</th>}{has('credits') && <th>Credits</th>}{has('used') && <th>SMS used</th>}<th>WhatsApp</th><th></th></tr></thead>
-                    <tbody>
-                      {rows.map(u => (
-                        <tr key={u.id} style={{opacity:isOut(u)?.55:1}}>
-                          <td>{u.name || '—'}</td>{has('email') && <td>{u.email}</td>}{has('business') && <td>{u.business}</td>}<td style={{fontFamily:'monospace'}}>{u.phone}</td>
-                          {has('registered') && <td>{u.registered || '—'}</td>}{has('last_seen') && <td>{u.last_seen || 'never'}</td>}{has('credits') && <td>{u.credits}</td>}{has('used') && <td>{u.used}</td>}
-                          <td>{u.will_receive ? <span style={{color:'#065f46',fontWeight:700}}>Will receive</span> : <span style={{color:'#92400e'}}>Left out · {u.reason}</span>}</td>
-                          <td style={{textAlign:'right'}}>
-                            {(u.will_receive || isOut(u)) && (
-                              <button className="senda-btn senda-btn-sm" onClick={()=>toggle(u)}
-                                style={{background:isOut(u)?'#e0f2fe':'#fee2e2',color:isOut(u)?'#0369a1':'#dc2626',border:'none'}}>{isOut(u) ? 'Add back' : 'Remove'}</button>)}
-                          </td>
-                        </tr>))}
-                      {rows.length === 0 && <tr><td colSpan={9} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>Nobody matches.</td></tr>}
-                    </tbody>
-                  </table>
+                {segAudience === 'partners' && (
+                  <div>
+                    <label style={lbl} htmlFor="wab-seg-partner">Partner</label>
+                    <select id="wab-seg-partner" style={field} value={partnerId} onChange={e=>setPartnerId(e.target.value)}>
+                      <option value="">Choose a partner…</option>
+                      {partners.map(p => <option key={p.partner_id} value={p.partner_id}>{p.name} ({p.clients_count} clients)</option>)}
+                    </select>
+                  </div>)}
+                <div>
+                  <label style={lbl} htmlFor="wab-seg">Recipient segment</label>
+                  <select id="wab-seg" style={field} value={segment} onChange={e=>setSegment(e.target.value)}>
+                    {SEGMENTS.map(sg => <option key={sg.id} value={sg.id}>{sg.label}</option>)}
+                  </select>
+                  <p style={hint}>{SEGMENTS.find(sg => sg.id === segment)?.desc}</p>
                 </div>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',borderTop:'1px solid #eef2f7',fontSize:12,color:'#64748b'}}>
-                  <span>{all.length >= 3000 ? 'Showing the first 3,000 people; everyone eligible still receives it.' : `Page ${page} of ${pages}`}</span>
-                  <span style={{display:'flex',gap:6}}>
-                    <button className="senda-btn senda-btn-sm" disabled={page<=1} onClick={()=>setPeoplePage(page-1)} style={{background:'#f1f5f9',color:'#334155',border:'none',opacity:page<=1?.5:1}}>Previous</button>
-                    <button className="senda-btn senda-btn-sm" disabled={page>=pages} onClick={()=>setPeoplePage(page+1)} style={{background:'#f1f5f9',color:'#334155',border:'none',opacity:page>=pages?.5:1}}>Next</button>
-                  </span>
+              </div>
+              <label style={{display:'flex',gap:10,alignItems:'flex-start',fontSize:13,color:'#334155',cursor:'pointer'}}>
+                <input type="checkbox" checked={needSender} onChange={e=>setNeedSender(e.target.checked)} style={{marginTop:3}}/>
+                <span><b>Same people as the SMS broadcast.</b> Only people with an approved SMS sender ID. Untick to include everyone with a phone number.</span>
+              </label>
+            </div>
+          ) : audMode === 'senda' ? (
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14}}>
+              <div style={{gridColumn:'span 2',minWidth:240}}>
+                <label style={lbl} htmlFor="wab-kind">Who</label>
+                <select id="wab-kind" style={field} value={kind} onChange={e=>setKind(e.target.value)}>
+                  {kinds.map(k => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+                </select>
+                {kind === 'all' && <p style={hint}>Every active account with a phone number, except staff. You can remove people from the list before sending.</p>}
+              </div>
+              {kind !== 'all' && <div><label style={lbl} htmlFor="wab-days">Days (N)</label><input id="wab-days" style={field} inputMode="numeric" value={days} onChange={e=>setDays(e.target.value)}/></div>}
+              {kind !== 'all' && <div><label style={lbl} htmlFor="wab-thr">Credits (N)</label><input id="wab-thr" style={field} inputMode="numeric" value={threshold} onChange={e=>setThreshold(e.target.value)}/></div>}
+            </div>
+          ) : (
+            <div>
+              <label style={lbl} htmlFor="wab-ph">Phone numbers (international format, one per line)</label>
+              <textarea id="wab-ph" style={{...field,minHeight:96,fontFamily:'monospace'}} value={phones} placeholder={'+255712345678\n+255754000111'} onChange={e=>setPhones(e.target.value)}/>
+            </div>
+          )}
+
+          <div style={{borderTop:'1px solid #eef2f7',paddingTop:14,display:'grid',gap:12}}>
+            <div>
+              <label style={lbl} htmlFor="wab-name">Broadcast name <span style={{fontWeight:500,color:'#94a3b8'}}>(optional, for your records)</span></label>
+              <input id="wab-name" style={{...field,maxWidth:420}} value={name} maxLength={160} onChange={e=>setName(e.target.value)} placeholder="e.g. Reactivation, November"/>
+            </div>
+            <label style={{display:'flex',gap:10,alignItems:'flex-start',fontSize:13,color:'#334155',cursor:'pointer'}}>
+              <input type="checkbox" checked={skipSent} onChange={e=>setSkipSent(e.target.checked)} style={{marginTop:3}}/>
+              <span><b>Skip recipients who already received this exact message.</b> Good for repeating broadcasts, so nobody gets it twice.</span>
+            </label>
+            {isMarketing && (
+              <label style={{display:'flex',gap:10,alignItems:'flex-start',fontSize:13,color:'#78350f',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'10px 12px',cursor:'pointer'}}>
+                <input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} style={{marginTop:3}}/>
+                <span><b>Permission to send marketing.</b> I confirm these people agreed to receive marketing messages from SENDA on WhatsApp.</span>
+              </label>)}
+            <label style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'#334155',cursor:'pointer'}}>
+              <input type="checkbox" checked={scheduleOn} onChange={e=>setScheduleOn(e.target.checked)}/>
+              <Clock size={14} color={scheduleOn ? BRAND : '#94a3b8'} strokeWidth={2.2}/>
+              <span><b>Schedule this broadcast</b> to run automatically (like a campaign)</span>
+            </label>
+            {scheduleOn && (
+              <div style={{padding:16,borderRadius:12,border:`1.5px solid ${BRAND}33`,background:`${BRAND}08`,display:'grid',gap:12}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12}}>
+                  <div>
+                    <label style={lbl} htmlFor="wab-first">First send</label>
+                    <input id="wab-first" type="datetime-local" style={field} value={firstRun} onChange={e=>setFirstRun(e.target.value)}/>
+                  </div>
+                  <div>
+                    <label style={lbl} htmlFor="wab-repeat">Repeat</label>
+                    <select id="wab-repeat" style={field} value={repeat} onChange={e=>setRepeat(e.target.value)}>
+                      <option value="once">Once, at the chosen time</option><option value="daily">Every day</option>
+                      <option value="weekly">Every week (same weekday)</option><option value="monthly">Every month (same date)</option>
+                    </select>
+                  </div>
+                  {repeat !== 'once' && (
+                    <div>
+                      <label style={lbl} htmlFor="wab-until">Stop repeating after <span style={{fontWeight:500,color:'#94a3b8'}}>(optional)</span></label>
+                      <input id="wab-until" type="datetime-local" style={field} value={until} onChange={e=>setUntil(e.target.value)}/>
+                    </div>)}
                 </div>
-              </div>);
-          })()}
-          {(preview.samples || []).slice(0, 2).map(s => (
-            <div key={s.phone} style={{background:'#ecfdf5',border:'1px solid #bbf7d0',borderRadius:10,padding:'8px 12px',fontSize:12.5,color:'#14532d',whiteSpace:'pre-wrap'}}>
-              <div style={{fontSize:11,color:'#4d7c5b',marginBottom:3}}>Example for {s.name || s.phone}</div>{s.text}
-            </div>))}
-          {preview.credits && !preview.credits.enough && <div style={{fontSize:12.5,color:'#b91c1c'}}>Not enough WhatsApp credits: needs {preview.credits.required}, you have {preview.credits.available}.</div>}
+                <div style={{fontSize:12,color:'#64748b',lineHeight:1.55}}>
+                  Recipients are checked again at each run, so people who join later are included
+                  {skipSent ? ', and people who already received this message are skipped.' : '. Tick “Skip recipients who already received this exact message” to avoid repeats.'} Times are in your browser's time zone.
+                </div>
+              </div>)}
+          </div>
         </div>
-      )}
+      </WaStep>
+
+      {/* 3 — review and send */}
+      <WaStep n="3" title="Review and send" sub="Preview who will receive it, remove anyone you do not want, then send.">
+        <div style={stepBody}>
+          <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
+            <button className="senda-btn senda-btn-sm" onClick={check} disabled={!canCheck}
+              style={{height:40,padding:'0 18px',border:`1.5px solid ${BRAND}`,color:BRAND,background:'#fff',fontWeight:700,opacity:canCheck?1:.5,cursor:canCheck?'pointer':'not-allowed'}}>
+              {busy==='check' ? 'Checking…' : preview ? 'Refresh preview' : 'Preview recipients'}
+            </button>
+            {scheduleOn ? (
+              <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={saveSchedule} disabled={!canCheck || !firstRun}
+                style={{height:40,padding:'0 18px',fontWeight:700,opacity:(canCheck && firstRun)?1:.5,cursor:(canCheck && firstRun)?'pointer':'not-allowed'}}>
+                <Clock size={15} strokeWidth={2.2} style={{marginRight:6}}/>{busy==='schedule' ? 'Saving…' : 'Save schedule'}
+              </button>
+            ) : (
+              <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={send} disabled={!canSend}
+                style={{height:40,padding:'0 18px',fontWeight:700,opacity:canSend?1:.5,cursor:canSend?'pointer':'not-allowed'}}>
+                <Send size={15} strokeWidth={2.2} style={{marginRight:6}}/>{busy==='send' ? 'Starting…' : preview ? `Send to ${preview.eligible} people` : 'Send Broadcast'}
+              </button>)}
+          </div>
+          {missing.length > 0 && <div style={{fontSize:12.5,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'8px 12px'}}>{missing.map((m, i) => <div key={i}>• {m}</div>)}</div>}
+          {missing.length === 0 && !scheduleOn && !preview && <div style={{fontSize:12.5,color:'#94a3b8'}}>Run a preview to see how many recipients are eligible before sending.</div>}
+          {scheduleOn && !preview && missing.length === 0 && <div style={{fontSize:12.5,color:'#94a3b8'}}>Save schedule checks the recipients first, then schedules it.</div>}
+
+          {preview && (<>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12}}>
+              <WaStat value={preview.eligible} label="will receive it" tone="green"/>
+              <WaStat value={preview.skipped} label="left out" tone="amber"/>
+              <WaStat value={preview.audience} label="in the audience" tone="slate"/>
+            </div>
+            {(preview.skipped_by_reason || []).length > 0 && (
+              <div style={{fontSize:12.5,color:'#475569'}}>Left out: {preview.skipped_by_reason.map(r => `${r.label} (${r.count})`).join(' · ')}</div>)}
+            {(preview.problems || []).map((p, i) => <div key={i} style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'8px 12px'}}>{p}</div>)}
+            {preview.credits && !preview.credits.enough && <div style={{fontSize:13,color:'#b91c1c'}}>Not enough WhatsApp credits: needs {preview.credits.required}, you have {preview.credits.available}.</div>}
+
+            {(preview.people || []).length > 0 && (() => {
+              const all = preview.people;
+              const q = peopleQuery.trim().toLowerCase();
+              const shown = q ? all.filter(u => `${u.name} ${u.email} ${u.business} ${u.phone}`.toLowerCase().includes(q)) : all;
+              const PER_PAGE = 25;
+              const pages = Math.max(1, Math.ceil(shown.length / PER_PAGE));
+              const page = Math.min(peoplePage, pages);
+              const rows = shown.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+              const has = (k) => all.some(u => u[k] !== undefined && u[k] !== '');
+              const isOut = (u) => excluded.includes(u.id);
+              const toggle = (u) => setExcluded(x => x.includes(u.id) ? x.filter(i => i !== u.id) : [...x, u.id]);
+              const removeShown = () => setExcluded(x => Array.from(new Set([...x, ...shown.filter(u => u.will_receive).map(u => u.id)])));
+              const th = { whiteSpace:'nowrap' };
+              return (
+                <div style={{border:'1px solid #e8edf3',borderRadius:12,overflow:'hidden'}}>
+                  <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',padding:'10px 14px',background:'#f8fafc',borderBottom:'1px solid #e8edf3'}}>
+                    <input style={{...field,width:280,padding:'7px 11px'}} placeholder="Search name, email or business" aria-label="Search people" value={peopleQuery}
+                      onChange={e=>{setPeopleQuery(e.target.value);setPeoplePage(1);}}/>
+                    <span style={{fontSize:12.5,color:'#64748b'}}>{shown.length} {q ? 'found' : 'people'}</span>
+                    <span style={{marginLeft:'auto',display:'flex',gap:8,flexWrap:'wrap'}}>
+                      {q && shown.some(u => u.will_receive) && <button className="senda-btn senda-btn-sm" onClick={removeShown} style={{background:'#fee2e2',color:'#dc2626',border:'none'}}>Remove these {shown.filter(u => u.will_receive).length}</button>}
+                      {excluded.length > 0 && <button className="senda-btn senda-btn-sm" onClick={()=>setExcluded([])} style={{background:'#e0f2fe',color:'#0369a1',border:'none'}}>Add back all removed ({excluded.length})</button>}
+                    </span>
+                  </div>
+                  <div style={{overflowX:'auto'}}>
+                    <table className="senda-table" style={{width:'100%',fontSize:13}}>
+                      <thead><tr>
+                        <th style={th}>Name</th>{has('email') && <th style={th}>Email</th>}{has('business') && <th style={th}>Business</th>}<th style={th}>Phone</th>
+                        {has('registered') && <th style={th}>Registered</th>}{has('last_seen') && <th style={th}>Last seen</th>}{has('credits') && <th style={th}>Credits</th>}{has('used') && <th style={th}>SMS used</th>}
+                        <th style={th}>Status</th><th style={{...th,textAlign:'right',position:'sticky',right:0,background:'#f8fafc'}}> </th>
+                      </tr></thead>
+                      <tbody>
+                        {rows.map(u => (
+                          <tr key={u.id} style={{opacity:isOut(u)?.6:1}}>
+                            <td style={{...noWrap,maxWidth:200,fontWeight:600,color:'#0f172a'}} title={u.name}>{u.name || '—'}</td>
+                            {has('email') && <td style={{...noWrap,maxWidth:260,color:'#475569'}} title={u.email}>{u.email}</td>}
+                            {has('business') && <td style={{...noWrap,maxWidth:200}} title={u.business}>{u.business}</td>}
+                            <td style={{fontFamily:'monospace',whiteSpace:'nowrap',color:'#475569'}}>{u.phone}</td>
+                            {has('registered') && <td style={{whiteSpace:'nowrap',color:'#64748b'}}>{u.registered || '—'}</td>}
+                            {has('last_seen') && <td style={{whiteSpace:'nowrap',color:'#64748b'}}>{u.last_seen || 'never'}</td>}
+                            {has('credits') && <td>{u.credits}</td>}{has('used') && <td>{u.used}</td>}
+                            <td style={{minWidth:130}}>{u.will_receive ? <span style={pill('#dcfce7','#166534')}>Will receive</span> : (<>
+                              <span style={pill('#fef3c7','#92400e')}>{isOut(u) ? 'Removed' : 'Left out'}</span>
+                              {!isOut(u) && u.reason && <div style={{fontSize:11,color:'#92400e',marginTop:2,maxWidth:220,whiteSpace:'normal',lineHeight:1.3}}>{u.reason}</div>}
+                            </>)}</td>
+                            <td style={{textAlign:'right',whiteSpace:'nowrap',position:'sticky',right:0,background:'#fff'}}>
+                              {(u.will_receive || isOut(u)) && (
+                                <button className="senda-btn senda-btn-sm" onClick={()=>toggle(u)}
+                                  style={{background:isOut(u)?'#e0f2fe':'#fee2e2',color:isOut(u)?'#0369a1':'#dc2626',border:'none'}}>{isOut(u) ? 'Add back' : 'Remove'}</button>)}
+                            </td>
+                          </tr>))}
+                        {rows.length === 0 && <tr><td colSpan={10} style={{padding:20,textAlign:'center',color:'#94a3b8'}}>Nobody matches your search.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap',padding:'10px 14px',borderTop:'1px solid #e8edf3',fontSize:12.5,color:'#64748b'}}>
+                    <span>{all.length >= 3000 ? 'Showing the first 3,000 people; everyone eligible still receives it.' : `Page ${page} of ${pages}`}</span>
+                    <span style={{display:'flex',gap:8}}>
+                      <button className="senda-btn senda-btn-sm" disabled={page<=1} onClick={()=>setPeoplePage(page-1)} style={{background:'#f1f5f9',color:'#334155',border:'none',opacity:page<=1?.5:1}}>Previous</button>
+                      <button className="senda-btn senda-btn-sm" disabled={page>=pages} onClick={()=>setPeoplePage(page+1)} style={{background:'#f1f5f9',color:'#334155',border:'none',opacity:page>=pages?.5:1}}>Next</button>
+                    </span>
+                  </div>
+                </div>);
+            })()}
+
+            {(preview.samples || []).slice(0, 2).map(s => (
+              <div key={s.phone} style={{background:'#e7f5ec',borderRadius:12,padding:12}}>
+                <div style={{fontSize:11.5,color:'#4d7c5b',marginBottom:6}}>Example for {s.name || s.phone}</div>
+                <div style={{background:'#fff',borderRadius:'4px 12px 12px 12px',padding:'9px 12px',fontSize:13,color:'#0f172a',whiteSpace:'pre-wrap',maxWidth:460,boxShadow:'0 1px 1px rgba(0,0,0,.08)'}}>{s.text}</div>
+              </div>))}
+          </>)}
+        </div>
+      </WaStep>
 
       {schedules.length > 0 && (
-        <div style={card}>
-          <div style={{fontSize:13.5,fontWeight:700,color:'#0f172a'}}>Repeating WhatsApp broadcasts</div>
-          {schedules.map(r => (
-            <div key={r.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,borderTop:'1px solid #f1f5f9',paddingTop:10}}>
+        <WaStep title="Repeating broadcasts" sub="These run automatically.">
+          <div style={{...stepBody,gap:0,padding:'4px 20px 10px'}}>
+            {schedules.map(r => (
+              <div key={r.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap',padding:'12px 0',borderTop:'1px solid #f1f5f9'}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontSize:13.5,fontWeight:600,color:'#0f172a'}}>{r.name}</div>
+                  <div style={{fontSize:12,color:'#94a3b8'}}>{({daily:'Every day',weekly:'Every week',monthly:'Every month'})[r.frequency] || r.frequency} · next {new Date(r.next_run_at).toLocaleString()} · ran {r.run_count} times{r.active ? '' : ' · paused'}</div>
+                </div>
+                <div style={{display:'flex',gap:8}}>
+                  <button className="senda-btn senda-btn-sm" onClick={()=>setScheduleActive(r, !r.active)} style={{background:'#f1f5f9',color:'#334155',border:'none'}}>{r.active ? 'Pause' : 'Resume'}</button>
+                  <button className="senda-btn senda-btn-sm" onClick={()=>removeSchedule(r)} style={{background:'#fee2e2',color:'#dc2626',border:'none'}}>Remove</button>
+                </div>
+              </div>))}
+          </div>
+        </WaStep>)}
+
+      <WaStep title="Recent WhatsApp broadcasts" sub="The latest ones, with how they are going." action={<button className="senda-btn senda-btn-sm" onClick={loadRecent} style={{background:'#f1f5f9',color:'#475569',border:'none'}}>Refresh</button>}>
+        <div style={{...stepBody,gap:0,padding:'4px 20px 10px'}}>
+          {recent.length === 0 ? <div style={{fontSize:13,color:'#94a3b8',padding:'12px 0'}}>Nothing sent yet.</div> : recent.map(c => (
+            <div key={c.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap',padding:'12px 0',borderTop:'1px solid #f1f5f9'}}>
               <div style={{minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:600,color:'#0f172a'}}>{r.name}</div>
-                <div style={{fontSize:11.5,color:'#94a3b8'}}>{({daily:'Every day',weekly:'Every week',monthly:'Every month'})[r.frequency] || r.frequency} · next {new Date(r.next_run_at).toLocaleString()} · ran {r.run_count} times{r.active ? '' : ' · paused'}</div>
+                <div style={{fontSize:13.5,fontWeight:600,color:'#0f172a'}}>{c.name}</div>
+                <div style={{fontSize:12,color:'#94a3b8'}}>{c.template_name} · {c.stats.recipients} people · sent {c.stats.submitted} · delivered {c.stats.delivered} · read {c.stats.read} · failed {c.stats.failed}</div>
               </div>
-              <div style={{display:'flex',gap:6}}>
-                <button className="senda-btn senda-btn-sm" onClick={()=>setScheduleActive(r, !r.active)} style={{background:'#f1f5f9',color:'#334155',border:'none'}}>{r.active ? 'Pause' : 'Resume'}</button>
-                <button className="senda-btn senda-btn-sm" onClick={()=>removeSchedule(r)} style={{background:'#fee2e2',color:'#dc2626',border:'none'}}>Remove</button>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <span style={{padding:'3px 10px',borderRadius:99,fontSize:11.5,fontWeight:700,background:(WA_STATUS[c.status]||WA_STATUS.draft)[0],color:(WA_STATUS[c.status]||WA_STATUS.draft)[1]}}>{c.status}</span>
+                <a href={`/whatsapp/campaigns?c=${c.id}`} target="_blank" rel="noreferrer" style={{fontSize:12.5,color:'#2563eb',fontWeight:600}}>Full report</a>
               </div>
             </div>))}
-        </div>)}
-
-      <div style={card}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <div style={{fontSize:13.5,fontWeight:700,color:'#0f172a'}}>Recent WhatsApp broadcasts</div>
-          <button className="senda-btn senda-btn-sm" onClick={loadRecent} style={{background:'#f1f5f9',color:'#475569',border:'none'}}>Refresh</button>
         </div>
-        {recent.length === 0 ? <div style={{fontSize:12.5,color:'#94a3b8'}}>Nothing sent yet.</div> : recent.map(c => (
-          <div key={c.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,borderTop:'1px solid #f1f5f9',paddingTop:10}}>
-            <div style={{minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:600,color:'#0f172a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</div>
-              <div style={{fontSize:11.5,color:'#94a3b8'}}>{c.template_name} · {c.stats.recipients} people · sent {c.stats.submitted} · delivered {c.stats.delivered} · read {c.stats.read} · failed {c.stats.failed}</div>
-            </div>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <span style={{padding:'2px 9px',borderRadius:99,fontSize:11,fontWeight:700,background:(WA_STATUS[c.status]||WA_STATUS.draft)[0],color:(WA_STATUS[c.status]||WA_STATUS.draft)[1]}}>{c.status}</span>
-              <a href={`/whatsapp/campaigns?c=${c.id}`} target="_blank" rel="noreferrer" style={{fontSize:12,color:'#2563eb'}}>Full report</a>
-            </div>
-          </div>))}
-      </div>
+      </WaStep>
     </div>
   );
 }
