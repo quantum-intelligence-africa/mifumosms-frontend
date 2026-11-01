@@ -16798,6 +16798,12 @@ function WaBroadcastPanel() {
   const [kind, setKind]           = useState('all');
   // People the admin removed from the list (by number). They are never messaged; "Add back" returns them.
   const [excluded, setExcluded]   = useState([]);
+  const [skipSent, setSkipSent]   = useState(false);   // skip numbers that already received this template
+  const [scheduleOn, setScheduleOn] = useState(false);
+  const [firstRun, setFirstRun]   = useState('');      // datetime-local
+  const [repeat, setRepeat]       = useState('once');  // once | daily | weekly | monthly
+  const [until, setUntil]         = useState('');
+  const [schedules, setSchedules] = useState([]);
   const [peopleQuery, setPeopleQuery] = useState('');
   const [peoplePage, setPeoplePage]   = useState(1);
   const [days, setDays]           = useState('30');
@@ -16820,6 +16826,7 @@ function WaBroadcastPanel() {
 
   const loadRecent = useCallback(() => {
     call('GET', '/').then(r => { if (r.results) setRecent(r.results.slice(0, 8)); }).catch(() => {});
+    call('GET', '/recurring/').then(r => { if (r.results) setSchedules(r.results); }).catch(() => {});
   }, [call]);
 
   useEffect(() => {
@@ -16844,7 +16851,7 @@ function WaBroadcastPanel() {
   }, [call]);
 
   useEffect(() => { setTplKey(''); setMap({}); loadTemplates(numberId); }, [numberId, loadTemplates]);
-  useEffect(() => { setPreview(null); }, [numberId, tplKey, map, audMode, segAudience, partnerId, segment, needSender, kind, days, threshold, phones, purpose, consent]);
+  useEffect(() => { setPreview(null); }, [numberId, tplKey, map, audMode, segAudience, partnerId, segment, needSender, kind, days, threshold, phones, purpose, consent, skipSent]);
   // A different audience starts with a clean list; removing or adding back a person re-checks the list straight away.
   useEffect(() => { setExcluded([]); setPeopleQuery(''); setPeoplePage(1); }, [audMode, segAudience, partnerId, segment, needSender, kind, days, threshold, phones]);
   useEffect(() => { if (preview && draftId) { void check(); } }, [excluded]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -16859,22 +16866,29 @@ function WaBroadcastPanel() {
     name: name.trim() || `Admin broadcast ${new Date().toLocaleDateString()}`, purpose, phone_number_id: numberId,
     template_name: template?.name, language_code: template?.language, consent_attested: !!consent,
     param_map: (template?.tokens || []).map(tok => { const m = map[tok] || { source:'name', text:'' }; return { token: tok, source: m.source === 'static' ? `static:${m.text}` : m.source, default: m.default || '' }; }),
-    audience: { excluded_phones: excluded, ...(audMode === 'segment' ? { segment_users: { audience: segAudience, partner_id: segAudience === 'partners' ? partnerId : '', segment, require_sender: needSender } }
+    audience: { excluded_phones: excluded, skip_already_received: skipSent, ...(audMode === 'segment' ? { segment_users: { audience: segAudience, partner_id: segAudience === 'partners' ? partnerId : '', segment, require_sender: needSender } }
       : audMode === 'senda' ? { senda_users: { kind, days: Number(days) || 0, threshold: Number(threshold) || 0 } }
       : { phones: phones.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean) }) },
   });
 
+  // Saves the draft and asks the server who would receive it. Throws a readable message when it cannot.
+  const runCheck = async () => {
+    const body = draft();
+    const saved = draftId ? await call('PATCH', `/${draftId}/`, body) : await call('POST', '/', body);
+    if (!saved.campaign) throw new Error(saved.message || 'Could not save the draft.');
+    setDraftId(saved.campaign.id);
+    const p = await call('POST', '/preview/', { ...body, campaign_id: saved.campaign.id });
+    if (p.success === false) throw new Error(p.message || 'Could not check the recipients.');
+    setPreview(p);
+    return { id: saved.campaign.id, p };
+  };
+
   const check = async () => {
     setBusy('check'); setError(null);
-    try {
-      const body = draft();
-      const saved = draftId ? await call('PATCH', `/${draftId}/`, body) : await call('POST', '/', body);
-      if (!saved.campaign) { setError(saved.message || 'Could not save the draft.'); return; }
-      setDraftId(saved.campaign.id);
-      const p = await call('POST', '/preview/', { ...body, campaign_id: saved.campaign.id });
-      if (p.success === false) setError(p.message || 'Could not check the recipients.'); else setPreview(p);
-    } catch (e) { setError(e.message); } finally { setBusy(''); }
+    try { await runCheck(); } catch (e) { setError(e.message); } finally { setBusy(''); }
   };
+
+  const finish = (message) => { showToast?.(message, 'success'); setDraftId(null); setPreview(null); setName(''); setScheduleOn(false); setFirstRun(''); setRepeat('once'); setUntil(''); loadRecent(); };
 
   const send = async () => {
     if (!preview || !draftId) return;
@@ -16882,13 +16896,34 @@ function WaBroadcastPanel() {
     setBusy('send');
     try {
       const r = await call('POST', `/${draftId}/launch/`, { launch_token: `${draftId}-${Date.now()}`, confirm_recipients: preview.eligible });
-      if (r.campaign) {
-        showToast?.('WhatsApp broadcast started.', 'success');
-        setDraftId(null); setPreview(null); setName(''); loadRecent();
-      } else setError(r.message || 'Could not start the broadcast.');
+      if (r.campaign) finish('WhatsApp broadcast started.'); else setError(r.message || 'Could not start the broadcast.');
     } catch (e) { setError(e.message); } finally { setBusy(''); }
   };
 
+  // One time later, or repeating (every day / week / month). Recipients are worked out again at each run, so people who join later are included.
+  const saveSchedule = async () => {
+    if (!firstRun) return;
+    setBusy('schedule'); setError(null);
+    try {
+      const { id, p } = await runCheck();
+      if (!p.can_launch || p.eligible === 0) { setError((p.problems || [])[0] || 'Nobody in this audience can receive it.'); return; }
+      const at = new Date(firstRun).toISOString();
+      if (repeat !== 'once') {
+        const r = await call('POST', '/recurring/', { campaign_id: id, frequency: repeat, interval: 1, first_run_at: at, until: until ? new Date(until).toISOString() : undefined });
+        if (!r.recurrence) { setError(r.message || 'Could not save the schedule.'); return; }
+        finish('Repeating WhatsApp broadcast saved.');
+      } else {
+        const r = await call('POST', `/${id}/launch/`, { launch_token: `${id}-${Date.now()}`, confirm_recipients: p.eligible, scheduled_at: at });
+        if (!r.campaign) { setError(r.message || 'Could not schedule the broadcast.'); return; }
+        finish('WhatsApp broadcast scheduled.');
+      }
+    } catch (e) { setError(e.message); } finally { setBusy(''); }
+  };
+
+  const setScheduleActive = async (row, active) => { await call('POST', `/recurring/${row.id}/`, { active }); loadRecent(); };
+  const removeSchedule = async (row) => { if (window.confirm('Stop and remove this repeating broadcast?')) { await call('DELETE', `/recurring/${row.id}/`); loadRecent(); } };
+
+  const canSend = !!preview && preview.can_launch && preview.eligible > 0 && !busy;
   const canCheck = !!template && !busy && (audMode === 'senda' || (audMode === 'segment' && (segAudience === 'direct_users' || partnerId)) || (audMode === 'phones' && phones.trim())) && (!isMarketing || consent)
     && (template.tokens || []).every(tok => (map[tok]?.source !== 'static') || (map[tok]?.text || '').trim());
 
@@ -17018,11 +17053,58 @@ function WaBroadcastPanel() {
             <input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} style={{marginTop:3}}/>
             <span>I confirm these people agreed to receive marketing messages from SENDA on WhatsApp.</span>
           </label>)}
-        <div>
-          <button className="senda-btn" disabled={!canCheck} onClick={check} style={{background:'#0f172a',color:'#fff',border:'none',opacity:canCheck?1:.5}}>
-            {busy==='check' ? 'Checking…' : 'Check who will receive it'}
+        <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,color:'#334155'}}>
+          <input type="checkbox" checked={skipSent} onChange={e=>setSkipSent(e.target.checked)}/>
+          Skip recipients who already received this exact message
+        </label>
+        <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,color:'#334155'}}>
+          <input type="checkbox" checked={scheduleOn} onChange={e=>setScheduleOn(e.target.checked)}/>
+          <Clock size={14} color={scheduleOn ? BRAND : '#94a3b8'} strokeWidth={2.2}/>
+          Schedule this broadcast to run automatically (like a campaign)
+        </label>
+        {scheduleOn && (
+          <div style={{padding:16,borderRadius:12,border:`1.5px solid ${BRAND}33`,background:`${BRAND}08`,display:'grid',gap:12}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <div>
+                <label style={lbl} htmlFor="wab-first">First send</label>
+                <input id="wab-first" type="datetime-local" style={field} value={firstRun} onChange={e=>setFirstRun(e.target.value)}/>
+              </div>
+              <div>
+                <label style={lbl} htmlFor="wab-repeat">Repeat</label>
+                <select id="wab-repeat" style={field} value={repeat} onChange={e=>setRepeat(e.target.value)}>
+                  <option value="once">Once, at the chosen time</option><option value="daily">Every day</option>
+                  <option value="weekly">Every week (same weekday)</option><option value="monthly">Every month (same date)</option>
+                </select>
+              </div>
+            </div>
+            {repeat !== 'once' && (
+              <div>
+                <label style={lbl} htmlFor="wab-until">Stop repeating after (optional)</label>
+                <input id="wab-until" type="datetime-local" style={field} value={until} onChange={e=>setUntil(e.target.value)}/>
+              </div>)}
+            <div style={{fontSize:11,color:'#64748b',lineHeight:1.5}}>
+              Recipients are checked again at each run, so people who join later are included
+              {skipSent ? ', and people who already received this message are skipped.' : '. Tick “Skip recipients who already received this exact message” to avoid repeats.'} Times are in your browser's time zone.
+            </div>
+          </div>)}
+        <div style={{display:'flex',gap:10}}>
+          <button className="senda-btn senda-btn-sm" onClick={check} disabled={!canCheck}
+            style={{height:40,border:`1.5px solid ${BRAND}`,color:BRAND,background:'#fff',fontWeight:700,opacity:canCheck?1:.5,cursor:canCheck?'pointer':'not-allowed'}}>
+            {busy==='check' ? 'Checking…' : 'Preview recipients'}
           </button>
+          {scheduleOn ? (
+            <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={saveSchedule} disabled={!canCheck || !firstRun}
+              style={{height:40,fontWeight:700,opacity:(canCheck && firstRun)?1:.5,cursor:(canCheck && firstRun)?'pointer':'not-allowed'}}>
+              <Clock size={15} strokeWidth={2.2} style={{marginRight:6}}/>{busy==='schedule' ? 'Saving…' : 'Save schedule'}
+            </button>
+          ) : (
+            <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={send} disabled={!canSend}
+              style={{height:40,fontWeight:700,opacity:canSend?1:.5,cursor:canSend?'pointer':'not-allowed'}}>
+              <Send size={15} strokeWidth={2.2} style={{marginRight:6}}/>{busy==='send' ? 'Starting…' : 'Send Broadcast'}
+            </button>)}
         </div>
+        {!scheduleOn && !preview && <div style={{fontSize:12,color:'#94a3b8'}}>Run a preview to see how many recipients are eligible before sending.</div>}
+        {scheduleOn && <div style={{fontSize:12,color:'#94a3b8'}}>Save schedule checks the recipients first, then schedules it. Repeating ones are listed below.</div>}
       </div>
 
       {preview && (
@@ -17092,14 +17174,24 @@ function WaBroadcastPanel() {
               <div style={{fontSize:11,color:'#4d7c5b',marginBottom:3}}>Example for {s.name || s.phone}</div>{s.text}
             </div>))}
           {preview.credits && !preview.credits.enough && <div style={{fontSize:12.5,color:'#b91c1c'}}>Not enough WhatsApp credits: needs {preview.credits.required}, you have {preview.credits.available}.</div>}
-          <div>
-            <button className="senda-btn" disabled={!preview.can_launch || preview.eligible === 0 || !!busy} onClick={send}
-              style={{background:'#16a34a',color:'#fff',border:'none',opacity:(!preview.can_launch || preview.eligible === 0 || busy)?.5:1}}>
-              {busy==='send' ? 'Starting…' : `Send to ${preview.eligible} people`}
-            </button>
-          </div>
         </div>
       )}
+
+      {schedules.length > 0 && (
+        <div style={card}>
+          <div style={{fontSize:13.5,fontWeight:700,color:'#0f172a'}}>Repeating WhatsApp broadcasts</div>
+          {schedules.map(r => (
+            <div key={r.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,borderTop:'1px solid #f1f5f9',paddingTop:10}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:'#0f172a'}}>{r.name}</div>
+                <div style={{fontSize:11.5,color:'#94a3b8'}}>{({daily:'Every day',weekly:'Every week',monthly:'Every month'})[r.frequency] || r.frequency} · next {new Date(r.next_run_at).toLocaleString()} · ran {r.run_count} times{r.active ? '' : ' · paused'}</div>
+              </div>
+              <div style={{display:'flex',gap:6}}>
+                <button className="senda-btn senda-btn-sm" onClick={()=>setScheduleActive(r, !r.active)} style={{background:'#f1f5f9',color:'#334155',border:'none'}}>{r.active ? 'Pause' : 'Resume'}</button>
+                <button className="senda-btn senda-btn-sm" onClick={()=>removeSchedule(r)} style={{background:'#fee2e2',color:'#dc2626',border:'none'}}>Remove</button>
+              </div>
+            </div>))}
+        </div>)}
 
       <div style={card}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
