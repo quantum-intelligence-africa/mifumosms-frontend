@@ -118,7 +118,6 @@ export function Kpis({ filters, drillDown }: { filters: AnalyticsFilters; drillD
         <KpiCard label={t("an.k_failed")} value={fmtNum(k.failed.value)} definition={k.failed.definition} change={k.failed.change} goodWhenUp={false} tone="text-orange-600" onClick={() => drillDown({ filter: "failed" })} />
         <KpiCard label={t("an.k_answer_rate")} value={fmtPct(k.answer_rate.value, 1)} definition={k.answer_rate.definition} change={k.answer_rate.change} points />
         <KpiCard label={t("an.k_missed_rate")} value={fmtPct(k.missed_rate.value, 1)} definition={k.missed_rate.definition} change={k.missed_rate.change} points goodWhenUp={false} />
-        <KpiCard label={t("an.k_wait")} value={fmtSeconds(k.avg_wait_seconds.value)} definition={k.avg_wait_seconds.definition} change={k.avg_wait_seconds.change} goodWhenUp={false} />
         <KpiCard label={t("an.k_talk")} value={fmtSeconds(k.avg_talk_seconds.value)} definition={k.avg_talk_seconds.definition} change={k.avg_talk_seconds.change} />
         <KpiCard label={t("an.k_total_talk")} value={fmtSeconds(k.total_talk_seconds.value)} definition={k.total_talk_seconds.definition} change={k.total_talk_seconds.change} />
         <KpiCard label={t("an.k_waiting_now")} value={fmtNum(s.live.waiting_now)} definition={s.live.definition} />
