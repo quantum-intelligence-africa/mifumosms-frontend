@@ -13339,11 +13339,11 @@ function AnalysisWhatsAppTab() {
             {!cfg.template_name && <span style={{padding:'3px 10px',borderRadius:99,fontSize:11.5,fontWeight:700,background:'#fef3c7',color:'#92400e'}}>No template set: nothing is sent yet</span>}
           </div>
           <p style={{fontSize:11.5,color:'#94a3b8',margin:'6px 0 8px'}}>
-            One approved template for every organization, with a <b>document</b> header (the PDF) and 5 body variables in this order: {(cfg.variables || []).map((v, i) => `{{${i + 1}}} ${v}`).join(', ')}.
+            One template name for every organization, with a <b>document</b> header (the PDF) and 5 body variables in this order: {(cfg.variables || []).map((v, i) => `{{${i + 1}}} ${v}`).join(', ')}.
+            Create it <b>twice under the same name</b> in Meta: once in Swahili (sw) and once in English (en). Each report uses the language chosen for the organization.
           </p>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             <input value={cfg.template_name} onChange={e => setCfg({ ...cfg, template_name: e.target.value })} placeholder="template_name" className="senda-input" style={{flex:'1 1 220px',height:36,fontSize:13}}/>
-            <input value={cfg.language_code} onChange={e => setCfg({ ...cfg, language_code: e.target.value })} placeholder="sw" className="senda-input" style={{width:80,height:36,fontSize:13}}/>
             <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={cfgBusy} onClick={saveCfg}>{cfgBusy ? 'Saving…' : 'Save template'}</button>
           </div>
         </div>)}
