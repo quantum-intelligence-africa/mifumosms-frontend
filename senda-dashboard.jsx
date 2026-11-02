@@ -13226,6 +13226,9 @@ function AnalysisEmailsTab() {
   const [orgs, setOrgs]       = useState([]);
   const [error, setError]     = useState(null);
   const [edit, setEdit]       = useState(null);           // { tenant_id, tenant, language, recipient_mode, text }
+  const [waCfg, setWaCfg]     = useState(null);           // the approved WhatsApp template the reports use (platform-wide)
+  const [waBusy, setWaBusy]   = useState(false);
+  useEffect(() => { if (edit && !waCfg) voiceAdminFetch('/audio/admin/report-whatsapp/', {}, onLogout).then(res => { if (res.success) setWaCfg(res.data); }).catch(() => {}); }, [edit, waCfg]);
   const [busy, setBusy]       = useState(false);
   const [fOrg, setFOrg]       = useState('');
   const [fRecipient, setFRecipient] = useState('');
@@ -13296,7 +13299,7 @@ function AnalysisEmailsTab() {
       loadOrgs(); setLogTick(t => t + 1);
     });
   };
-  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.owners_and_admins, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled });
+  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.owners_and_admins, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled, waOn: !!o.whatsapp_enabled, waText: (o.whatsapp_recipients || []).join('\n') });
   // Opens the call-analysis email exactly as the organization receives it (its latest real analysis, or a marked sample). Nothing is sent.
   const previewAnalysisEmail = async (kind) => {
     const token = getToken();
@@ -13328,11 +13331,30 @@ function AnalysisEmailsTab() {
   };
   const save = () => {
     setBusy(true);
-    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/`, { method: 'PUT', body: JSON.stringify({ language: edit.language, recipient_mode: edit.recipient_mode, assigned_recipients: edit.text, daily_report_enabled: edit.daily, weekly_report_enabled: edit.weekly }) }, onLogout).then(res => {
+    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/`, { method: 'PUT', body: JSON.stringify({ language: edit.language, recipient_mode: edit.recipient_mode, assigned_recipients: edit.text, daily_report_enabled: edit.daily, weekly_report_enabled: edit.weekly, whatsapp_enabled: edit.waOn, whatsapp_recipients: edit.waText }) }, onLogout).then(res => {
       setBusy(false);
       if (!res.success) { showToast?.(errText(res, 'Could not save.'), 'error'); return; }
       showToast?.(`Saved for ${edit.tenant}.`, 'success');
       setEdit(null); loadOrgs();
+    });
+  };
+  const saveWaTemplate = () => {
+    setWaBusy(true);
+    voiceAdminFetch('/audio/admin/report-whatsapp/', { method: 'PUT', body: JSON.stringify({ template_name: waCfg.template_name, language_code: waCfg.language_code }) }, onLogout).then(res => {
+      setWaBusy(false);
+      if (!res.success) { showToast?.(errText(res, 'Could not save the template.'), 'error'); return; }
+      setWaCfg(res.data); showToast?.('WhatsApp template saved.', 'success');
+    });
+  };
+  const testWhatsApp = () => {
+    const numbers = edit.waText.trim();
+    if (!numbers) { showToast?.('Add a WhatsApp number first.', 'error'); return; }
+    if (!window.confirm(`Send yesterday's report for ${edit.tenant} to these WhatsApp numbers now?`)) return;
+    setWaBusy(true);
+    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/whatsapp-test/`, { method: 'POST', body: JSON.stringify({ numbers }) }, onLogout).then(res => {
+      setWaBusy(false);
+      if (!res.success) { showToast?.(errText(res, res.data?.reason || 'WhatsApp did not accept it. Check the template name and that the template is approved.'), 'error'); return; }
+      showToast?.(`Sent to ${res.data.sent} number(s) on WhatsApp.`, 'success');
     });
   };
   const fmt = (t) => t ? new Date(t).toLocaleString() : '—';
@@ -13479,6 +13501,36 @@ function AnalysisEmailsTab() {
               <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('html', 7)}>Preview weekly email</button>
               <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('pdf', 7)}>Preview weekly PDF</button>
             </div>
+          </div>
+          <div style={{borderTop:'1px solid #eef2f7',paddingTop:10,marginBottom:10}}>
+            <label style={{fontSize:13,fontWeight:700,color:'#0f172a',display:'flex',alignItems:'center',gap:8}}>
+              <input type="checkbox" checked={edit.waOn} onChange={e => setEdit({ ...edit, waOn: e.target.checked })}/>
+              Also send the daily and weekly report (PDF) on WhatsApp
+            </label>
+            <p style={{fontSize:11.5,color:'#94a3b8',margin:'3px 0 6px'}}>
+              Sent from SENDA's WhatsApp number at the same times as the email. One phone number per line.
+            </p>
+            <textarea value={edit.waText} onChange={e => setEdit({ ...edit, waText: e.target.value })} rows={3} placeholder={'0712 345 678\n0713 345 678'}
+              style={{width:'100%',boxSizing:'border-box',padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'inherit'}}/>
+            <div style={{display:'flex',gap:8,marginTop:6,flexWrap:'wrap',alignItems:'center'}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={waBusy} onClick={testWhatsApp}>Send a test on WhatsApp</button>
+              {waCfg && !waCfg.number_ready && <span style={{fontSize:11.5,color:'#b45309'}}>SENDA's WhatsApp number is not saved or not active (Admin, WhatsApp, Credentials).</span>}
+              {waCfg && waCfg.number_ready && !waCfg.template_name && <span style={{fontSize:11.5,color:'#b45309'}}>Set the template name below first.</span>}
+            </div>
+            {waCfg && (
+              <div style={{marginTop:10,padding:'10px 12px',background:'#f8fafc',border:'1px solid #e8edf3',borderRadius:10}}>
+                <div style={{fontSize:12,fontWeight:700,color:'#334155'}}>WhatsApp template for reports (same for every organization)</div>
+                <p style={{fontSize:11.5,color:'#94a3b8',margin:'3px 0 8px'}}>
+                  Create an approved template in Meta with a <b>document</b> header (the PDF) and 5 body variables in this order: {(waCfg.variables || []).map((v, i) => `{{${i + 1}}} ${v}`).join(', ')}.
+                </p>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                  <input value={waCfg.template_name} onChange={e => setWaCfg({ ...waCfg, template_name: e.target.value })} placeholder="template_name"
+                    style={{flex:'1 1 200px',padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13}}/>
+                  <input value={waCfg.language_code} onChange={e => setWaCfg({ ...waCfg, language_code: e.target.value })} placeholder="sw"
+                    style={{width:80,padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13}}/>
+                  <button className="senda-btn senda-btn-sm" disabled={waBusy} onClick={saveWaTemplate}>Save template</button>
+                </div>
+              </div>)}
           </div>
           <div style={{borderTop:'1px solid #eef2f7',paddingTop:10,marginBottom:10}}>
             <div style={{fontSize:13,fontWeight:700,color:'#0f172a'}}>Send the report now</div>
