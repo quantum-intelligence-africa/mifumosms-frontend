@@ -12725,20 +12725,24 @@ function CreditAlertsTab() {
   );
 }
 
-// ─── Net Profit (revenue − real SMS provider cost) ─────────────────────────
-// Cost is a single current rate (what we pay the provider), admin-set and
-// applied uniformly to every month shown — no effective-dating. The sell
-// side is never a fixed number: "Avg sell price" below is always derived
-// live from real revenue ÷ real segments sent, so it moves on its own as
-// the mix of package tiers/volumes customers actually buy changes.
+// ─── Net Profit: SMS, sender IDs and call center on their own, then all together ───────────────
+// Each product is compared only with its own cost. The costs are admin-set rates (what we pay upstream), applied to every month shown. A product with no
+// rate yet shows its revenue but no cost/profit (never a fake 100% margin), and the combined total says its cost is incomplete.
 function NetProfitTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [months, setMonths] = useState(12);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [rate, setRate] = useState({ cost_per_segment: 0, has_rate: false, updated_at: null });
-  const [costDraft, setCostDraft] = useState('');
+  const [view, setView] = useState('total');            // sms | sender_id | call_center | total
+  const [rate, setRate] = useState({ cost_per_segment: 0, cost_per_sender_id: null, cost_per_call_minute: null, updated_at: null });
+  const [draft, setDraft] = useState({ sms: '', sender: '', minute: '' });
   const [savingRate, setSavingRate] = useState(false);
+
+  const draftFrom = (r) => ({
+    sms: r.cost_per_segment > 0 ? String(r.cost_per_segment) : '',
+    sender: r.cost_per_sender_id != null ? String(r.cost_per_sender_id) : '',
+    minute: r.cost_per_call_minute != null ? String(r.cost_per_call_minute) : '',
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -12748,126 +12752,179 @@ function NetProfitTab() {
         adminFetch(`/api/admin/v1/net-profit/cost-rate`, { method:'GET' }, onLogout),
       ]);
       if (profitRes.success) setData(profitRes.data);
-      if (rateRes.success) {
-        setRate(rateRes.data);
-        setCostDraft(rateRes.data.has_rate ? String(rateRes.data.cost_per_segment) : '');
-      }
+      if (rateRes.success) { setRate(rateRes.data); setDraft(draftFrom(rateRes.data)); }
     } catch {} finally { setLoading(false); }
   }, [months, onLogout]);
   useEffect(() => { load(); }, [load]);
 
-  const saveRate = async () => {
-    const cost = parseFloat(costDraft);
-    if (isNaN(cost) || cost <= 0) { showToast('Enter a valid cost per SMS', 'error'); return; }
+  const dirty = JSON.stringify(draft) !== JSON.stringify(draftFrom(rate));
+  const saveRates = async () => {
+    const num = (v) => (v.trim() === '' ? null : parseFloat(v));
+    const body = { cost_per_segment: num(draft.sms) ?? 0, cost_per_sender_id: num(draft.sender), cost_per_call_minute: num(draft.minute) };
+    for (const v of Object.values(body)) if (v != null && (isNaN(v) || v < 0)) { showToast('Enter valid numbers (0 or more), or leave a box empty.', 'error'); return; }
     setSavingRate(true);
     try {
-      const res = await adminFetch('/api/admin/v1/net-profit/cost-rate', {
-        method:'PATCH', body: JSON.stringify({ cost_per_segment: cost }),
-      }, onLogout);
-      if (res.success) { showToast('Cost rate saved — applied to every month shown.', 'success'); setRate(res.data); load(); }
-      else showToast(res.error?.message || 'Failed to save rate', 'error');
-    } catch { showToast('Network error saving rate', 'error'); }
+      const res = await adminFetch('/api/admin/v1/net-profit/cost-rate', { method:'PATCH', body: JSON.stringify(body) }, onLogout);
+      if (res.success) { showToast('Cost rates saved. Applied to every month shown.', 'success'); setRate(res.data); setDraft(draftFrom(res.data)); load(); }
+      else showToast(res.error?.message || 'Failed to save the rates', 'error');
+    } catch { showToast('Network error saving the rates', 'error'); }
     finally { setSavingRate(false); }
   };
 
   const fmtTzs = (n) => (n == null ? '—' : `TZS ${Math.round(n).toLocaleString()}`);
-  const dirty = costDraft !== (rate.has_rate ? String(rate.cost_per_segment) : '');
+  const pctText = (p) => (p == null ? '—' : `${p}%`);
+  const profitColor = (p) => (p == null ? '#94a3b8' : p >= 0 ? '#059669' : '#dc2626');
+  const NOT_SET = <span style={{ color:'#dc2626' }}>No rate</span>;
+
+  const Card = ({ label, value, color, hint }) => (
+    <div className="senda-card" style={{ padding:16 }} title={hint}>
+      <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>{label}</div>
+      <div style={{ fontSize:22, fontWeight:800, color: color || '#0f172a', marginTop:4 }}>{value}</div>
+    </div>
+  );
+  const Cards = ({ children }) => <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12, marginBottom:16 }}>{children}</div>;
+  const Table = ({ head, children }) => (
+    <div className="senda-card" style={{ overflow:'hidden' }}>
+      <div className="senda-table-wrap"><table className="senda-table"><thead><tr>{head.map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{children}</tbody></table></div>
+    </div>
+  );
+  const profitCell = (p) => <td style={{ fontWeight:700, color: profitColor(p.profit) }}>{fmtTzs(p.profit)}</td>;
+
+  const PRODUCTS = [
+    { id:'sms', label:'SMS' },
+    { id:'sender_id', label:'Sender IDs' },
+    { id:'call_center', label:'Call center' },
+    { id:'total', label:'All together' },
+  ];
+
+  const t = data?.totals;
+  const missing = t?.total?.missing || [];
+  const missingNames = { sms: 'SMS', sender_id: 'Sender IDs', call_center: 'Call center' };
 
   return (
     <div className="senda-fade-in">
-      <SectionHeader title="Net Profit" subtitle="Revenue minus what we actually pay the SMS provider. Cost is the one rate you set below, applied to every month. Sell price is never fixed — it's always the real average from what customers actually paid." />
+      <SectionHeader title="Net Profit" subtitle="Revenue, cost and profit for SMS, sender IDs and the call center, each on its own. The last tab, All together, adds them up." />
 
-      {/* Cost rate panel */}
       <div className="senda-card" style={{ padding:'16px 18px', marginBottom:16 }}>
-        <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:10 }}>Cost per SMS segment (what we pay the provider)</div>
-        {!rate.has_rate && (
-          <div style={{ fontSize:12, color:'#b91c1c', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'8px 12px', marginBottom:10 }}>
-            No cost rate set yet — profit can't be computed until you set one (e.g. 13 for 13 TZS/SMS).
-          </div>
-        )}
-        <div style={{ display:'flex', flexWrap:'wrap', gap:8, alignItems:'flex-end' }}>
-          <div>
-            <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>Cost per SMS (TZS)</label>
-            <input type="number" min="0" step="0.01" value={costDraft}
-              onChange={e=>setCostDraft(e.target.value)}
-              placeholder="13" className="senda-input" style={{ width:140, height:34 }}/>
-          </div>
-          <button type="button" onClick={saveRate} disabled={savingRate || !dirty}
-            className="senda-btn senda-btn-sm" style={{ height:34, border:'none', background:BRAND, color:'#fff', fontWeight:700, opacity:(savingRate||!dirty)?0.6:1 }}>
-            {savingRate ? 'Saving…' : 'Save'}
-          </button>
-          {rate.has_rate && rate.updated_at && (
-            <span style={{ fontSize:11, color:'#94a3b8' }}>Last changed {new Date(rate.updated_at).toLocaleString()}</span>
-          )}
-        </div>
-        <p style={{ fontSize:11, color:'#94a3b8', margin:'8px 0 0' }}>
-          One current value — changing it recomputes cost and profit for every month shown, past and future, not
-          just going forward. There's no separate rate per month to manage.
+        <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:4 }}>What each product costs us</div>
+        <p style={{ fontSize:11.5, color:'#94a3b8', margin:'0 0 10px' }}>
+          The amounts we pay upstream. Leave a box empty when you do not know it yet: that product then shows revenue only, and the total says its cost is missing. Use 0 when it costs us nothing.
         </p>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:12, alignItems:'flex-end' }}>
+          {[['sms', 'SMS: cost per segment (TZS)', '13'], ['sender', 'Sender ID: cost per registration (TZS)', '10000'], ['minute', 'Call center: cost per minute (TZS)', '30']].map(([key, label, ph]) => (
+            <div key={key}>
+              <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>{label}</label>
+              <input type="number" min="0" step="0.01" value={draft[key]} onChange={e => setDraft({ ...draft, [key]: e.target.value })} placeholder={ph} className="senda-input" style={{ width:200, height:34 }}/>
+            </div>))}
+          <button type="button" onClick={saveRates} disabled={savingRate || !dirty} className="senda-btn senda-btn-sm"
+            style={{ height:34, border:'none', background:BRAND, color:'#fff', fontWeight:700, opacity:(savingRate || !dirty) ? 0.6 : 1 }}>{savingRate ? 'Saving…' : 'Save'}</button>
+          {rate.updated_at && <span style={{ fontSize:11, color:'#94a3b8' }}>Last changed {new Date(rate.updated_at).toLocaleString()}</span>}
+        </div>
+        <p style={{ fontSize:11, color:'#94a3b8', margin:'8px 0 0' }}>One current value for each. Changing it recomputes cost and profit for every month shown, past and future.</p>
       </div>
 
-      {/* Monthly breakdown */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, flexWrap:'wrap', gap:8 }}>
-        <div style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>Monthly breakdown</div>
-        <select value={months} onChange={e=>setMonths(Number(e.target.value))} className="senda-input" style={{ width:'auto', height:32 }}>
-          <option value={6}>Last 6 months</option>
-          <option value={12}>Last 12 months</option>
-          <option value={24}>Last 24 months</option>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, flexWrap:'wrap', gap:8 }}>
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+          {PRODUCTS.map(p => (
+            <button key={p.id} type="button" onClick={() => setView(p.id)} className="senda-btn senda-btn-sm"
+              style={{ border: view === p.id ? 'none' : '1px solid #e2e8f0', background: view === p.id ? '#0f172a' : '#fff', color: view === p.id ? '#fff' : '#475569', fontWeight:700 }}>{p.label}</button>))}
+        </div>
+        <select value={months} onChange={e => setMonths(Number(e.target.value))} className="senda-input" style={{ width:'auto', height:32 }}>
+          <option value={6}>Last 6 months</option><option value={12}>Last 12 months</option><option value={24}>Last 24 months</option>
         </select>
       </div>
 
-      {loading ? (
-        <p style={{ color:'#94a3b8', fontSize:13 }}>Loading…</p>
-      ) : data && (
+      {loading ? <p style={{ color:'#94a3b8', fontSize:13 }}>Loading…</p> : data && (
         <>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12, marginBottom:16 }}>
-            <div className="senda-card" style={{ padding:16 }}>
-              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Revenue</div>
-              <div style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginTop:4 }}>{fmtTzs(data.totals.revenue)}</div>
-            </div>
-            <div className="senda-card" style={{ padding:16 }} title="Real revenue ÷ real segments sent — never a fixed assumed price, moves with your actual package/volume mix.">
-              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Avg sell price / SMS</div>
-              <div style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginTop:4 }}>{data.totals.avg_sell_price != null ? `TZS ${data.totals.avg_sell_price}` : '—'}</div>
-            </div>
-            <div className="senda-card" style={{ padding:16 }}>
-              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Provider cost</div>
-              <div style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginTop:4 }}>{fmtTzs(data.totals.cost)}</div>
-            </div>
-            <div className="senda-card" style={{ padding:16 }}>
-              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Net profit</div>
-              <div style={{ fontSize:22, fontWeight:800, color: data.totals.profit>=0 ? '#059669':'#dc2626', marginTop:4 }}>{fmtTzs(data.totals.profit)}</div>
-            </div>
-            <div className="senda-card" style={{ padding:16 }}>
-              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Segments sent</div>
-              <div style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginTop:4 }}>{(data.totals.segments_sent || 0).toLocaleString()}</div>
-            </div>
-          </div>
+          {view === 'sms' && (<>
+            <Cards>
+              <Card label="Revenue" value={fmtTzs(t.sms.revenue)} hint="SMS package purchases and custom SMS purchases."/>
+              <Card label="Provider cost" value={fmtTzs(t.sms.cost)}/>
+              <Card label="Net profit" value={fmtTzs(t.sms.profit)} color={profitColor(t.sms.profit)}/>
+              <Card label="Margin" value={pctText(t.sms.margin_pct)}/>
+              <Card label="Segments sent" value={(t.sms.segments_sent || 0).toLocaleString()}/>
+              <Card label="Avg sell price / SMS" value={t.sms.avg_sell_price != null ? `TZS ${t.sms.avg_sell_price}` : '—'} hint="Real SMS revenue ÷ real segments sent."/>
+            </Cards>
+            <Table head={['Month', 'Revenue', 'Segments sent', 'Avg sell/SMS', 'Cost/SMS', 'Provider cost', 'Net profit', 'Margin']}>
+              {data.months.map(m => (
+                <tr key={m.label}>
+                  <td style={{ fontWeight:700 }}>{m.label}</td><td>{fmtTzs(m.sms.revenue)}</td><td>{(m.sms.segments_sent || 0).toLocaleString()}</td>
+                  <td>{m.sms.avg_sell_price != null ? `TZS ${m.sms.avg_sell_price}` : '—'}</td><td>{m.sms.has_rate ? `TZS ${m.sms.cost_per_segment}` : NOT_SET}</td>
+                  <td>{fmtTzs(m.sms.cost)}</td>{profitCell(m.sms)}<td>{pctText(m.sms.margin_pct)}</td>
+                </tr>))}
+            </Table>
+          </>)}
 
-          <div className="senda-card" style={{ overflow:'hidden' }}>
-            <div className="senda-table-wrap">
-              <table className="senda-table">
-                <thead>
-                  <tr>
-                    <th>Month</th><th>Revenue</th><th>Segments sent</th><th>Avg sell/SMS</th><th>Cost/SMS</th><th>Provider cost</th><th>Net profit</th><th>Margin</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.months.map(m => (
-                    <tr key={`${m.year}-${m.month}`}>
-                      <td style={{ fontWeight:700 }}>{m.label}</td>
-                      <td>{fmtTzs(m.revenue)}</td>
-                      <td>{(m.segments_sent || 0).toLocaleString()}</td>
-                      <td>{m.avg_sell_price != null ? `TZS ${m.avg_sell_price}` : '—'}</td>
-                      <td>{m.has_rate ? `TZS ${m.cost_per_segment}` : <span style={{ color:'#dc2626' }}>No rate</span>}</td>
-                      <td>{fmtTzs(m.cost)}</td>
-                      <td style={{ fontWeight:700, color: m.profit==null ? '#94a3b8' : m.profit>=0 ? '#059669' : '#dc2626' }}>{fmtTzs(m.profit)}</td>
-                      <td>{m.margin_pct==null ? '—' : `${m.margin_pct}%`}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {view === 'sender_id' && (<>
+            <Cards>
+              <Card label="Revenue" value={fmtTzs(t.sender_id.revenue)} hint="Sender ID registration fees that were paid."/>
+              <Card label="Cost" value={fmtTzs(t.sender_id.cost)}/>
+              <Card label="Net profit" value={fmtTzs(t.sender_id.profit)} color={profitColor(t.sender_id.profit)}/>
+              <Card label="Margin" value={pctText(t.sender_id.margin_pct)}/>
+              <Card label="Paid registrations" value={(t.sender_id.count || 0).toLocaleString()}/>
+            </Cards>
+            <Table head={['Month', 'Revenue', 'Paid registrations', 'Cost each', 'Cost', 'Net profit', 'Margin']}>
+              {data.months.map(m => (
+                <tr key={m.label}>
+                  <td style={{ fontWeight:700 }}>{m.label}</td><td>{fmtTzs(m.sender_id.revenue)}</td><td>{m.sender_id.count}</td>
+                  <td>{m.sender_id.has_rate ? fmtTzs(m.sender_id.cost_each) : NOT_SET}</td><td>{fmtTzs(m.sender_id.cost)}</td>{profitCell(m.sender_id)}<td>{pctText(m.sender_id.margin_pct)}</td>
+                </tr>))}
+            </Table>
+          </>)}
+
+          {view === 'call_center' && (<>
+            {!t.call_center.data_available && (
+              <div style={{ fontSize:12, color:'#92400e', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:8, padding:'8px 12px', marginBottom:12 }}>
+                The call minutes could not be read from the voice service here, so the call center cost and profit are left blank. Revenue is still correct.
+              </div>)}
+            <Cards>
+              <Card label="Revenue" value={fmtTzs(t.call_center.revenue)} hint="Call-center plan payments (online, or recorded when staff activated a paid plan). Free trials are not revenue."/>
+              <Card label="Telephony cost" value={fmtTzs(t.call_center.cost)}/>
+              <Card label="Net profit" value={fmtTzs(t.call_center.profit)} color={profitColor(t.call_center.profit)}/>
+              <Card label="Margin" value={pctText(t.call_center.margin_pct)}/>
+              <Card label="Billable minutes" value={Math.round(t.call_center.minutes || 0).toLocaleString()}/>
+              <Card label="Calls" value={(t.call_center.calls || 0).toLocaleString()}/>
+            </Cards>
+            <Table head={['Month', 'Revenue', 'Calls', 'Billable minutes', 'Cost/min', 'Telephony cost', 'Net profit', 'Margin']}>
+              {data.months.map(m => (
+                <tr key={m.label}>
+                  <td style={{ fontWeight:700 }}>{m.label}</td><td>{fmtTzs(m.call_center.revenue)}</td><td>{(m.call_center.calls || 0).toLocaleString()}</td>
+                  <td>{Math.round(m.call_center.minutes || 0).toLocaleString()}</td><td>{m.call_center.has_rate ? `TZS ${m.call_center.cost_per_minute}` : NOT_SET}</td>
+                  <td>{fmtTzs(m.call_center.cost)}</td>{profitCell(m.call_center)}<td>{pctText(m.call_center.margin_pct)}</td>
+                </tr>))}
+            </Table>
+          </>)}
+
+          {view === 'total' && (<>
+            {missing.length > 0 && (
+              <div style={{ fontSize:12, color:'#92400e', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:8, padding:'8px 12px', marginBottom:12 }}>
+                The total profit is hidden because the cost of {missing.map(k => missingNames[k]).join(', ')} is not known yet. Set it above (use 0 if it costs nothing) and the total appears.
+              </div>)}
+            <Cards>
+              <Card label="Total revenue" value={fmtTzs(t.total.revenue)}/>
+              <Card label="Total cost" value={fmtTzs(t.total.cost)} hint={missing.length ? 'Only the costs that are known.' : undefined}/>
+              <Card label="Net profit" value={fmtTzs(t.total.profit)} color={profitColor(t.total.profit)}/>
+              <Card label="Margin" value={pctText(t.total.margin_pct)}/>
+            </Cards>
+            <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', margin:'0 0 8px' }}>Added up</div>
+            <Table head={['Product', 'Revenue', 'Cost', 'Net profit', 'Margin']}>
+              {[['sms', 'SMS'], ['sender_id', 'Sender IDs'], ['call_center', 'Call center']].map(([k, label]) => (
+                <tr key={k}><td style={{ fontWeight:700 }}>{label}</td><td>{fmtTzs(t[k].revenue)}</td><td>{fmtTzs(t[k].cost)}</td>{profitCell(t[k])}<td>{pctText(t[k].margin_pct)}</td></tr>))}
+              <tr><td style={{ fontWeight:700 }}>Other (manual entries)</td><td>{fmtTzs(t.other.revenue)}</td><td>—</td><td>—</td><td>—</td></tr>
+              <tr style={{ background:'#f8fafc' }}><td style={{ fontWeight:800 }}>All together</td><td style={{ fontWeight:800 }}>{fmtTzs(t.total.revenue)}</td><td style={{ fontWeight:800 }}>{fmtTzs(t.total.cost)}</td>
+                <td style={{ fontWeight:800, color: profitColor(t.total.profit) }}>{fmtTzs(t.total.profit)}</td><td style={{ fontWeight:800 }}>{pctText(t.total.margin_pct)}</td></tr>
+            </Table>
+            <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', margin:'16px 0 8px' }}>Month by month</div>
+            <Table head={['Month', 'SMS profit', 'Sender ID profit', 'Call center profit', 'Other revenue', 'Total revenue', 'Total cost', 'Net profit', 'Margin']}>
+              {data.months.map(m => (
+                <tr key={m.label}>
+                  <td style={{ fontWeight:700 }}>{m.label}</td>
+                  <td style={{ color: profitColor(m.sms.profit) }}>{fmtTzs(m.sms.profit)}</td><td style={{ color: profitColor(m.sender_id.profit) }}>{fmtTzs(m.sender_id.profit)}</td>
+                  <td style={{ color: profitColor(m.call_center.profit) }}>{fmtTzs(m.call_center.profit)}</td><td>{fmtTzs(m.other.revenue)}</td>
+                  <td>{fmtTzs(m.total.revenue)}</td><td>{fmtTzs(m.total.cost)}</td>{profitCell(m.total)}<td>{pctText(m.total.margin_pct)}</td>
+                </tr>))}
+            </Table>
+          </>)}
         </>
       )}
     </div>
