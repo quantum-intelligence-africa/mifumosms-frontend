@@ -1,3 +1,5 @@
+import { LandingHeader } from "@/components/layout/LandingHeader";
+import { LandingFooter } from "@/components/layout/LandingFooter";
 import { Button } from "@/components/ui/button";
 import {
   MessageSquare,
@@ -58,58 +60,7 @@ const Privacy = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-200 via-blue-100 to-white">
-      {/* Header */}
-      <header className="fixed top-0 left-0 z-[50] w-full bg-transparent py-4 backdrop-blur-xl">
-        <section className="mx-4 md:mx-12 lg:mx-16 xl:mx-24 flex items-center justify-between">
-
-          {/* Logo */}
-          <div onClick={() => navigate('/')} className="w-28 flex items-center justify-center cursor-pointer">
-            <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-2.5 h-8">
-              <BrandLogo className="h-14 sm:h-16 lg:h-20 w-auto -my-3 sm:-my-3 lg:-my-4 -mr-7 sm:-mr-8 lg:-mr-10" />
-              <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold whitespace-nowrap leading-none text-gray-900">
-                SENDA
-              </span>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <div className="hidden lg:flex items-center gap-8">
-            <button onClick={() => navigate('/#features')} className="transition-colors duration-300 cursor-pointer flex items-center gap-2 text-gray-900 hover:text-gray-700">
-              {t('legal.nav.features')}
-            </button>
-            <button onClick={() => navigate('/#pricing')} className="transition-colors duration-300 cursor-pointer flex items-center gap-2 text-gray-900 hover:text-gray-700">
-              {t('legal.nav.pricing')}
-            </button>
-            <Link to="/developer" className="transition-colors duration-300 text-gray-900 hover:text-gray-700">
-              {t('legal.nav.developer')}
-            </Link>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="hidden lg:flex items-center gap-4 w-28 justify-end">
-              <Link to="/login">
-                <button className="relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer flex items-center justify-center border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600">
-                  {t('legal.nav.login')}
-                </button>
-              </Link>
-              <Link to="/signup">
-                <button className="relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer inline-flex items-center justify-center leading-tight whitespace-nowrap border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600">
-                  {t('legal.nav.get_started')}
-                </button>
-              </Link>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="lg:hidden relative p-2 cursor-pointer transition-colors duration-300 text-gray-900 hover:text-gray-700"
-            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-            aria-expanded={isMobileMenuOpen}
-            aria-label="Toggle mobile menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        </section>
-      </header>
+      <LandingHeader forceScrolled />
 
       {/* Mobile Menu */}
       <MobileMenu
@@ -321,56 +272,7 @@ const Privacy = () => {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="relative py-4 sm:py-6 px-3 sm:px-4 lg:px-6">
-        {/* Background Image for Footer */}
-        <div className="absolute inset-0 overflow-hidden">
-          <img
-            src="/home background12.webp"
-            alt="Footer background"
-            className="w-full h-full object-cover"
-          />
-          {/* Dark overlay for better text readability */}
-          <div className="absolute inset-0 bg-black/20"></div>
-        </div>
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-            {/* Brand */}
-            <div onClick={() => navigate('/')} className="flex items-center gap-1.5 sm:gap-2 cursor-pointer">
-                <BrandLogo className="h-16 sm:h-20 w-auto -my-3 sm:-my-4 -mr-8 sm:-mr-10" />
-                <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-white">
-                  SENDA
-                </span>
-              </div>
-
-            {/* Nav */}
-            <nav className="flex items-center gap-4 sm:gap-6 lg:gap-8 text-xs sm:text-sm text-white/90">
-              <a className="hover:underline hover:text-white" href="/#about">{t('legal.nav.about')}</a>
-              <a className="hover:underline hover:text-white" href="/#features">{t('legal.nav.features')}</a>
-              <a className="hover:underline hover:text-white" href="/#pricing">{t('legal.nav.pricing')}</a>
-              <a href="/developer" className="hover:underline hover:text-white">{t('legal.nav.developer')}</a>
-            </nav>
-
-            {/* Contact */}
-            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-white/90">+255 614 459 923</span>
-              <a
-                href="https://wa.me/255614459923"
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 text-xs sm:text-sm transition-colors duration-300"
-              >
-                WhatsApp
-              </a>
-            </div>
-          </div>
-
-          <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
-            <p className="text-xs sm:text-sm text-white/80">{t('legal.footer.copyright', { year: new Date().getFullYear() })}</p>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 };
