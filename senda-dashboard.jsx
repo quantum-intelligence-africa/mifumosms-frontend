@@ -13219,6 +13219,278 @@ function DeletionRequestsTab() {
   );
 }
 
+// WhatsApp Reports (SENDA staff): the call-center report sent on WhatsApp as a PDF. Per organization: who receives it, the language, a "send now"
+// for any period, and the log of every WhatsApp sent (who, when, which organization). The organization cannot change or see any of this.
+function AnalysisWhatsAppTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [orgs, setOrgs]     = useState([]);
+  const [error, setError]   = useState(null);
+  const [cfg, setCfg]       = useState(null);            // the approved template reports use (platform-wide) + whether SENDA's number is ready
+  const [cfgBusy, setCfgBusy] = useState(false);
+  const [edit, setEdit]     = useState(null);            // { tenant_id, tenant, language, on, text }
+  const [busy, setBusy]     = useState(false);
+  const [fOrg, setFOrg]     = useState('');
+  const [fRecipient, setFRecipient] = useState('');
+  const [fStatus, setFStatus] = useState('');
+  const [fDays, setFDays]   = useState('30');
+  const [page, setPage]     = useState(1);
+  const [log, setLog]       = useState({ count: 0, results: [], page_size: 25 });
+  const [logTick, setLogTick] = useState(0);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const [sn, setSn]         = useState({ tenant_id: '', period: '24h', date: todayIso, to: '', lang: '' });
+  const [snBusy, setSnBusy] = useState(false);
+  const [snNote, setSnNote] = useState(null);
+  const errText = (res, fallback) => {
+    if (typeof res.error === 'string') return res.error;
+    const e = res.error || res.data;
+    if (e && typeof e === 'object') return Object.values(e).flat().join(' ') || fallback;
+    return fallback;
+  };
+
+  const loadOrgs = () => voiceAdminFetch('/audio/admin/delivery/', {}, onLogout).then(res => {
+    if (!res.success) { setError(errText(res, 'Could not load the organizations.')); return; }
+    setError(null); setOrgs(res.data || []);
+  });
+  useEffect(() => { loadOrgs(); voiceAdminFetch('/audio/admin/report-whatsapp/', {}, onLogout).then(res => { if (res.success) setCfg(res.data); }).catch(() => {}); }, [onLogout]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setPage(1); }, [fOrg, fRecipient, fStatus, fDays]);
+  useEffect(() => {
+    const params = new URLSearchParams({ page: String(page), page_size: '25' });
+    if (fOrg) params.set('tenant', fOrg);
+    if (fRecipient.trim()) params.set('recipient', fRecipient.trim());
+    if (fStatus) params.set('status', fStatus);
+    if (fDays) params.set('days', fDays);
+    voiceAdminFetch(`/audio/admin/whatsapp-log/?${params}`, {}, onLogout).then(res => { if (res.success) setLog(res.data); }).catch(() => {});
+  }, [page, fOrg, fRecipient, fStatus, fDays, logTick, onLogout]);
+
+  const snOrg = orgs.find(o => o.tenant_id === sn.tenant_id);
+  const snNeedsDate = sn.period === 'day' || sn.period === 'week';
+  const snLang = sn.lang || (snOrg ? snOrg.language : 'sw');
+  const snPreview = async () => {
+    if (!sn.tenant_id) { showToast?.('Choose an organization first.', 'error'); return; }
+    const token = getToken();
+    const q = snNeedsDate
+      ? `days=${sn.period === 'week' ? 7 : 1}&date=${sn.date}`
+      : `days=${sn.period === '7d' ? 7 : 1}&hours=${sn.period === '7d' ? 168 : 24}&date=${todayIso}`;
+    const res = await fetch(`${VOICE_BASE_URL}/audio/admin/daily-report/${sn.tenant_id}/?output=pdf&lang=${snLang}&${q}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) { showToast?.(res.status === 501 ? 'The PDF library is not installed on the server yet.' : 'Could not build the preview.', 'error'); return; }
+    window.open(URL.createObjectURL(await res.blob()), '_blank');
+  };
+  const snSend = () => {
+    if (!sn.tenant_id) { showToast?.('Choose an organization first.', 'error'); return; }
+    const where = sn.to.trim() || (snOrg?.whatsapp_recipients?.length ? snOrg.whatsapp_recipients.join(', ') : 'the assigned numbers');
+    if (!window.confirm(`Send ${snOrg?.tenant}'s report now, as a PDF on WhatsApp, to ${where}?`)) return;
+    const body = { period: sn.period, lang: snLang };
+    if (snNeedsDate) body.date = sn.date;
+    if (sn.to.trim()) body.to = sn.to.trim();
+    setSnBusy(true); setSnNote(null);
+    voiceAdminFetch(`/audio/admin/send-report-whatsapp/${sn.tenant_id}/`, { method: 'POST', body: JSON.stringify(body) }, onLogout).then(res => {
+      setSnBusy(false);
+      if (!res.success) {
+        const m = errText(res, 'WhatsApp did not accept it. Check the template name and that it is approved.');
+        setSnNote({ ok: false, text: m }); showToast?.(m, 'error'); setLogTick(t => t + 1); return;
+      }
+      const m = `Sent to ${(res.data.recipients || []).join(', ')}. Check the phone, and the log below.`;
+      setSnNote({ ok: true, text: m }); showToast?.(m, 'success'); loadOrgs(); setLogTick(t => t + 1);
+    });
+  };
+  const saveCfg = () => {
+    setCfgBusy(true);
+    voiceAdminFetch('/audio/admin/report-whatsapp/', { method: 'PUT', body: JSON.stringify({ template_name: cfg.template_name, language_code: cfg.language_code }) }, onLogout).then(res => {
+      setCfgBusy(false);
+      if (!res.success) { showToast?.(errText(res, 'Could not save the template.'), 'error'); return; }
+      setCfg(res.data); showToast?.('WhatsApp template saved.', 'success');
+    });
+  };
+  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, on: !!o.whatsapp_enabled, text: (o.whatsapp_recipients || []).join('\n') });
+  const save = () => {
+    setBusy(true);
+    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/`, { method: 'PUT', body: JSON.stringify({ language: edit.language, whatsapp_enabled: edit.on, whatsapp_recipients: edit.text }) }, onLogout).then(res => {
+      setBusy(false);
+      if (!res.success) { showToast?.(errText(res, 'Could not save.'), 'error'); return; }
+      showToast?.(`Saved for ${edit.tenant}.`, 'success');
+      setEdit(null); loadOrgs();
+    });
+  };
+
+  const fmt = (t) => t ? new Date(t).toLocaleString() : '—';
+  const th = {padding:'8px 10px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',textAlign:'left'};
+  const td = {padding:'8px 10px',fontSize:13,verticalAlign:'top'};
+  const sel = {height:36,fontSize:13,width:'auto',minWidth:120};
+  const KIND = { daily:'Daily report', weekly:'Weekly report', manual:'Sent on request', test:'Test' };
+  const card = {background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',marginBottom:16};
+  const pages = Math.max(1, Math.ceil((log.count || 0) / (log.page_size || 25)));
+
+  return (
+    <div style={{padding:24}}>
+      <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>WhatsApp Reports</h2>
+      <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 14px'}}>
+        The call-center report, as a PDF on WhatsApp, sent from SENDA's WhatsApp number at the same times as the email report. For each organization, choose who receives it. Below is a log of
+        every WhatsApp sent: who, when and for which organization. Switching it on and the report times are the same as for the email report; only the numbers are different.
+      </p>
+      {error && <div style={{color:'#b91c1c',fontSize:13,marginBottom:10}}>{error}</div>}
+
+      {cfg && (
+        <div style={{...card,padding:'12px 16px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+            <div style={{fontSize:14,fontWeight:800,color:'#0f172a'}}>Template</div>
+            <span style={{padding:'3px 10px',borderRadius:99,fontSize:11.5,fontWeight:700,background:cfg.number_ready ? '#dcfce7' : '#fef3c7',color:cfg.number_ready ? '#166534' : '#92400e'}}>
+              {cfg.number_ready ? "SENDA's WhatsApp number is ready" : "SENDA's WhatsApp number is not saved or not active (Admin, WhatsApp, Credentials)"}
+            </span>
+            {!cfg.template_name && <span style={{padding:'3px 10px',borderRadius:99,fontSize:11.5,fontWeight:700,background:'#fef3c7',color:'#92400e'}}>No template set: nothing is sent yet</span>}
+          </div>
+          <p style={{fontSize:11.5,color:'#94a3b8',margin:'6px 0 8px'}}>
+            One approved template for every organization, with a <b>document</b> header (the PDF) and 5 body variables in this order: {(cfg.variables || []).map((v, i) => `{{${i + 1}}} ${v}`).join(', ')}.
+          </p>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <input value={cfg.template_name} onChange={e => setCfg({ ...cfg, template_name: e.target.value })} placeholder="template_name" className="senda-input" style={{flex:'1 1 220px',height:36,fontSize:13}}/>
+            <input value={cfg.language_code} onChange={e => setCfg({ ...cfg, language_code: e.target.value })} placeholder="sw" className="senda-input" style={{width:80,height:36,fontSize:13}}/>
+            <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={cfgBusy} onClick={saveCfg}>{cfgBusy ? 'Saving…' : 'Save template'}</button>
+          </div>
+        </div>)}
+
+      <div style={{background:'#fff',border:'2px solid #dbeafe',borderRadius:12,padding:'14px 16px',marginBottom:16}}>
+        <div style={{fontSize:14,fontWeight:800,color:'#0f172a'}}>Send a report now</div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 10px',lineHeight:1.5}}>
+          Send any organization's report (the PDF) on WhatsApp right now, for the last 24 hours, the last 7 days, or a specific date, to any number you type here. Use it to check a change on your own
+          phone first. Leave "Send to" empty to use the numbers assigned to the organization. Every send is written to the log below.
+        </p>
+        <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
+          <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Organization
+            <select className="senda-input" style={{...sel,height:36,minWidth:200}} value={sn.tenant_id} onChange={e => setSn({ ...sn, tenant_id: e.target.value })}>
+              <option value="">Choose…</option>{orgs.map(o => <option key={o.tenant_id} value={o.tenant_id}>{o.tenant}</option>)}
+            </select>
+          </label>
+          <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Report
+            <select className="senda-input" style={{...sel,height:36,minWidth:190}} value={sn.period} onChange={e => setSn({ ...sn, period: e.target.value })}>
+              <option value="24h">Last 24 hours</option><option value="7d">Last 7 days</option>
+              <option value="day">A specific date (pick a day)</option><option value="week">A specific week (pick its last day)</option>
+            </select>
+          </label>
+          {snNeedsDate && (
+            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>{sn.period === 'week' ? 'Week ending on (last day of the 7)' : 'Pick the date'}
+              <input type="date" className="senda-input" style={{height:36,fontSize:13}} max={todayIso} value={sn.date} onChange={e => setSn({ ...sn, date: e.target.value })}/>
+            </label>
+          )}
+          <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Language
+            <select className="senda-input" style={{...sel,height:36}} value={snLang} onChange={e => setSn({ ...sn, lang: e.target.value })}>
+              <option value="sw">Swahili</option><option value="en">English</option>
+            </select>
+          </label>
+        </div>
+        <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2,marginTop:10}}>Send to (one or more WhatsApp numbers, separated by commas, up to 5)
+          <input className="senda-input" style={{height:36,fontSize:13}} value={sn.to} onChange={e => setSn({ ...sn, to: e.target.value })} placeholder="0712 345 678"/>
+        </label>
+        {snOrg && snOrg.whatsapp_recipients?.length > 0 && (
+          <div style={{fontSize:11.5,color:'#94a3b8',marginTop:4}}>
+            Assigned to {snOrg.tenant}: {snOrg.whatsapp_recipients.join(', ')} <button onClick={() => setSn({ ...sn, to: snOrg.whatsapp_recipients.join(', ') })} style={{border:'none',background:'none',color:BRAND,fontWeight:700,cursor:'pointer',fontSize:11.5}}>use these</button>
+          </div>
+        )}
+        <div style={{display:'flex',gap:8,marginTop:12,alignItems:'center',flexWrap:'wrap'}}>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={snPreview}>Preview the PDF</button>
+          <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={snBusy} onClick={snSend}>{snBusy ? 'Sending…' : 'Send now'}</button>
+          {snNote && <span style={{fontSize:12.5,fontWeight:600,color:snNote.ok ? '#15803d' : '#b91c1c'}}>{snNote.text}</span>}
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead><tr style={{background:'#f8fafc'}}><th style={th}>Organization</th><th style={th}>Language</th><th style={th}>Who receives it</th><th style={th}>Last 30 days</th><th style={th}></th></tr></thead>
+            <tbody>
+              {orgs.length === 0 && <tr><td colSpan={5} style={{...td,color:'#94a3b8'}}>No organizations yet.</td></tr>}
+              {orgs.map(o => (
+                <tr key={o.tenant_id} style={{borderTop:'1px solid #f1f5f9'}}>
+                  <td style={td}><b>{o.tenant}</b><div style={{fontSize:11,color:'#94a3b8'}}>{o.daily_report_enabled ? 'daily report on' : 'daily report off'}{o.weekly_report_enabled ? ' · weekly report on' : ''}</div></td>
+                  <td style={td}>{o.language === 'en' ? 'English' : 'Swahili'}</td>
+                  <td style={td}>
+                    {!o.whatsapp_enabled
+                      ? <div style={{fontSize:11,fontWeight:800,color:'#64748b'}}>OFF: not sent on WhatsApp</div>
+                      : (o.whatsapp_recipients || []).length === 0
+                        ? <div style={{fontSize:11,fontWeight:800,color:'#b91c1c'}}>NOBODY: no number is assigned, so nothing is sent</div>
+                        : <>
+                            <div style={{fontSize:11,fontWeight:800,color:'#15803d'}}>ONLY THESE RECEIVE IT</div>
+                            {o.whatsapp_recipients.map(n => <div key={n}>+{n}</div>)}
+                          </>}
+                    {!o.whatsapp_enabled && (o.whatsapp_recipients || []).length > 0 && <div style={{fontSize:11,color:'#94a3b8',marginTop:3}}>Saved but not used: {o.whatsapp_recipients.map(n => `+${n}`).join(', ')}</div>}
+                  </td>
+                  <td style={td}>{o.whatsapp_sent_30d} sent{o.whatsapp_failed_30d ? <b style={{color:'#b91c1c'}}> · {o.whatsapp_failed_30d} failed</b> : null}<div style={{fontSize:11,color:'#94a3b8'}}>last: {fmt(o.whatsapp_last_sent_at)}</div></td>
+                  <td style={td}>
+                    <button onClick={() => startEdit(o)} style={{border:'none',background:'none',color:BRAND,fontWeight:700,cursor:'pointer'}}>Edit</button>
+                    <button onClick={() => setFOrg(o.tenant_id)} style={{border:'none',background:'none',color:BRAND,fontWeight:700,cursor:'pointer'}}>Log</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {edit && (
+        <div style={{background:'#fff',border:'2px solid #dbeafe',borderRadius:12,padding:'12px 16px',marginBottom:16}}>
+          <div style={{fontSize:14,fontWeight:800,marginBottom:8}}>{edit.tenant}</div>
+          <label style={{fontSize:13,fontWeight:700,color:'#0f172a',display:'flex',alignItems:'center',gap:8}}>
+            <input type="checkbox" checked={edit.on} onChange={e => setEdit({ ...edit, on: e.target.checked })}/>
+            Send the daily and weekly report (PDF) on WhatsApp
+          </label>
+          <p style={{fontSize:11.5,color:'#94a3b8',margin:'3px 0 8px'}}>
+            It goes out at the same times as the email report, so the daily and weekly reports must be switched on for this organization (under Analysis Emails). One phone number per line.
+          </p>
+          <div style={{display:'flex',gap:14,flexWrap:'wrap',marginBottom:10}}>
+            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Language of the report
+              <select className="senda-input" style={{...sel,height:34}} value={edit.language} onChange={e => setEdit({ ...edit, language: e.target.value })}>
+                <option value="sw">Swahili</option><option value="en">English</option>
+              </select>
+            </label>
+          </div>
+          <textarea value={edit.text} onChange={e => setEdit({ ...edit, text: e.target.value })} rows={4} placeholder={'0712 345 678\n0713 345 678'}
+            style={{width:'100%',boxSizing:'border-box',padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'inherit'}}/>
+          <div style={{display:'flex',gap:8,marginTop:10}}>
+            <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+            <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => setEdit(null)}>Cancel</button>
+          </div>
+        </div>)}
+
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:10}}>
+        <b style={{fontSize:14,color:'#0f172a'}}>Sent on WhatsApp</b>
+        <select className="senda-input" style={{...sel,height:36}} value={fOrg} onChange={e => setFOrg(e.target.value)}>
+          <option value="">All organizations</option>{orgs.map(o => <option key={o.tenant_id} value={o.tenant_id}>{o.tenant}</option>)}
+        </select>
+        <input className="senda-input" style={{height:36,fontSize:13,minWidth:200}} value={fRecipient} onChange={e => setFRecipient(e.target.value)} placeholder="Search a phone number"/>
+        <select className="senda-input" style={{...sel,height:36}} value={fStatus} onChange={e => setFStatus(e.target.value)}>
+          <option value="">Sent and failed</option><option value="sent">Sent</option><option value="failed">Failed</option>
+        </select>
+        <select className="senda-input" style={{...sel,height:36}} value={fDays} onChange={e => setFDays(e.target.value)}>
+          <option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="">All time</option>
+        </select>
+      </div>
+      <div style={card}>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead><tr style={{background:'#f8fafc'}}><th style={th}>When</th><th style={th}>Organization</th><th style={th}>Phone</th><th style={th}>Kind</th><th style={th}>Status</th></tr></thead>
+            <tbody>
+              {log.results.length === 0 && <tr><td colSpan={5} style={{...td,color:'#94a3b8'}}>No WhatsApp reports sent yet.</td></tr>}
+              {log.results.map(r => (
+                <tr key={r.id} style={{borderTop:'1px solid #f1f5f9'}}>
+                  <td style={td}>{fmt(r.sent_at)}</td><td style={td}>{r.tenant}</td><td style={{...td,fontFamily:'monospace'}}>+{r.recipient}</td><td style={td}>{KIND[r.kind] || r.kind}</td>
+                  <td style={td}><span style={{fontWeight:700,color:r.status === 'sent' ? '#15803d' : '#b91c1c'}}>{r.status}</span>{r.error && <div style={{fontSize:11,color:'#b91c1c',maxWidth:420,whiteSpace:'normal'}}>{r.error}</div>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {pages > 1 && (
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',borderTop:'1px solid #f1f5f9',fontSize:12.5,color:'#64748b'}}>
+            <span>{log.count} sent · page {page} of {pages}</span>
+            <div style={{display:'flex',gap:8}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</button>
+            </div>
+          </div>)}
+      </div>
+    </div>
+  );
+}
+
 // Analysis Emails (SENDA staff): per organization, the language of its call-analysis emails and exactly who receives them,
 // and the log of every email sent (who, when, which organization). The organization cannot change or see any of this.
 function AnalysisEmailsTab() {
@@ -13226,9 +13498,6 @@ function AnalysisEmailsTab() {
   const [orgs, setOrgs]       = useState([]);
   const [error, setError]     = useState(null);
   const [edit, setEdit]       = useState(null);           // { tenant_id, tenant, language, recipient_mode, text }
-  const [waCfg, setWaCfg]     = useState(null);           // the approved WhatsApp template the reports use (platform-wide)
-  const [waBusy, setWaBusy]   = useState(false);
-  useEffect(() => { if (edit && !waCfg) voiceAdminFetch('/audio/admin/report-whatsapp/', {}, onLogout).then(res => { if (res.success) setWaCfg(res.data); }).catch(() => {}); }, [edit, waCfg]);
   const [busy, setBusy]       = useState(false);
   const [fOrg, setFOrg]       = useState('');
   const [fRecipient, setFRecipient] = useState('');
@@ -13299,7 +13568,7 @@ function AnalysisEmailsTab() {
       loadOrgs(); setLogTick(t => t + 1);
     });
   };
-  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.owners_and_admins, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled, waOn: !!o.whatsapp_enabled, waText: (o.whatsapp_recipients || []).join('\n') });
+  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.owners_and_admins, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled });
   // Opens the call-analysis email exactly as the organization receives it (its latest real analysis, or a marked sample). Nothing is sent.
   const previewAnalysisEmail = async (kind) => {
     const token = getToken();
@@ -13331,30 +13600,11 @@ function AnalysisEmailsTab() {
   };
   const save = () => {
     setBusy(true);
-    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/`, { method: 'PUT', body: JSON.stringify({ language: edit.language, recipient_mode: edit.recipient_mode, assigned_recipients: edit.text, daily_report_enabled: edit.daily, weekly_report_enabled: edit.weekly, whatsapp_enabled: edit.waOn, whatsapp_recipients: edit.waText }) }, onLogout).then(res => {
+    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/`, { method: 'PUT', body: JSON.stringify({ language: edit.language, recipient_mode: edit.recipient_mode, assigned_recipients: edit.text, daily_report_enabled: edit.daily, weekly_report_enabled: edit.weekly }) }, onLogout).then(res => {
       setBusy(false);
       if (!res.success) { showToast?.(errText(res, 'Could not save.'), 'error'); return; }
       showToast?.(`Saved for ${edit.tenant}.`, 'success');
       setEdit(null); loadOrgs();
-    });
-  };
-  const saveWaTemplate = () => {
-    setWaBusy(true);
-    voiceAdminFetch('/audio/admin/report-whatsapp/', { method: 'PUT', body: JSON.stringify({ template_name: waCfg.template_name, language_code: waCfg.language_code }) }, onLogout).then(res => {
-      setWaBusy(false);
-      if (!res.success) { showToast?.(errText(res, 'Could not save the template.'), 'error'); return; }
-      setWaCfg(res.data); showToast?.('WhatsApp template saved.', 'success');
-    });
-  };
-  const testWhatsApp = () => {
-    const numbers = edit.waText.trim();
-    if (!numbers) { showToast?.('Add a WhatsApp number first.', 'error'); return; }
-    if (!window.confirm(`Send yesterday's report for ${edit.tenant} to these WhatsApp numbers now?`)) return;
-    setWaBusy(true);
-    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/whatsapp-test/`, { method: 'POST', body: JSON.stringify({ numbers }) }, onLogout).then(res => {
-      setWaBusy(false);
-      if (!res.success) { showToast?.(errText(res, res.data?.reason || 'WhatsApp did not accept it. Check the template name and that the template is approved.'), 'error'); return; }
-      showToast?.(`Sent to ${res.data.sent} number(s) on WhatsApp.`, 'success');
     });
   };
   const fmt = (t) => t ? new Date(t).toLocaleString() : '—';
@@ -13501,36 +13751,6 @@ function AnalysisEmailsTab() {
               <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('html', 7)}>Preview weekly email</button>
               <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('pdf', 7)}>Preview weekly PDF</button>
             </div>
-          </div>
-          <div style={{borderTop:'1px solid #eef2f7',paddingTop:10,marginBottom:10}}>
-            <label style={{fontSize:13,fontWeight:700,color:'#0f172a',display:'flex',alignItems:'center',gap:8}}>
-              <input type="checkbox" checked={edit.waOn} onChange={e => setEdit({ ...edit, waOn: e.target.checked })}/>
-              Also send the daily and weekly report (PDF) on WhatsApp
-            </label>
-            <p style={{fontSize:11.5,color:'#94a3b8',margin:'3px 0 6px'}}>
-              Sent from SENDA's WhatsApp number at the same times as the email. One phone number per line.
-            </p>
-            <textarea value={edit.waText} onChange={e => setEdit({ ...edit, waText: e.target.value })} rows={3} placeholder={'0712 345 678\n0713 345 678'}
-              style={{width:'100%',boxSizing:'border-box',padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'inherit'}}/>
-            <div style={{display:'flex',gap:8,marginTop:6,flexWrap:'wrap',alignItems:'center'}}>
-              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={waBusy} onClick={testWhatsApp}>Send a test on WhatsApp</button>
-              {waCfg && !waCfg.number_ready && <span style={{fontSize:11.5,color:'#b45309'}}>SENDA's WhatsApp number is not saved or not active (Admin, WhatsApp, Credentials).</span>}
-              {waCfg && waCfg.number_ready && !waCfg.template_name && <span style={{fontSize:11.5,color:'#b45309'}}>Set the template name below first.</span>}
-            </div>
-            {waCfg && (
-              <div style={{marginTop:10,padding:'10px 12px',background:'#f8fafc',border:'1px solid #e8edf3',borderRadius:10}}>
-                <div style={{fontSize:12,fontWeight:700,color:'#334155'}}>WhatsApp template for reports (same for every organization)</div>
-                <p style={{fontSize:11.5,color:'#94a3b8',margin:'3px 0 8px'}}>
-                  Create an approved template in Meta with a <b>document</b> header (the PDF) and 5 body variables in this order: {(waCfg.variables || []).map((v, i) => `{{${i + 1}}} ${v}`).join(', ')}.
-                </p>
-                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                  <input value={waCfg.template_name} onChange={e => setWaCfg({ ...waCfg, template_name: e.target.value })} placeholder="template_name"
-                    style={{flex:'1 1 200px',padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13}}/>
-                  <input value={waCfg.language_code} onChange={e => setWaCfg({ ...waCfg, language_code: e.target.value })} placeholder="sw"
-                    style={{width:80,padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13}}/>
-                  <button className="senda-btn senda-btn-sm" disabled={waBusy} onClick={saveWaTemplate}>Save template</button>
-                </div>
-              </div>)}
           </div>
           <div style={{borderTop:'1px solid #eef2f7',paddingTop:10,marginBottom:10}}>
             <div style={{fontSize:13,fontWeight:700,color:'#0f172a'}}>Send the report now</div>
@@ -19787,6 +20007,7 @@ const NAV_GROUPS = [
     { id:'calllogs',       Icon:ListChecks,  label:'Call Logs'        },
     { id:'voiceusage',     Icon:BarChart3,   label:'Voice Usage'      },
     { id:'analysisemails', Icon:Mail,        label:'Analysis Emails'  },
+    { id:'analysiswhatsapp', Icon:Send,      label:'WhatsApp Reports' },
     { id:'analysisalerts', Icon:AlertTriangle, label:'Analysis Alerts'  },
     { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
     { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
@@ -24064,6 +24285,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     calllogs:       <VoiceCallLogsTab/>,
     voiceusage:     <VoiceUsageTab/>,
     analysisemails: <AnalysisEmailsTab/>,
+    analysiswhatsapp: <AnalysisWhatsAppTab/>,
     analysisalerts: <AnalysisAlertsTab/>,
     featureaccess:  <FeatureAccessTab/>,
     voiceproviders: <VoiceProvidersTab/>,
