@@ -135,6 +135,14 @@ export const LandingFooter = ({ scrollToSection }: LandingFooterProps) => {
         </div>
 
         <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
+          <nav className="mb-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-xs sm:text-sm text-white/90">
+            <Link to="/privacy" className="hover:underline hover:text-white transition-colors">
+              {language === "sw" ? "Sera ya Faragha" : "Privacy Policy"}
+            </Link>
+            <Link to="/terms" className="hover:underline hover:text-white transition-colors">
+              {language === "sw" ? "Masharti ya Matumizi" : "Terms of Service"}
+            </Link>
+          </nav>
           <p className="text-xs sm:text-sm text-white/80">
             &copy; {new Date().getFullYear()} SENDA.{" "}
             {t("landing.footer.rights_reserved")}
