@@ -151,7 +151,6 @@ export function InsightsPanel({ filters, drillDown }: { filters: AnalyticsFilter
                 <S.icon className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="min-w-0 flex-1 space-y-1">
                   <p className="font-medium">{i.fact}</p>
-                  <p className="text-xs opacity-80">{t("an.insight_period", { period: i.period })} · {Object.entries(i.metric).map(([k, v]) => `${k.replace(/_/g, " ")}: ${typeof v === "number" && v <= 1 && v > 0 && k.includes("rate") ? fmtPct(v) : v}`).join(" · ")}</p>
                   <p className="text-xs"><b>{t("an.insight_why")}</b> {i.why_it_matters}</p>
                   <p className="text-xs"><b>{t("an.insight_next")}</b> {i.suggestion}</p>
                 </div>
