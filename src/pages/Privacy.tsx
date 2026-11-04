@@ -97,6 +97,10 @@ const Privacy = () => {
           <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s2_3_title')}</h3>
           <p className="text-gray-800 mb-6">{t('legal.privacy.s2_3_p')}</p>
 
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s2_4_title')}</h3>
+          <p className="text-gray-800 mb-4">{t('legal.privacy.s2_4_p1')}</p>
+          <p className="text-gray-800 mb-6">{t('legal.privacy.s2_4_p2')}</p>
+
           <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.privacy.s3_title')}</h2>
 
           <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">{t('legal.privacy.s3_1_title')}</h3>
@@ -127,6 +131,7 @@ const Privacy = () => {
             <li>{t('legal.privacy.s3_4_item1')}</li>
             <li>{t('legal.privacy.s3_4_item2')}</li>
             <li>{t('legal.privacy.s3_4_item3')}</li>
+            <li>{t('legal.privacy.s3_4_item4')}</li>
           </ul>
 
           <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">{t('legal.privacy.s4_title')}</h2>
@@ -138,6 +143,7 @@ const Privacy = () => {
             <li>{t('legal.privacy.s4_1_item2')}</li>
             <li>{t('legal.privacy.s4_1_item3')}</li>
             <li>{t('legal.privacy.s4_1_item4')}</li>
+            <li>{t('legal.privacy.s4_1_item5')}</li>
           </ul>
           <p className="text-gray-800 mb-6">{t('legal.privacy.s4_1_p2')}</p>
 
@@ -160,6 +166,7 @@ const Privacy = () => {
             <li><strong className="text-black">{t('legal.privacy.s5_item2_label')}</strong> {t('legal.privacy.s5_item2_desc')}</li>
             <li><strong className="text-black">{t('legal.privacy.s5_item3_label')}</strong> {t('legal.privacy.s5_item3_desc')}</li>
             <li><strong className="text-black">{t('legal.privacy.s5_item4_label')}</strong> {t('legal.privacy.s5_item4_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s5_item5_label')}</strong> {t('legal.privacy.s5_item5_desc')}</li>
           </ul>
           <p className="text-gray-800 mb-6">{t('legal.privacy.s5_p2')}</p>
 
@@ -194,6 +201,10 @@ const Privacy = () => {
 
           <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s7_3_title')}</h3>
           <p className="text-gray-800 mb-6">{t('legal.privacy.s7_3_p')}</p>
+
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s7_4_title')}</h3>
+          <p className="text-gray-800 mb-4">{t('legal.privacy.s7_4_p1')}</p>
+          <p className="text-gray-800 mb-6">{t('legal.privacy.s7_4_p2')}</p>
 
           <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">{t('legal.privacy.s8_title')}</h2>
           <p className="text-gray-800 mb-4">{t('legal.privacy.s8_p')}</p>
@@ -258,7 +269,7 @@ const Privacy = () => {
 
           <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">{t('legal.privacy.s13_dpo_title')}</h3>
           <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-            {t('legal.privacy.label_email')} support@mifumosms.com<br/>
+            {t('legal.privacy.label_email')} <a className="underline" href="mailto:communications@quantumintelligence.co.tz">communications@quantumintelligence.co.tz</a><br/>
             {t('legal.privacy.label_phone')} +255 614 459 923<br/>
             {t('legal.privacy.label_address')} Dar es Salaam, Tanzania
           </p>
