@@ -858,6 +858,192 @@ function Badge({ status }) {
 }
 
 // ─── Overview Tab ─────────────────────────────────────────────────────────────
+// Money at a glance on the Overview: revenue, cost and profit of SMS, sender ID purchases and the call center (IVR) for the chosen period, with the
+// calculation written out. The figures come from the same worked-out numbers as Billing > Net Profit (/net-profit/period), so the two always agree.
+// Cost needs the three "what it costs us" rates; they can be set right here. Until one is set that product shows revenue only (never a made-up profit).
+function OverviewProfit({ period }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const navigate = useNavigate();
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed]   = useState(false);
+  const [rate, setRate]       = useState(null);
+  const [draft, setDraft]     = useState({ sms: '', sender: '', minute: '' });
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving]   = useState(false);
+
+  const draftFrom = (r) => ({
+    sms: r.cost_per_segment > 0 ? String(r.cost_per_segment) : '',
+    sender: r.cost_per_sender_id != null ? String(r.cost_per_sender_id) : '',
+    minute: r.cost_per_call_minute != null ? String(r.cost_per_call_minute) : '',
+  });
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setFailed(false);
+    Promise.all([
+      adminFetch(`/api/admin/v1/net-profit/period?period=${period}`, {}, onLogout),
+      adminFetch('/api/admin/v1/net-profit/cost-rate', {}, onLogout),
+    ]).then(([p, r]) => {
+      if (p.success) setData(p.data); else setFailed(true);
+      if (r.success) { setRate(r.data); setDraft(draftFrom(r.data)); }
+    }).catch(() => setFailed(true)).finally(() => setLoading(false));
+  }, [period, onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  const saveRates = async () => {
+    const num = (v) => (v.trim() === '' ? null : parseFloat(v));
+    const body = { cost_per_segment: num(draft.sms) ?? 0, cost_per_sender_id: num(draft.sender), cost_per_call_minute: num(draft.minute) };
+    for (const v of Object.values(body)) if (v != null && (isNaN(v) || v < 0)) { showToast?.('Enter numbers of 0 or more, or leave a box empty.', 'error'); return; }
+    setSaving(true);
+    try {
+      const res = await adminFetch('/api/admin/v1/net-profit/cost-rate', { method: 'PATCH', body: JSON.stringify(body) }, onLogout);
+      if (res.success) { showToast?.('Costs saved. Profit is worked out again.', 'success'); setEditing(false); load(); }
+      else showToast?.(res.error?.message || 'Could not save the costs', 'error');
+    } catch { showToast?.('Network error saving the costs', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  const tzs = (n) => (n == null ? '—' : `TZS ${Math.round(n).toLocaleString()}`);
+  const n0 = (n) => Math.round(n || 0).toLocaleString();
+  const pct = (p) => (p == null ? '—' : `${p}%`);
+  const tone = (p) => (p == null ? '#94a3b8' : p >= 0 ? '#059669' : '#dc2626');
+  const periodName = { today: 'today', current_month: 'this month', last_month: 'last month', current_year: 'this year' }[period] || 'this period';
+
+  const wrap = { marginBottom: 18 };
+  const label = { fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 };
+
+  if (loading && !data) return <div style={wrap}><div style={label}>Money · Revenue, Cost and Profit</div><div style={{ fontSize: 12, color: '#94a3b8' }}>Loading…</div></div>;
+  if (failed || !data) {
+    return (
+      <div style={wrap}>
+        <div style={label}>Money · Revenue, Cost and Profit</div>
+        <div style={{ fontSize: 12, color: '#dc2626' }}>Could not load revenue, cost and profit. <button type="button" onClick={load} style={{ border: 'none', background: 'none', color: BRAND, cursor: 'pointer', fontWeight: 700 }}>Try again</button></div>
+      </div>
+    );
+  }
+
+  const t = data.total;
+  const missing = t.missing || [];
+  const names = { sms: 'SMS', sender_id: 'Sender IDs', call_center: 'Call center' };
+  const noRate = <span style={{ color: '#dc2626', fontWeight: 600 }}>No cost set</span>;
+  const showRates = editing || missing.length > 0;
+
+  const rows = [
+    {
+      key: 'sms', name: 'SMS', sec: data.sms,
+      revenue: 'SMS package purchases and custom SMS purchases',
+      cost: data.sms.has_rate ? `${n0(data.sms.segments_sent)} SMS segments sent × TZS ${data.sms.cost_per_segment}` : 'Set the cost per SMS segment',
+    },
+    {
+      key: 'sender_id', name: 'Sender ID purchases', sec: data.sender_id,
+      revenue: 'Sender ID registration fees that customers paid',
+      cost: data.sender_id.has_rate ? `${n0(data.sender_id.count)} paid registrations × TZS ${Math.round(data.sender_id.cost_each).toLocaleString()}` : 'Set the cost of one registration',
+    },
+    {
+      key: 'call_center', name: 'Call center / IVR', sec: data.call_center,
+      revenue: 'Call-center plan payments (free trials are not revenue)',
+      cost: !data.call_center.has_rate ? 'Set the cost per call minute'
+        : !data.call_center.data_available ? 'Call minutes could not be read here'
+        : `${n0(data.call_center.minutes)} billable call minutes × TZS ${data.call_center.cost_per_minute}`,
+    },
+  ];
+
+  const bigCard = (title, value, color, sub) => (
+    <div className="senda-card" style={{ padding: 16 }}>
+      <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>{title}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: color || '#0f172a', marginTop: 4 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>{sub}</div>}
+    </div>
+  );
+  const field = (key, text, ph) => (
+    <div>
+      <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>{text}</label>
+      <input type="number" min="0" step="0.01" value={draft[key]} placeholder={ph} onChange={e => setDraft({ ...draft, [key]: e.target.value })}
+        className="senda-input" style={{ width: 190, height: 34 }} />
+    </div>
+  );
+
+  return (
+    <div style={wrap}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+        <div style={{ ...label, marginBottom: 0 }}>Money · Revenue, Cost and Profit · {periodName}</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {!showRates && <button type="button" onClick={() => setEditing(true)} className="senda-btn senda-btn-sm" style={{ border: '1px solid #e2e8f0', background: '#fff', color: '#475569', fontWeight: 600 }}>Edit costs</button>}
+          <button type="button" onClick={() => navigate('/admin/netprofit')} className="senda-btn senda-btn-sm" style={{ border: '1px solid #e2e8f0', background: '#fff', color: '#475569', fontWeight: 600 }}>Month by month →</button>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.55, marginBottom: 10 }}>
+        <b>Profit = Revenue − Cost.</b> Revenue is what customers paid us for each product. Cost is what we pay the providers: the quantity used × the cost you set for it.
+        An estimate, not a check against provider invoices.
+      </div>
+
+      {missing.length > 0 && (
+        <div style={{ fontSize: 12, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
+          Profit is not shown yet because the cost of <b>{missing.map(k => names[k]).join(', ')}</b> is not set. Enter it below (use 0 if it costs us nothing).
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12, marginBottom: 12 }}>
+        {bigCard('Total revenue', tzs(t.revenue), null, 'All money in, all products')}
+        {bigCard('Total cost', tzs(t.cost), null, missing.length ? 'Only the costs that are set' : 'What we pay providers')}
+        {bigCard('Net profit', t.profit == null ? '—' : tzs(t.profit), tone(t.profit), t.profit == null ? 'Set the missing costs' : 'Revenue − cost')}
+        {bigCard('Margin', pct(t.margin_pct), tone(t.margin_pct), 'Profit ÷ revenue')}
+      </div>
+
+      <div className="senda-card" style={{ overflow: 'hidden', marginBottom: 12 }}>
+        <div className="senda-table-wrap">
+          <table className="senda-table">
+            <thead><tr><th>Category</th><th>Revenue</th><th>Cost</th><th>Profit</th><th>Margin</th><th>How it is worked out</th></tr></thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.key}>
+                  <td style={{ fontWeight: 700 }}>{r.name}</td>
+                  <td>{tzs(r.sec.revenue)}</td>
+                  <td>{r.sec.cost == null ? noRate : tzs(r.sec.cost)}</td>
+                  <td style={{ fontWeight: 700, color: tone(r.sec.profit) }}>{tzs(r.sec.profit)}</td>
+                  <td>{pct(r.sec.margin_pct)}</td>
+                  <td style={{ fontSize: 11.5, color: '#64748b', minWidth: 230 }}>
+                    <div><b>Revenue:</b> {r.revenue}</div>
+                    <div><b>Cost:</b> {r.cost}{r.sec.cost != null ? ` = ${tzs(r.sec.cost)}` : ''}</div>
+                  </td>
+                </tr>
+              ))}
+              <tr>
+                <td style={{ fontWeight: 700 }}>Other</td><td>{tzs(data.other.revenue)}</td><td>—</td><td>—</td><td>—</td>
+                <td style={{ fontSize: 11.5, color: '#64748b' }}>Manual entries staff recorded. Counted in the total, with no cost.</td>
+              </tr>
+              <tr style={{ background: '#f8fafc' }}>
+                <td style={{ fontWeight: 800 }}>All together</td><td style={{ fontWeight: 800 }}>{tzs(t.revenue)}</td><td style={{ fontWeight: 800 }}>{tzs(t.cost)}</td>
+                <td style={{ fontWeight: 800, color: tone(t.profit) }}>{tzs(t.profit)}</td><td style={{ fontWeight: 800 }}>{pct(t.margin_pct)}</td>
+                <td style={{ fontSize: 11.5, color: '#64748b' }}>SMS + Sender IDs + Call center + Other</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showRates && (
+        <div className="senda-card" style={{ padding: '14px 16px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>What each product costs us</div>
+          <p style={{ fontSize: 11.5, color: '#94a3b8', margin: '0 0 10px' }}>
+            The amount we pay upstream. Leave a box empty if you do not know it yet. Changing a value works out cost and profit again for every period.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
+            {field('sms', 'SMS: cost per segment (TZS)', '13')}
+            {field('sender', 'Sender ID: cost per registration (TZS)', '10000')}
+            {field('minute', 'Call center: cost per minute (TZS)', '30')}
+            <button type="button" onClick={saveRates} disabled={saving} className="senda-btn senda-btn-sm"
+              style={{ height: 34, border: 'none', background: BRAND, color: '#fff', fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save costs'}</button>
+            {missing.length === 0 && <button type="button" onClick={() => { setEditing(false); if (rate) setDraft(draftFrom(rate)); }} className="senda-btn senda-btn-sm" style={{ height: 34, border: '1px solid #e2e8f0', background: '#fff', color: '#475569' }}>Cancel</button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // One round-trip from /analytics/summary delivers the 20 KPI tiles + 3 monthly
 // series. Auxiliary endpoints (sms/monthly, networks/performance, delivery-rate-trend)
 // supply the SMS-detail charts that aren't part of the summary payload.
@@ -1031,6 +1217,8 @@ function OverviewTab() {
           ))}
         </div>
       </div>
+
+      <OverviewProfit period={period}/>
 
       {/* ── Users (9 tiles) ─────────────────────────────────────────────── */}
       <div style={{fontSize:9,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>Users · Registrations · Engagement</div>
