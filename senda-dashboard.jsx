@@ -868,7 +868,7 @@ function OverviewProfit({ period }) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed]   = useState(false);
   const [rate, setRate]       = useState(null);
-  const [draft, setDraft]     = useState({ sms: '', sender: '', minute: '' });
+  const [draft, setDraft]     = useState({ sms: '', sender: '', minute: '', number: '' });
   const [editing, setEditing] = useState(false);
   const [saving, setSaving]   = useState(false);
 
@@ -876,24 +876,23 @@ function OverviewProfit({ period }) {
     sms: r.cost_per_segment > 0 ? String(r.cost_per_segment) : '',
     sender: r.cost_per_sender_id != null ? String(r.cost_per_sender_id) : '',
     minute: r.cost_per_call_minute != null ? String(r.cost_per_call_minute) : '',
+    number: r.cost_per_phone_number != null ? String(r.cost_per_phone_number) : '',
   });
 
   const load = useCallback(() => {
     setLoading(true);
     setFailed(false);
-    Promise.all([
-      adminFetch(`/api/admin/v1/net-profit/period?period=${period}`, {}, onLogout),
-      adminFetch('/api/admin/v1/net-profit/cost-rate', {}, onLogout),
-    ]).then(([p, r]) => {
-      if (p.success) setData(p.data); else setFailed(true);
-      if (r.success) { setRate(r.data); setDraft(draftFrom(r.data)); }
-    }).catch(() => setFailed(true)).finally(() => setLoading(false));
+    adminFetch(`/api/admin/v1/net-profit/period?period=${period}`, {}, onLogout)
+      .then(res => {
+        if (res.success) { setData(res.data); setRate(res.data.rates); setDraft(draftFrom(res.data.rates)); }
+        else setFailed(true);
+      }).catch(() => setFailed(true)).finally(() => setLoading(false));
   }, [period, onLogout]);
   useEffect(() => { load(); }, [load]);
 
   const saveRates = async () => {
     const num = (v) => (v.trim() === '' ? null : parseFloat(v));
-    const body = { cost_per_segment: num(draft.sms) ?? 0, cost_per_sender_id: num(draft.sender), cost_per_call_minute: num(draft.minute) };
+    const body = { cost_per_segment: num(draft.sms) ?? 0, cost_per_sender_id: num(draft.sender), cost_per_call_minute: num(draft.minute), cost_per_phone_number: num(draft.number) };
     for (const v of Object.values(body)) if (v != null && (isNaN(v) || v < 0)) { showToast?.('Enter numbers of 0 or more, or leave a box empty.', 'error'); return; }
     setSaving(true);
     try {
@@ -908,12 +907,21 @@ function OverviewProfit({ period }) {
   const n0 = (n) => Math.round(n || 0).toLocaleString();
   const pct = (p) => (p == null ? '—' : `${p}%`);
   const tone = (p) => (p == null ? '#94a3b8' : p >= 0 ? '#059669' : '#dc2626');
-  const periodName = { today: 'today', current_month: 'this month', last_month: 'last month', current_year: 'this year' }[period] || 'this period';
+  const periodName = (data?.period?.label || { today: 'Today', current_month: 'This month', last_month: 'Last month', current_year: 'This year' }[period] || '').toLowerCase();
 
   const wrap = { marginBottom: 18 };
   const label = { fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 };
 
-  if (loading && !data) return <div style={wrap}><div style={label}>Money · Revenue, Cost and Profit</div><div style={{ fontSize: 12, color: '#94a3b8' }}>Loading…</div></div>;
+  if (loading && !data) {
+    const box = { height: 76, borderRadius: 10, background: 'linear-gradient(90deg,#f1f5f9,#e8edf3,#f1f5f9)' };
+    return (
+      <div style={wrap}>
+        <div style={label}>Money · Revenue, Cost and Profit</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12, marginBottom: 12 }}>{[0, 1, 2, 3].map(i => <div key={i} style={box} />)}</div>
+        <div style={{ ...box, height: 150 }} />
+      </div>
+    );
+  }
   if (failed || !data) {
     return (
       <div style={wrap}>
@@ -943,9 +951,10 @@ function OverviewProfit({ period }) {
     {
       key: 'call_center', name: 'Call center / IVR', sec: data.call_center,
       revenue: 'Call-center plan payments (free trials are not revenue)',
-      cost: !data.call_center.has_rate ? 'Set the cost per call minute'
-        : !data.call_center.data_available ? 'Call minutes could not be read here'
-        : `${n0(data.call_center.minutes)} billable call minutes × TZS ${data.call_center.cost_per_minute}`,
+      cost: !data.call_center.has_minute_rate || !data.call_center.has_number_rate
+        ? `Set the cost ${[!data.call_center.has_minute_rate && 'per call minute', !data.call_center.has_number_rate && 'of one phone number'].filter(Boolean).join(' and ')}`
+        : !data.call_center.data_available ? 'Call minutes or phone numbers could not be read here'
+        : `${n0(data.call_center.minutes)} billable minutes × TZS ${data.call_center.cost_per_minute} + ${n0(data.call_center.numbers_bought)} phone number${data.call_center.numbers_bought === 1 ? '' : 's'} bought × TZS ${Math.round(data.call_center.cost_per_number).toLocaleString()}`,
     },
   ];
 
@@ -965,7 +974,7 @@ function OverviewProfit({ period }) {
   );
 
   return (
-    <div style={wrap}>
+    <div style={{ ...wrap, opacity: loading ? 0.55 : 1, transition: 'opacity .15s' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
         <div style={{ ...label, marginBottom: 0 }}>Money · Revenue, Cost and Profit · {periodName}</div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -1033,7 +1042,8 @@ function OverviewProfit({ period }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
             {field('sms', 'SMS: cost per segment (TZS)', '13')}
             {field('sender', 'Sender ID: cost per registration (TZS)', '10000')}
-            {field('minute', 'Call center: cost per minute (TZS)', '30')}
+            {field('minute', 'Call center: cost per minute (TZS)', '17')}
+            {field('number', 'Call center: cost of one phone number (TZS)', '150000')}
             <button type="button" onClick={saveRates} disabled={saving} className="senda-btn senda-btn-sm"
               style={{ height: 34, border: 'none', background: BRAND, color: '#fff', fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save costs'}</button>
             {missing.length === 0 && <button type="button" onClick={() => { setEditing(false); if (rate) setDraft(draftFrom(rate)); }} className="senda-btn senda-btn-sm" style={{ height: 34, border: '1px solid #e2e8f0', background: '#fff', color: '#475569' }}>Cancel</button>}
@@ -13118,14 +13128,15 @@ function NetProfitTab() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('total');            // sms | sender_id | call_center | total
-  const [rate, setRate] = useState({ cost_per_segment: 0, cost_per_sender_id: null, cost_per_call_minute: null, updated_at: null });
-  const [draft, setDraft] = useState({ sms: '', sender: '', minute: '' });
+  const [rate, setRate] = useState({ cost_per_segment: 0, cost_per_sender_id: null, cost_per_call_minute: null, cost_per_phone_number: null, updated_at: null });
+  const [draft, setDraft] = useState({ sms: '', sender: '', minute: '', number: '' });
   const [savingRate, setSavingRate] = useState(false);
 
   const draftFrom = (r) => ({
     sms: r.cost_per_segment > 0 ? String(r.cost_per_segment) : '',
     sender: r.cost_per_sender_id != null ? String(r.cost_per_sender_id) : '',
     minute: r.cost_per_call_minute != null ? String(r.cost_per_call_minute) : '',
+    number: r.cost_per_phone_number != null ? String(r.cost_per_phone_number) : '',
   });
 
   const load = useCallback(async () => {
@@ -13144,7 +13155,7 @@ function NetProfitTab() {
   const dirty = JSON.stringify(draft) !== JSON.stringify(draftFrom(rate));
   const saveRates = async () => {
     const num = (v) => (v.trim() === '' ? null : parseFloat(v));
-    const body = { cost_per_segment: num(draft.sms) ?? 0, cost_per_sender_id: num(draft.sender), cost_per_call_minute: num(draft.minute) };
+    const body = { cost_per_segment: num(draft.sms) ?? 0, cost_per_sender_id: num(draft.sender), cost_per_call_minute: num(draft.minute), cost_per_phone_number: num(draft.number) };
     for (const v of Object.values(body)) if (v != null && (isNaN(v) || v < 0)) { showToast('Enter valid numbers (0 or more), or leave a box empty.', 'error'); return; }
     setSavingRate(true);
     try {
@@ -13195,7 +13206,7 @@ function NetProfitTab() {
           The amounts we pay upstream. Leave a box empty when you do not know it yet: that product then shows revenue only, and the total says its cost is missing. Use 0 when it costs us nothing.
         </p>
         <div style={{ display:'flex', flexWrap:'wrap', gap:12, alignItems:'flex-end' }}>
-          {[['sms', 'SMS: cost per segment (TZS)', '13'], ['sender', 'Sender ID: cost per registration (TZS)', '10000'], ['minute', 'Call center: cost per minute (TZS)', '30']].map(([key, label, ph]) => (
+          {[['sms', 'SMS: cost per segment (TZS)', '13'], ['sender', 'Sender ID: cost per registration (TZS)', '10000'], ['minute', 'Call center: cost per minute (TZS)', '17'], ['number', 'Call center: cost of one phone number (TZS)', '150000']].map(([key, label, ph]) => (
             <div key={key}>
               <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>{label}</label>
               <input type="number" min="0" step="0.01" value={draft[key]} onChange={e => setDraft({ ...draft, [key]: e.target.value })} placeholder={ph} className="senda-input" style={{ width:200, height:34 }}/>
@@ -13259,7 +13270,7 @@ function NetProfitTab() {
           {view === 'call_center' && (<>
             {!t.call_center.data_available && (
               <div style={{ fontSize:12, color:'#92400e', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:8, padding:'8px 12px', marginBottom:12 }}>
-                The call minutes could not be read from the voice service here, so the call center cost and profit are left blank. Revenue is still correct.
+                The call minutes or phone numbers could not be read from the voice service here, so the call center cost and profit are left blank. Revenue is still correct.
               </div>)}
             <Cards>
               <Card label="Revenue" value={fmtTzs(t.call_center.revenue)} hint="Call-center plan payments (online, or recorded when staff activated a paid plan). Free trials are not revenue."/>
@@ -13268,12 +13279,13 @@ function NetProfitTab() {
               <Card label="Margin" value={pctText(t.call_center.margin_pct)}/>
               <Card label="Billable minutes" value={Math.round(t.call_center.minutes || 0).toLocaleString()}/>
               <Card label="Calls" value={(t.call_center.calls || 0).toLocaleString()}/>
+              <Card label="Phone numbers bought" value={(t.call_center.numbers_bought || 0).toLocaleString()} hint="New phone numbers set up in the period. Each carries the purchase cost."/>
             </Cards>
-            <Table head={['Month', 'Revenue', 'Calls', 'Billable minutes', 'Cost/min', 'Telephony cost', 'Net profit', 'Margin']}>
+            <Table head={['Month', 'Revenue', 'Calls', 'Billable minutes', 'Cost/min', 'Numbers bought', 'Cost/number', 'Call center cost', 'Net profit', 'Margin']}>
               {data.months.map(m => (
                 <tr key={m.label}>
                   <td style={{ fontWeight:700 }}>{m.label}</td><td>{fmtTzs(m.call_center.revenue)}</td><td>{(m.call_center.calls || 0).toLocaleString()}</td>
-                  <td>{Math.round(m.call_center.minutes || 0).toLocaleString()}</td><td>{m.call_center.has_rate ? `TZS ${m.call_center.cost_per_minute}` : NOT_SET}</td>
+                  <td>{Math.round(m.call_center.minutes || 0).toLocaleString()}</td><td>{m.call_center.has_minute_rate ? `TZS ${m.call_center.cost_per_minute}` : NOT_SET}</td><td>{m.call_center.numbers_bought || 0}</td><td>{m.call_center.has_number_rate ? fmtTzs(m.call_center.cost_per_number) : NOT_SET}</td>
                   <td>{fmtTzs(m.call_center.cost)}</td>{profitCell(m.call_center)}<td>{pctText(m.call_center.margin_pct)}</td>
                 </tr>))}
             </Table>
