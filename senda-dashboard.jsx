@@ -13127,6 +13127,134 @@ function NetProfitTab() {
   );
 }
 
+// ─── Agent Accounts (SENDA staff): an organization's call-center logins, and a copy-and-paste report with new temporary passwords ───
+// A password is stored only as a hash, so an old one cannot be shown. "Generate" sets a NEW temporary password for each chosen agent (they must change it at
+// their first sign-in) and shows the report once. Only a super admin can generate.
+function AgentAccountsTab() {
+  const { showToast, onLogout, adminInfo } = React.useContext(AppContext);
+  const canGenerate = adminInfo?.role === 'super_admin';
+  const [tenants, setTenants] = useState(null);
+  const [error, setError]     = useState(null);
+  const [open, setOpen]       = useState(null);       // { tenant_id, name }
+  const [accounts, setAccounts] = useState([]);
+  const [picked, setPicked]   = useState({});         // user_id -> true
+  const [busy, setBusy]       = useState(false);
+  const [report, setReport]   = useState(null);       // { text, issued, skipped }
+  const [search, setSearch]   = useState('');
+
+  const loadTenants = useCallback(() => {
+    adminFetch('/api/admin/v1/agent-accounts', {}, onLogout)
+      .then(res => { if (res.success) setTenants(res.data.tenants); else setError(res.error?.message || 'Could not load the organizations.'); })
+      .catch(e => setError(e.message));
+  }, [onLogout]);
+  useEffect(() => { loadTenants(); }, [loadTenants]);
+
+  const openTenant = (t) => {
+    setOpen(t); setReport(null); setAccounts([]); setPicked({});
+    adminFetch(`/api/admin/v1/agent-accounts/${t.tenant_id}`, {}, onLogout).then(res => {
+      if (!res.success) { showToast?.(res.error?.message || 'Could not load the accounts.', 'error'); return; }
+      setAccounts(res.data.accounts);
+      const active = {}; res.data.accounts.filter(a => a.status === 'active' && a.role === 'agent').forEach(a => { active[a.user_id] = true; });
+      setPicked(active);
+    });
+  };
+
+  const chosen = accounts.filter(a => picked[a.user_id]);
+  const generate = () => {
+    if (!chosen.length) { showToast?.('Choose at least one agent.', 'error'); return; }
+    if (!window.confirm(`Set a NEW temporary password for ${chosen.length} account(s) of ${open.name}? Their current passwords stop working, and they must choose their own at the next sign-in.`)) return;
+    setBusy(true);
+    adminFetch(`/api/admin/v1/agent-accounts/${open.tenant_id}/temporary-passwords`, { method:'POST', body: JSON.stringify({ user_ids: chosen.map(a => a.user_id) }) }, onLogout).then(res => {
+      setBusy(false);
+      if (!res.success) { showToast?.(res.error?.message || 'Could not generate the passwords.', 'error'); return; }
+      setReport({ text: res.data.report_text, issued: res.data.issued, skipped: res.data.skipped });
+      loadTenants();
+      openTenantQuiet(open);
+    }).catch(() => { setBusy(false); showToast?.('Network error.', 'error'); });
+  };
+  const openTenantQuiet = (t) => adminFetch(`/api/admin/v1/agent-accounts/${t.tenant_id}`, {}, onLogout).then(res => { if (res.success) setAccounts(res.data.accounts); });
+
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(report.text); showToast?.('Report copied. Paste it into WhatsApp or email.', 'success'); }
+    catch { const el = document.getElementById('agent-report-text'); if (el) { el.select(); document.execCommand('copy'); showToast?.('Report copied.', 'success'); } }
+  };
+
+  const th = { padding:'8px 10px', fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'.05em', textAlign:'left' };
+  const td = { padding:'9px 10px', fontSize:13, verticalAlign:'top' };
+  const card = { background:'#fff', border:'1px solid #eef2f7', borderRadius:12, overflow:'hidden', marginBottom:16 };
+  const fmt = (t) => t ? new Date(t).toLocaleString() : 'never';
+  const shown = (tenants || []).filter(t => t.name.toLowerCase().includes(search.trim().toLowerCase()));
+
+  return (
+    <div style={{padding:24}}>
+      <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>Agent Accounts</h2>
+      <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 14px',maxWidth:820,lineHeight:1.55}}>
+        Choose an organization to see its call-center agent logins. Press <b>Generate temporary passwords</b> to give the chosen agents new ones and get a plain report you can copy and send to the
+        organization. Passwords cannot be read back later, so the report is shown only once. Every agent must choose their own password at their first sign-in.
+      </p>
+      {error && <div style={{color:'#b91c1c',fontSize:13,marginBottom:10}}>{error}</div>}
+
+      <div style={card}>
+        <div style={{padding:'12px 14px',borderBottom:'1px solid #f1f5f9'}}>
+          <input className="senda-input" style={{height:36,fontSize:13,maxWidth:320}} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search an organization"/>
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead><tr style={{background:'#f8fafc'}}><th style={th}>Organization</th><th style={th}>Agents</th><th style={th}>Supervisors</th><th style={th}>Still on a temporary password</th><th style={th}></th></tr></thead>
+            <tbody>
+              {tenants === null && <tr><td colSpan={5} style={{...td,color:'#94a3b8'}}>Loading…</td></tr>}
+              {tenants && shown.length === 0 && <tr><td colSpan={5} style={{...td,color:'#94a3b8'}}>No organization with agent accounts{search ? ' matches that' : ' yet'}.</td></tr>}
+              {shown.map(t => (
+                <tr key={t.tenant_id} style={{borderTop:'1px solid #f1f5f9',background: open?.tenant_id === t.tenant_id ? '#eff6ff' : undefined}}>
+                  <td style={{...td,fontWeight:700}}>{t.name}</td><td style={td}>{t.agents}</td><td style={td}>{t.supervisors}</td><td style={td}>{t.still_on_temporary_password}</td>
+                  <td style={td}><button onClick={() => openTenant(t)} style={{border:'none',background:'none',color:BRAND,fontWeight:700,cursor:'pointer'}}>Open</button></td>
+                </tr>))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {open && (
+        <div style={{...card,border:'2px solid #dbeafe',padding:'14px 16px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:10}}>
+            <div style={{fontSize:15,fontWeight:800,color:'#0f172a'}}>{open.name}: {accounts.length} account{accounts.length === 1 ? '' : 's'}</div>
+            <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => { setOpen(null); setReport(null); }}>Close</button>
+          </div>
+          <div style={{overflowX:'auto',marginBottom:12}}>
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <thead><tr style={{background:'#f8fafc'}}><th style={th}></th><th style={th}>Name</th><th style={th}>Email</th><th style={th}>Role</th><th style={th}>Status</th><th style={th}>Last sign-in</th><th style={th}>Password</th></tr></thead>
+              <tbody>
+                {accounts.length === 0 && <tr><td colSpan={7} style={{...td,color:'#94a3b8'}}>No agent accounts.</td></tr>}
+                {accounts.map(a => (
+                  <tr key={a.user_id} style={{borderTop:'1px solid #f1f5f9'}}>
+                    <td style={td}><input type="checkbox" checked={!!picked[a.user_id]} disabled={a.status !== 'active'} onChange={e => setPicked({ ...picked, [a.user_id]: e.target.checked })}/></td>
+                    <td style={{...td,fontWeight:600}}>{a.name}</td><td style={td}>{a.email}</td><td style={td}>{a.role}</td>
+                    <td style={td}>{a.status === 'active' ? 'Active' : <span style={{color:'#b45309'}}>{a.status}</span>}{a.also_elsewhere && <div style={{fontSize:11,color:'#94a3b8'}}>also in another organization: cannot be reset here</div>}</td>
+                    <td style={td}>{fmt(a.last_login)}</td>
+                    <td style={td}>{a.must_change_password ? <span style={{color:'#b45309',fontWeight:700}}>temporary: not changed yet</span> : <span style={{color:'#15803d'}}>their own</span>}</td>
+                  </tr>))}
+              </tbody>
+            </table>
+          </div>
+          {canGenerate
+            ? <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={busy || chosen.length === 0} onClick={generate}>{busy ? 'Generating…' : `Generate temporary passwords (${chosen.length})`}</button>
+            : <span style={{fontSize:12,color:'#94a3b8'}}>Only a super admin can generate passwords.</span>}
+
+          {report && (
+            <div style={{marginTop:14}}>
+              <div style={{fontSize:12.5,fontWeight:700,color:'#b45309',marginBottom:6}}>Shown once. Copy it now: the passwords cannot be shown again.</div>
+              <textarea id="agent-report-text" readOnly value={report.text} rows={Math.min(24, report.text.split('\n').length + 1)}
+                style={{width:'100%',boxSizing:'border-box',padding:'10px 12px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'ui-monospace,Consolas,monospace',background:'#f8fafc'}}/>
+              <div style={{display:'flex',gap:8,marginTop:8}}>
+                <button className="senda-btn senda-btn-sm senda-btn-primary" onClick={copy}>Copy report</button>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => setReport(null)}>Hide</button>
+              </div>
+            </div>)}
+        </div>)}
+    </div>
+  );
+}
+
 // ─── IVR Flows (senda_voice_backend) ───────────────────────────────────────────
 // Read-only, cross-tenant view of actual IVR flow *content* — kept as its own
 // tab (separate from the Messaging group's SMS/message-content tabs above) so
@@ -20257,6 +20385,7 @@ const NAV_GROUPS = [
   { title: 'Voice / IVR', items: [
     { id:'ivrflows',       Icon:Workflow,    label:'IVR Flows'        },
     { id:'voicenumbers',   Icon:Phone,       label:'Voice Numbers'    },
+    { id:'agentaccounts',  Icon:Users,       label:'Agent Accounts'   },
     { id:'calllogs',       Icon:ListChecks,  label:'Call Logs'        },
     { id:'voiceusage',     Icon:BarChart3,   label:'Voice Usage'      },
     { id:'analysisemails', Icon:Mail,        label:'Analysis Emails'  },
@@ -24535,6 +24664,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     operations:   <OperationsTab/>,
     ivrflows:       <IvrFlowsTab/>,
     voicenumbers:   <VoiceNumbersTab/>,
+    agentaccounts:  <AgentAccountsTab/>,
     calllogs:       <VoiceCallLogsTab/>,
     voiceusage:     <VoiceUsageTab/>,
     analysisemails: <AnalysisEmailsTab/>,
