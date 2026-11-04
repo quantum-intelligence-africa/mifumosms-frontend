@@ -22,11 +22,13 @@ function MiniKpis({ filters }: { filters: AnalyticsFilters }) {
   if (q.isLoading) return <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>;
   if (!q.data) return null;
   const k = q.data.kpis;
+  // Customer figures come from the newer voice backend; until it is live fall back to the per-call figures.
+  const ca = k.customers_answered ?? k.answered, cm = k.customers_missed ?? k.missed, car = k.customer_answer_rate ?? k.answer_rate;
   const cards = [
     { label: t("an.k_total"), value: fmtNum(k.total_calls.value), change: k.total_calls.change, tone: "", good: true, points: false },
-    { label: t("an.k_customers_answered"), value: fmtNum(k.customers_answered.value), change: k.customers_answered.change, tone: "text-green-600", good: true, points: false },
-    { label: t("an.k_customers_missed"), value: fmtNum(k.customers_missed.value), change: k.customers_missed.change, tone: "text-red-600", good: false, points: false },
-    { label: t("an.k_cust_answer_rate"), value: fmtPct(k.customer_answer_rate.value, 1), change: k.customer_answer_rate.change, tone: "", good: true, points: true },
+    { label: t("an.k_customers_answered"), value: fmtNum(ca.value), change: ca.change, tone: "text-green-600", good: true, points: false },
+    { label: t("an.k_customers_missed"), value: fmtNum(cm.value), change: cm.change, tone: "text-red-600", good: false, points: false },
+    { label: t("an.k_cust_answer_rate"), value: fmtPct(car.value, 1), change: car.change, tone: "", good: true, points: true },
     { label: t("an.k_wait"), value: fmtSeconds(k.avg_wait_seconds.value), change: k.avg_wait_seconds.change, tone: "", good: false, points: false },
   ];
   return (

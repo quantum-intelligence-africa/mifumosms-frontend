@@ -5447,6 +5447,198 @@ function PartnerWhatsAppCredentials({ partner }) {
   );
 }
 
+// Where a partner's sender-name callback is added. Save the address once; from then on every change to a sender name of this partner or
+// of any of its clients (approved, rejected, requires changes, renamed...) is pushed there automatically, and retried until their server accepts it.
+const CALLBACK_RESULT = {
+  delivered:  { t: 'Delivered',  c: GREEN },
+  pending:    { t: 'Retrying',   c: AMBER },
+  failed:     { t: 'Gave up',    c: RED },
+  skipped:    { t: 'Skipped',    c: '#94a3b8' },
+  superseded: { t: 'Replaced by a newer change', c: '#94a3b8' },
+};
+
+function PartnerSenderCallback({ partner }) {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [info, setInfo]       = useState(null);
+  const [url, setUrl]         = useState('');
+  const [key, setKey]         = useState('');
+  const [newKey, setNewKey]   = useState('');   // the key we generated, shown once
+  const [testResult, setTestResult] = useState(null);
+
+  const apply = (d) => { setInfo(d); setUrl(d.callback_url || ''); };
+
+  const load = React.useCallback(() => {
+    adminFetch(`/partners/${partner.id}/sender-callback`, {}, onLogout)
+      .then(res => {
+        if (res.success) apply(res.data || {});
+        else showToast && showToast(res.error?.message || 'Failed to load the callback settings', 'error');
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setLoading(false));
+  }, [partner.id, onLogout, showToast]);
+
+  useEffect(() => { setLoading(true); load(); }, [load]);
+
+  const save = (regenerate = false) => {
+    if (!url.trim()) { showToast && showToast('Enter the callback URL', 'error'); return; }
+    setSaving(true);
+    const body = { callback_url: url.trim(), regenerate_key: regenerate };
+    if (key.trim()) body.api_key = key.trim();
+    adminFetch(`/partners/${partner.id}/sender-callback`, { method: 'PUT', body: JSON.stringify(body) }, onLogout)
+      .then(res => {
+        if (res.success) {
+          apply(res.data || {});
+          setNewKey(res.data?.generated_key || '');
+          setKey('');
+          setTestResult(null);
+          showToast && showToast('Saved. Sender-name changes are now pushed to this address.', 'success');
+        } else showToast && showToast(res.error?.message || 'Save failed', 'error');
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setSaving(false));
+  };
+
+  const test = () => {
+    setTesting(true);
+    setTestResult(null);
+    adminFetch(`/partners/${partner.id}/sender-callback/test`, { method: 'POST' }, onLogout)
+      .then(res => {
+        if (res.success) setTestResult(res.data);
+        else showToast && showToast(res.error?.message || 'Test failed', 'error');
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setTesting(false));
+  };
+
+  const remove = () => {
+    if (!window.confirm('Stop pushing sender-name changes to this partner? The saved address and key are removed.')) return;
+    adminFetch(`/partners/${partner.id}/sender-callback`, { method: 'DELETE' }, onLogout)
+      .then(res => {
+        if (res.success) { apply(res.data || {}); setNewKey(''); setKey(''); setTestResult(null); showToast && showToast('Callback removed', 'success'); }
+        else showToast && showToast(res.error?.message || 'Remove failed', 'error');
+      })
+      .catch(e => showToast && showToast(e.message, 'error'));
+  };
+
+  const labelStyle = { fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 5, display: 'block', textTransform: 'uppercase', letterSpacing: '.04em' };
+  const btn = (primary, disabled) => ({
+    height: 38, padding: '0 18px', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? .6 : 1,
+    ...(primary ? { border: 'none', background: BRAND, color: '#fff' } : { border: '1px solid #e2e8f0', background: '#fff', color: '#475569' }),
+  });
+
+  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Loading callback settings…</div>;
+
+  const on = !!info?.enabled;
+  const counts = info?.counts || {};
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 32px' }}>
+      <div className="senda-card" style={{ maxWidth: 760, padding: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <span style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>Sender ID Callback</span>
+          <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 10, fontWeight: 700, background: on ? `${GREEN}18` : '#f1f5f9', color: on ? GREEN : '#94a3b8' }}>
+            {on ? 'Pushing automatically' : 'Not set'}
+          </span>
+        </div>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 18, lineHeight: 1.5 }}>
+          Add the address of <strong>{partner.name || 'this partner'}</strong>'s server. Every change to a sender name of this partner and of its
+          {partner.customers ? <> {partner.customers.length}</> : null} clients (approved, rejected, requires changes, cancelled, renamed) is then sent
+          there on its own. If their server does not answer, we keep trying for about a day, so nothing is lost.
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Callback URL *</label>
+          <input className="senda-input" style={{ width: '100%' }} placeholder="http://54.177.196.168/Api/smsUpdate" value={url} onChange={e => setUrl(e.target.value)} />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>API key {info?.api_key_set ? '(leave blank to keep the current one)' : '(optional — one is made for you)'}</label>
+          <input className="senda-input" type="password" autoComplete="new-password" style={{ width: '100%' }}
+            placeholder={info?.api_key_set ? `Stored ${info.masked_key} — type to replace` : "Their server's key, or leave blank"}
+            value={key} onChange={e => setKey(e.target.value)} />
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>
+            Sent with every call as <code>Authorization: Bearer …</code> and <code>X-API-KEY</code>, so their server can check it is us.
+          </div>
+        </div>
+
+        {newKey && (
+          <div style={{ fontSize: 12, background: `${AMBER}14`, border: `1px solid ${AMBER}55`, borderRadius: 8, padding: '10px 12px', marginBottom: 14, wordBreak: 'break-all' }}>
+            <strong>Copy this key now — it is shown only once.</strong> Give it to the partner if their server checks it:
+            <div style={{ marginTop: 6, fontFamily: 'monospace', fontSize: 12.5, color: '#0f172a' }}>{newKey}</div>
+          </div>
+        )}
+
+        {url.trim().toLowerCase().startsWith('http://') && (
+          <div style={{ fontSize: 11.5, color: '#92400e', marginBottom: 14 }}>
+            This address is not secure (http). The key and the sender names travel unencrypted. Use https if their server has it.
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button onClick={() => save(false)} disabled={saving} style={btn(true, saving)}>{saving ? 'Saving…' : (on ? 'Update callback' : 'Save callback')}</button>
+          <button onClick={test} disabled={testing || !on} style={btn(false, testing || !on)}>{testing ? 'Sending…' : 'Send a test'}</button>
+          {on && <button onClick={() => save(true)} disabled={saving} style={btn(false, saving)}>Make a new key</button>}
+          {on && <button onClick={remove} style={{ ...btn(false, false), color: RED, borderColor: `${RED}55` }}>Remove</button>}
+        </div>
+
+        {testResult && (
+          <div style={{ fontSize: 12, marginTop: 14, padding: '9px 12px', borderRadius: 8, background: testResult.ok ? `${GREEN}12` : `${RED}0c`, border: `1px solid ${testResult.ok ? GREEN : RED}44`, color: '#0f172a' }}>
+            <strong style={{ color: testResult.ok ? GREEN : RED }}>
+              {testResult.ok ? `Their server accepted it (HTTP ${testResult.http_status}).` : (testResult.http_status ? `Their server answered HTTP ${testResult.http_status}.` : 'Could not reach their server.')}
+            </strong>
+            {testResult.detail ? <div style={{ marginTop: 4, color: '#475569', wordBreak: 'break-word' }}>{testResult.detail}</div> : null}
+            <div style={{ marginTop: 4, color: '#94a3b8' }}>The test carries a sample sender "TESTSENDER" marked <code>action: "test"</code>; nothing is stored here.</div>
+          </div>
+        )}
+      </div>
+
+      <div className="senda-card" style={{ maxWidth: 760, padding: 22, marginTop: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 10 }}>What has been sent</div>
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 12, color: '#475569', marginBottom: 12 }}>
+          {['delivered', 'pending', 'failed'].map(s => (
+            <span key={s}><strong style={{ color: CALLBACK_RESULT[s].c, fontSize: 15 }}>{counts[s] || 0}</strong> {CALLBACK_RESULT[s].t.toLowerCase()}</span>
+          ))}
+        </div>
+        {(info?.recent || []).length === 0
+          ? <div style={{ fontSize: 12, color: '#94a3b8' }}>Nothing sent yet. It starts with the next sender-name change.</div>
+          : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', color: '#94a3b8', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                    <th style={{ padding: '6px 8px' }}>When</th><th style={{ padding: '6px 8px' }}>Sender name</th>
+                    <th style={{ padding: '6px 8px' }}>Change</th><th style={{ padding: '6px 8px' }}>Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {info.recent.map(r => {
+                    const res = CALLBACK_RESULT[r.status] || { t: r.status, c: '#475569' };
+                    return (
+                      <tr key={r.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '7px 8px', color: '#64748b', whiteSpace: 'nowrap' }}>{new Date(r.created_at).toLocaleString()}</td>
+                        <td style={{ padding: '7px 8px', fontWeight: 600, color: '#0f172a' }}>{r.sender_name || '—'}</td>
+                        <td style={{ padding: '7px 8px' }}>{r.action}</td>
+                        <td style={{ padding: '7px 8px' }}>
+                          <span style={{ color: res.c, fontWeight: 700 }}>{res.t}</span>
+                          {r.http_status ? <span style={{ color: '#94a3b8' }}> · HTTP {r.http_status}</span> : null}
+                          {r.status === 'pending' && r.attempts ? <span style={{ color: '#94a3b8' }}> · try {r.attempts}</span> : null}
+                          {r.error && r.status !== 'delivered' ? <div style={{ color: '#94a3b8', fontSize: 11 }}>{r.error}</div> : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        <button onClick={load} style={{ ...btn(false, false), height: 32, marginTop: 12, fontSize: 12 }}>Refresh</button>
+      </div>
+    </div>
+  );
+}
+
 function PartnerSenderIdsModal({ partner, onClose }) {
   const { onLogout } = React.useContext(AppContext);
   const [senderIds, setSenderIds]       = useState([]);
@@ -5595,6 +5787,7 @@ function PartnerSenderIdsModal({ partner, onClose }) {
         {[
           { id:'customers', label:'Partina Network', count: (partner.customers || []).length },
           { id:'whatsapp',  label:'WhatsApp Credentials' },
+          { id:'callback',  label:'Sender ID Callback' },
         ].map(t=>(
           <button key={t.id} onClick={()=>setActiveView(t.id)}
             style={{height:42,padding:'0 18px',border:'none',background:'transparent',cursor:'pointer',
@@ -5843,6 +6036,9 @@ function PartnerSenderIdsModal({ partner, onClose }) {
 
       {/* ── WhatsApp Credentials view ── */}
       {activeView === 'whatsapp' && <PartnerWhatsAppCredentials partner={partner} />}
+
+      {/* ── Sender ID Callback view ── */}
+      {activeView === 'callback' && <PartnerSenderCallback partner={partner} />}
     </div>
   );
 }
