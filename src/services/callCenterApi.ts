@@ -426,6 +426,8 @@ export interface ReportSummary {
     total_calls: number; inbound: number; outbound: number; answered: number; answered_by_agent: number;
     missed: number; voicemail: number; rejected: number; failed: number; in_progress: number;
   };
+  /** Unique customers per day (summed over the period), separate from the per-call totals. */
+  customers?: { total: number; answered: number; missed: number; in_progress: number; by_day: Array<{ day: string; total: number; answered: number; missed: number }> };
   timings: Record<string, number | null>;
   by_endpoint?: Record<string, number>;
   by_team?: Array<{ team_id: string; team__name?: string; name?: string; calls: number; answered: number; missed: number }>;

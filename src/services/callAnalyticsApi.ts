@@ -63,11 +63,17 @@ export interface Summary {
   previous_period: { start: string; end: string };
   kpis: {
     total_calls: Kpi; answered: Kpi; missed: Kpi; failed: Kpi; answer_rate: Kpi; missed_rate: Kpi;
+    /** One count per customer per day, however many times they rang (the per-call figures above stay available). */
+    customers_total: Kpi; customers_answered: Kpi; customers_missed: Kpi; customer_answer_rate: Kpi; customer_missed_rate: Kpi;
     avg_wait_seconds: Kpi; avg_talk_seconds: Kpi; total_talk_seconds: Kpi;
     unresolved: Kpi & { ai_estimated: number };
   };
   live: { waiting_now: number; definition: string };
   pending_followups: { total: number; tasks: number; missed_callbacks: number; overdue: number; definition: string };
+  customers: {
+    total: number; answered: number; missed: number; in_progress: number; calls: number; definition: string;
+    by_day: Array<{ day: string; total: number; answered: number; missed: number }>;
+  };
   breakdown: {
     inbound: number; outbound: number; eligible_inbound: number; answered_by_agent: number;
     answered_without_agent: number; voicemail: number; in_progress: number;

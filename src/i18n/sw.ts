@@ -280,6 +280,8 @@ const sw: Record<string, string> = {
   "dashboard.metric.calls_last_30_days": "Simu za siku 30 zilizopita",
   "dashboard.metric.missed_calls": "Simu Zilizokosekana",
   "dashboard.metric.missed_last_30_days": "Zilizokosekana siku 30 zilizopita, pamoja na ujumbe wa sauti",
+  "dashboard.metric.missed_customers": "Wateja Waliokosekana",
+  "dashboard.metric.missed_customers_30_days": "Wateja ambao hawakupokelewa kamwe siku walipopiga, siku 30 zilizopita. Kila mteja anahesabiwa mara moja kwa siku.",
   "dashboard.metric.active_numbers": "Namba Hai",
   "dashboard.metric.connected_phone_numbers": "Namba za simu zilizounganishwa",
   "dashboard.error.title": "Hitilafu ya Dashibodi",

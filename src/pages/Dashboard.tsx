@@ -225,9 +225,10 @@ const Dashboard = () => {
           accentText: "text-sky-600",
         },
         {
-          title: t("dashboard.metric.missed_calls"),
-          value: voiceStats.missedCalls.toLocaleString(appLocale()),
-          description: t("dashboard.metric.missed_last_30_days"),
+          // Customers, not calls: someone who rang five times and was never answered is one missed customer.
+          title: voiceStats.missedCustomers !== null ? t("dashboard.metric.missed_customers") : t("dashboard.metric.missed_calls"),
+          value: (voiceStats.missedCustomers ?? voiceStats.missedCalls).toLocaleString(appLocale()),
+          description: voiceStats.missedCustomers !== null ? t("dashboard.metric.missed_customers_30_days") : t("dashboard.metric.missed_last_30_days"),
           icon: PhoneMissed,
           accentBg: "bg-rose-50",
           accentText: "text-rose-600",

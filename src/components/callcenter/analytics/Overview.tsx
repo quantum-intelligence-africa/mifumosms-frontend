@@ -112,12 +112,15 @@ export function Kpis({ filters, drillDown }: { filters: AnalyticsFilters; drillD
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-6">
         <KpiCard label={t("an.k_total")} value={fmtNum(k.total_calls.value)} definition={k.total_calls.definition} change={k.total_calls.change} extra={t("an.k_total_extra", { inbound: s.breakdown.inbound, outbound: s.breakdown.outbound })} />
-        <KpiCard label={t("an.k_answered")} value={fmtNum(k.answered.value)} definition={k.answered.definition} change={k.answered.change} tone="text-green-600" onClick={() => drillDown({ outcome: "answered" })}
-          extra={t("an.k_answered_extra", { agent: s.breakdown.answered_by_agent, ivr: s.breakdown.answered_without_agent })} />
-        <KpiCard label={t("an.k_missed")} value={fmtNum(k.missed.value)} definition={k.missed.definition} change={k.missed.change} goodWhenUp={false} tone="text-red-600" onClick={() => drillDown({ filter: "missed" })} />
+        <KpiCard label={t("an.k_customers")} value={fmtNum(k.customers_total.value)} definition={k.customers_total.definition} change={k.customers_total.change}
+          extra={t("an.k_customers_extra", { calls: s.breakdown.inbound })} />
+        <KpiCard label={t("an.k_customers_answered")} value={fmtNum(k.customers_answered.value)} definition={k.customers_answered.definition} change={k.customers_answered.change} tone="text-green-600" onClick={() => drillDown({ outcome: "answered" })}
+          extra={t("an.k_customers_answered_extra", { calls: k.answered.value ?? 0 })} />
+        <KpiCard label={t("an.k_customers_missed")} value={fmtNum(k.customers_missed.value)} definition={k.customers_missed.definition} change={k.customers_missed.change} goodWhenUp={false} tone="text-red-600" onClick={() => drillDown({ filter: "missed" })}
+          extra={t("an.k_customers_missed_extra", { calls: k.missed.value ?? 0 })} />
         <KpiCard label={t("an.k_failed")} value={fmtNum(k.failed.value)} definition={k.failed.definition} change={k.failed.change} goodWhenUp={false} tone="text-orange-600" onClick={() => drillDown({ filter: "failed" })} />
-        <KpiCard label={t("an.k_answer_rate")} value={fmtPct(k.answer_rate.value, 1)} definition={k.answer_rate.definition} change={k.answer_rate.change} points />
-        <KpiCard label={t("an.k_missed_rate")} value={fmtPct(k.missed_rate.value, 1)} definition={k.missed_rate.definition} change={k.missed_rate.change} points goodWhenUp={false} />
+        <KpiCard label={t("an.k_cust_answer_rate")} value={fmtPct(k.customer_answer_rate.value, 1)} definition={k.customer_answer_rate.definition} change={k.customer_answer_rate.change} points />
+        <KpiCard label={t("an.k_cust_missed_rate")} value={fmtPct(k.customer_missed_rate.value, 1)} definition={k.customer_missed_rate.definition} change={k.customer_missed_rate.change} points goodWhenUp={false} />
         <KpiCard label={t("an.k_talk")} value={fmtSeconds(k.avg_talk_seconds.value)} definition={k.avg_talk_seconds.definition} change={k.avg_talk_seconds.change} />
         <KpiCard label={t("an.k_total_talk")} value={fmtSeconds(k.total_talk_seconds.value)} definition={k.total_talk_seconds.definition} change={k.total_talk_seconds.change} />
         <KpiCard label={t("an.k_waiting_now")} value={fmtNum(s.live.waiting_now)} definition={s.live.definition} />
