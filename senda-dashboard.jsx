@@ -8843,6 +8843,7 @@ function SmsBySenderSummary() {
   const [timeTo, setTimeTo]             = useState('');       // HH:MM, empty = to the end of the day
   const [allDates, setAllDates]         = useState(false);    // the failed list: only this day, or every date (the page's own date filters)
   const [checking, setChecking]         = useState(false);    // asking the provider for the real status
+  const [tx, setTx]                     = useState({ loading: false, data: null, error: '' });   // Textify's own records for the period
   const [checkNote, setCheckNote]       = useState('');
   const [progress, setProgress]         = useState(null);     // { done, total } while "resend all" runs
   const [search, setSearch]     = useState('');
@@ -8912,7 +8913,7 @@ function SmsBySenderSummary() {
       })
       .catch(e => setBError(e.message))
       .finally(() => setBLoading(false));
-    setAudit(null); setAuditErr(null); setAuditLoading(true);
+    setAudit(null); setAuditErr(null); setAuditLoading(true); setTx({ loading: false, data: null, error: '' });
     const aq = new URLSearchParams({ sender, date });
     if (tf) aq.set('time_from', tf);
     if (tt) aq.set('time_to', tt);
@@ -8951,6 +8952,39 @@ function SmsBySenderSummary() {
         setTimeout(reload, 8000); setTimeout(reload, 25000);
       })
       .catch(e => { setChecking(false); showToast(e.message, 'error'); });
+  };
+
+  // Textify's own message list for this sender name and period. One call reads for up to about 50 seconds; when the period is further back it says so and
+  // "Keep searching" continues from where it stopped, adding the figures up.
+  const mergeTx = (x, y) => {
+    const by = { ...x.by_status };
+    Object.entries(y.by_status || {}).forEach(([k, v]) => { by[k] = (by[k] || 0) + v; });
+    const rs = {};
+    [...(x.failure_reasons || []), ...(y.failure_reasons || [])].forEach(r => { rs[r.reason] = (rs[r.reason] || 0) + r.count; });
+    return { ...y, by_status: by, sender_messages: x.sender_messages + y.sender_messages, units: x.units + y.units,
+      failure_reasons: Object.entries(rs).map(([reason, count]) => ({ reason, count })).sort((p, q) => q.count - p.count).slice(0, 10),
+      failed: [...(x.failed || []), ...(y.failed || [])], failed_truncated: x.failed_truncated || y.failed_truncated,
+      other_senders_in_window: x.other_senders_in_window + y.other_senders_in_window, rows_scanned: x.rows_scanned + y.rows_scanned, pages: x.pages + y.pages };
+  };
+  const fetchTextify = (keepGoing) => {
+    const before = keepGoing ? tx.data : null;
+    setTx(s => ({ ...s, loading: true, error: '' }));
+    const body = { sender: detailSender, date: auditDate, time_from: timeFrom, time_to: timeTo };
+    if (before?.next_page) body.start_page = before.next_page;
+    adminFetch('/api/admin/v1/system-sms-logs/sender-audit/textify-compare', { method: 'POST', body: JSON.stringify(body) }, onLogout)
+      .then(res => {
+        if (!res.success) { setTx(s => ({ ...s, loading: false, error: res.error?.message || 'Could not read Textify.' })); return; }
+        setTx({ loading: false, error: '', data: before ? mergeTx(before, res.data) : res.data });
+      })
+      .catch(e => setTx(s => ({ ...s, loading: false, error: e.message })));
+  };
+  const downloadTextifyFailedCsv = () => {
+    const rows = [['Phone', 'Status at Textify', 'Reason', 'Created at Textify'], ...((tx.data?.failed) || []).map(f => [f.phone, f.status, f.reason, f.at])];
+    const csv = rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    link.download = `textify-failed-${detailSender}-${auditDate}.csv`;
+    link.click();
   };
 
   const downloadFailedCsv = () => {
@@ -9103,6 +9137,7 @@ function SmsBySenderSummary() {
         : auditErr ? <div style={{fontSize:12.5,color:'#b91c1c'}}>{auditErr}</div>
         : audit && (() => {
           const t = audit.totals;
+          const isTextify = (audit.provider?.names || []).some(n => /textify/i.test(n));
           const peak = [...(audit.by_hour || [])].sort((x, y) => (y.sent + y.failed) - (x.sent + x.failed))[0];
           const maxH = Math.max(1, ...(audit.by_hour || []).map(h => h.sent + h.failed));
           return (
@@ -9157,16 +9192,81 @@ function SmsBySenderSummary() {
                     <Cell label="Failed when sent" value={num(audit.provider.failed_at_send)} color={RED} hint="The provider refused them straight away. Not charged." />
                   </div>
                   <div style={{fontSize:11.5,color:'#64748b',lineHeight:1.55,marginBottom:8}}>
-                    "Sent" above means the provider accepted the SMS. "Confirmed delivered" is what the provider itself reported afterwards. Press the button to ask the provider about
-                    the {num(audit.provider.unconfirmed_checkable)} that it has not confirmed yet; it is asked message by message, nothing is sent and no credits are spent.
+                    "Sent" above means the provider accepted the SMS. "Confirmed delivered" is what the provider itself reported afterwards.
+                    {audit.provider.unconfirmed_checkable > 0
+                      ? <> Press the button to ask the provider about the {num(audit.provider.unconfirmed_checkable)} that it has not confirmed yet; it is asked message by message, nothing is sent and no credits are spent.</>
+                      : isTextify ? <> Textify does not give us a message id when we send, so individual SMS cannot be checked one by one here. Use <b>Textify's own records</b> below to see what Textify itself recorded.</> : null}
                   </div>
-                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-                    <button type="button" className="senda-btn senda-btn-sm" disabled={checking || !audit.provider.unconfirmed_checkable} onClick={checkProvider}
-                      style={{height:34,background:BRAND,color:'#fff',border:'none',opacity:(checking || !audit.provider.unconfirmed_checkable) ? .5 : 1}}>
-                      {checking ? 'Asking…' : `Check ${num(audit.provider.unconfirmed_checkable)} with the provider now`}
-                    </button>
-                    {checkNote && <span style={{fontSize:12,color:'#334155'}}>{checkNote}</span>}
-                  </div>
+                  {audit.provider.unconfirmed_checkable > 0 && (
+                    <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                      <button type="button" className="senda-btn senda-btn-sm" disabled={checking} onClick={checkProvider}
+                        style={{height:34,background:BRAND,color:'#fff',border:'none',opacity:checking ? .5 : 1}}>
+                        {checking ? 'Asking…' : `Check ${num(audit.provider.unconfirmed_checkable)} with the provider now`}
+                      </button>
+                      {checkNote && <span style={{fontSize:12,color:'#334155'}}>{checkNote}</span>}
+                    </div>
+                  )}
+                  {isTextify && (() => {
+                    const d = tx.data;
+                    const by = d?.by_status || {};
+                    const inProgress = ['sending', 'processing', 'processing_status', 'scheduled'].reduce((n, k) => n + (by[k] || 0), 0);
+                    const known = ['delivered', 'sent', 'undelivered', 'failed', 'sending', 'processing', 'processing_status', 'scheduled'];
+                    const otherStatus = Object.entries(by).filter(([k]) => !known.includes(k)).reduce((n, [, v]) => n + v, 0);
+                    const accepted = t.sent + (audit.provider.failed_by_report || 0);          // what we recorded as accepted by Textify
+                    return (
+                      <div style={{marginTop:10,borderTop:'1px dashed #e2e8f0',paddingTop:10}}>
+                        <div style={{fontSize:12.5,fontWeight:800,color:'#0f172a',marginBottom:4}}>Textify's own records for this period</div>
+                        <div style={{fontSize:11.5,color:'#64748b',lineHeight:1.55,marginBottom:8}}>
+                          Reads Textify's message list for the sender name {detailSender} in this period and shows Textify's own status for each. Nothing is sent or charged.
+                        </div>
+                        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:8}}>
+                          <button type="button" className="senda-btn senda-btn-sm" disabled={tx.loading} onClick={() => fetchTextify(false)}
+                            style={{height:34,background:BRAND,color:'#fff',border:'none',opacity:tx.loading ? .5 : 1}}>
+                            {tx.loading ? 'Reading Textify…' : d ? 'Read Textify again' : "Fetch Textify's own records"}
+                          </button>
+                          {tx.loading && <span style={{fontSize:12,color:'#64748b'}}>This can take up to a minute for a busy day.</span>}
+                          {tx.error && <span style={{fontSize:12,color:'#b91c1c'}}>{tx.error}</span>}
+                        </div>
+                        {d && (
+                          <div>
+                            <div style={{fontSize:13,color:'#0f172a',lineHeight:1.55,marginBottom:8}}>
+                              Textify recorded <b>{num(d.sender_messages)}</b> message(s) from <b>{detailSender}</b> in this period:
+                              {' '}<b style={{color:GREEN}}>{num(by.delivered || 0)} delivered</b>, {num(by.sent || 0)} sent (waiting for the carrier's report), {num(inProgress)} in progress,
+                              {' '}<b style={{color:RED}}>{num(by.undelivered || 0)} undelivered</b> and <b style={{color:RED}}>{num(by.failed || 0)} failed</b>{otherStatus ? `, ${num(otherStatus)} other` : ''}.
+                              {' '}Textify billed <b>{num(d.units)}</b> SMS unit(s); our records charged <b>{num(t.credits_used)}</b> credit(s).
+                            </div>
+                            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:8}}>
+                              <Cell label="Textify has" value={num(d.sender_messages)} hint="Messages Textify recorded for this sender name in the period" />
+                              <Cell label="Delivered" value={num(by.delivered || 0)} color={GREEN} />
+                              <Cell label="Sent, awaiting report" value={num(by.sent || 0)} color="#b45309" hint="Handed to the carrier; no delivery report yet" />
+                              <Cell label="In progress" value={num(inProgress)} hint="sending, processing or scheduled" />
+                              <Cell label="Undelivered" value={num(by.undelivered || 0)} color={RED} />
+                              <Cell label="Failed" value={num(by.failed || 0)} color={RED} />
+                              <Cell label="Billed units" value={num(d.units)} color={BRAND} hint="SMS units Textify billed (a long message is more than one)" />
+                            </div>
+                            <div style={{fontSize:11.5,color:'#334155',lineHeight:1.6,marginBottom:6}}>
+                              Our records: <b>{num(accepted)}</b> accepted by Textify ({num(t.sent)} sent + {num(audit.provider.failed_by_report || 0)} later reported failed) and <b>{num(audit.provider.failed_at_send || 0)}</b> refused when sent.
+                              {accepted !== d.sender_messages && <> Textify has <b style={{color:'#b45309'}}>{num(Math.abs(d.sender_messages - accepted))} {d.sender_messages > accepted ? 'more' : 'fewer'}</b> than we recorded as accepted.</>}
+                              {d.other_senders_in_window > 0 && <> The same Textify account also sent {num(d.other_senders_in_window)} message(s) under other sender names in this period.</>}
+                            </div>
+                            {(d.failure_reasons || []).length > 0 && (
+                              <div style={{fontSize:11.5,color:'#334155',lineHeight:1.6,marginBottom:6}}>Why Textify says they failed: {d.failure_reasons.slice(0, 5).map(r => `${r.reason} (${num(r.count)})`).join(' · ')}</div>
+                            )}
+                            {!d.complete && (
+                              <div style={{fontSize:11.5,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'6px 10px',marginBottom:6}}>
+                                Textify's list was read back to {d.searched_back_to ? new Date(d.searched_back_to).toLocaleString() : 'the newest pages'} and this period starts earlier, so these figures are partial.
+                                <button type="button" onClick={() => fetchTextify(true)} disabled={tx.loading} style={{marginLeft:8,border:'none',background:'none',color:BRAND,fontWeight:700,cursor:'pointer'}}>Keep searching</button>
+                              </div>
+                            )}
+                            <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                              <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" disabled={!(d.failed || []).length} onClick={downloadTextifyFailedCsv} style={{height:32}}>Download Textify's failed list (CSV)</button>
+                              <span style={{fontSize:11,color:'#94a3b8'}}>Read {num(d.rows_scanned)} Textify records in {d.pages} page(s).{d.failed_truncated ? ' The failed list holds the first 5,000.' : ''}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div style={{fontSize:11.5,color:'#92400e',marginTop:8}}>{audit.provider.balance?.note}</div>
                 </div>
               )}
