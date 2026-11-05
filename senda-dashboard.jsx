@@ -949,7 +949,7 @@ function OverviewProfit({ period }) {
       cost: data.sender_id.has_rate ? `${n0(data.sender_id.count)} paid registrations × TZS ${Math.round(data.sender_id.cost_each).toLocaleString()}` : 'Set the cost of one registration',
     },
     {
-      key: 'call_center', name: 'Call center / IVR', sec: data.call_center,
+      key: 'call_center', name: 'Call center / IVR', sec: data.call_center, numbers: data.call_center.numbers || [], numbersCount: data.call_center.numbers_bought || 0,
       revenue: 'Call-center plan payments (free trials are not revenue)',
       cost: !data.call_center.has_minute_rate || !data.call_center.has_number_rate
         ? `Set the cost ${[!data.call_center.has_minute_rate && 'per call minute', !data.call_center.has_number_rate && 'of one phone number'].filter(Boolean).join(' and ')}`
@@ -1016,6 +1016,11 @@ function OverviewProfit({ period }) {
                   <td style={{ fontSize: 11.5, color: '#64748b', minWidth: 230 }}>
                     <div><b>Revenue:</b> {r.revenue}</div>
                     <div><b>Cost:</b> {r.cost}{r.sec.cost != null ? ` = ${tzs(r.sec.cost)}` : ''}</div>
+                    {r.key === 'call_center' && r.sec.data_available && (
+                      <div><b>Phone numbers counted:</b> {r.numbers.length === 0 ? 'none added in this period'
+                        : <>{r.numbers.slice(0, 6).map(n => n.number).join(', ')}{r.numbersCount > 6 ? ` and ${r.numbersCount - 6} more` : ''}</>}
+                        <span style={{ color: '#94a3b8' }}> (from Voice Numbers, each number once)</span></div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -14080,6 +14085,8 @@ function AnalysisEmailsTab() {
   const [error, setError]     = useState(null);
   const [edit, setEdit]       = useState(null);           // { tenant_id, tenant, language, recipient_mode, text }
   const [busy, setBusy]       = useState(false);
+  const [quick, setQuick]     = useState({});            // tenant_id -> text typed in the row's "Add an email" box
+  const [quickBusy, setQuickBusy] = useState(null);         // tenant_id being saved
   const [fOrg, setFOrg]       = useState('');
   const [fRecipient, setFRecipient] = useState('');
   const [fStatus, setFStatus] = useState('');
@@ -14149,7 +14156,7 @@ function AnalysisEmailsTab() {
       loadOrgs(); setLogTick(t => t + 1);
     });
   };
-  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.owners_and_admins, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled });
+  const startEdit = (o) => { setTimeout(() => document.getElementById('analysis-edit-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.owners_and_admins, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled }); };
   // Opens the call-analysis email exactly as the organization receives it (its latest real analysis, or a marked sample). Nothing is sent.
   const previewAnalysisEmail = async (kind) => {
     const token = getToken();
@@ -14187,6 +14194,27 @@ function AnalysisEmailsTab() {
       showToast?.(`Saved for ${edit.tenant}.`, 'success');
       setEdit(null); loadOrgs();
     });
+  };
+  const saveAssigned = (o, list, okText) => {
+    setQuickBusy(o.tenant_id);
+    voiceAdminFetch(`/audio/admin/delivery/${o.tenant_id}/`, { method: 'PUT', body: JSON.stringify({ assigned_recipients: list }) }, onLogout).then(res => {
+      setQuickBusy(null);
+      if (!res.success) { showToast?.(errText(res, 'Could not save.'), 'error'); return; }
+      showToast?.(okText, 'success');
+      loadOrgs();
+    });
+  };
+  const addQuick = (o, fixed) => {
+    const typed = String(fixed ?? quick[o.tenant_id] ?? '').split(/[,\s;]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (!typed.length) { showToast?.('Type the email address first.', 'error'); return; }
+    const bad = typed.filter(x => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    if (bad.length) { showToast?.(`Not a valid email address: ${bad.join(', ')}`, 'error'); return; }
+    saveAssigned(o, Array.from(new Set([...(o.assigned_recipients || []), ...typed])), `Added ${typed.join(', ')}. It now receives ${o.tenant}'s reports.`);
+    setQuick(q => ({ ...q, [o.tenant_id]: '' }));
+  };
+  const removeQuick = (o, address) => {
+    if (!window.confirm(`Stop sending ${o.tenant}'s reports to ${address}?`)) return;
+    saveAssigned(o, (o.assigned_recipients || []).filter(x => x !== address), `Removed ${address}.`);
   };
   const fmt = (t) => t ? new Date(t).toLocaleString() : '—';
   const th = {padding:'8px 10px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',textAlign:'left'};
@@ -14260,14 +14288,24 @@ function AnalysisEmailsTab() {
                   <td style={td}>{o.language === 'en' ? 'English' : 'Swahili'}</td>
                   <td style={td}>
                     {o.effective_recipients.length === 0
-                      ? <div style={{fontSize:11,fontWeight:800,color:'#b91c1c'}}>NOBODY: no address is assigned, so no analysis email is sent</div>
+                      ? <div style={{fontSize:11,fontWeight:800,color:'#b91c1c'}}>NOBODY: no address is assigned, so no report or analysis email is sent. Add one below.</div>
                       : <>
                           <div style={{fontSize:11,fontWeight:800,color:'#15803d'}}>{o.recipient_mode === 'everyone' ? 'OWNERS, ADMINS, THE AGENT + ASSIGNED' : 'ONLY THESE RECEIVE IT'}</div>
-                          {o.effective_recipients.map(a => <div key={a}>{a}{o.assigned_recipients.includes(a) ? <span style={{color:'#94a3b8'}}> (assigned by you)</span> : (o.tenant_extra_addresses.includes(a) ? <span style={{color:'#94a3b8'}}> (organization's list)</span> : null)}</div>)}
+                          {o.effective_recipients.map(a => <div key={a}>{a}{o.assigned_recipients.includes(a) ? <><span style={{color:'#94a3b8'}}> (assigned by you)</span> <button type="button" title="Remove this address" disabled={quickBusy === o.tenant_id} onClick={() => removeQuick(o, a)} style={{border:'none',background:'none',color:'#b91c1c',cursor:'pointer',fontWeight:700,fontSize:12}}>✕</button></> : (o.tenant_extra_addresses.includes(a) ? <span style={{color:'#94a3b8'}}> (organization's list)</span> : null)}</div>)}
                         </>}
                     {o.recipient_mode !== 'everyone' && o.owners_and_admins.filter(a => !o.effective_recipients.includes(a)).length > 0 && (
-                      <div style={{fontSize:11,color:'#94a3b8',marginTop:3}}>Not included (not assigned): {o.owners_and_admins.filter(a => !o.effective_recipients.includes(a)).join(', ')}</div>
+                      <div style={{fontSize:11,color:'#94a3b8',marginTop:4,lineHeight:1.9}}>Not included (click to add):{' '}
+                        {o.owners_and_admins.filter(a => !o.effective_recipients.includes(a)).map(a => (
+                          <button key={a} type="button" title="Add this address to the people who receive the reports" disabled={quickBusy === o.tenant_id} onClick={() => addQuick(o, a)}
+                            style={{border:'1px solid #dbeafe',background:'#eff6ff',color:BRAND,borderRadius:99,padding:'1px 9px',fontSize:11,fontWeight:700,cursor:'pointer',marginRight:4}}>+ {a}</button>
+                        ))}
+                      </div>
                     )}
+                    <div style={{display:'flex',gap:6,marginTop:8,alignItems:'center'}}>
+                      <input className="senda-input" style={{height:30,fontSize:12,width:210}} type="email" placeholder="Add an email to receive the reports" value={quick[o.tenant_id] || ''}
+                        onChange={e => setQuick(q => ({ ...q, [o.tenant_id]: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') addQuick(o); }}/>
+                      <button type="button" className="senda-btn senda-btn-sm senda-btn-primary" disabled={quickBusy === o.tenant_id} onClick={() => addQuick(o)}>{quickBusy === o.tenant_id ? 'Saving…' : 'Add'}</button>
+                    </div>
                   </td>
                   <td style={td}>{o.sent_30d} sent{o.failed_30d ? <b style={{color:'#b91c1c'}}> · {o.failed_30d} failed</b> : null}<div style={{fontSize:11,color:'#94a3b8'}}>last: {fmt(o.last_sent_at)}</div></td>
                   <td style={td}>
@@ -14282,7 +14320,7 @@ function AnalysisEmailsTab() {
       </div>
 
       {edit && (
-        <div style={{background:'#fff',border:'2px solid #dbeafe',borderRadius:12,padding:'12px 16px',marginBottom:16}}>
+        <div id="analysis-edit-panel" style={{background:'#fff',border:'2px solid #dbeafe',borderRadius:12,padding:'12px 16px',marginBottom:16}}>
           <div style={{fontSize:14,fontWeight:800,marginBottom:8}}>{edit.tenant}</div>
           <div style={{display:'flex',gap:14,flexWrap:'wrap',marginBottom:10}}>
             <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Language of the analysis email
