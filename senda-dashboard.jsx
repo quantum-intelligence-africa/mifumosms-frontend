@@ -9301,9 +9301,12 @@ function SmsBySenderSummary() {
 
               {(audit.by_hour || []).length > 1 && (
                 <div style={{marginBottom:12}}>
+                  <div style={{fontSize:11,color:'#64748b',marginBottom:4}}>Click an hour to see only that hour (everything on this panel then covers that hour only).</div>
                   {audit.by_hour.map(h => (
-                    <div key={h.hour} style={{display:'flex',alignItems:'center',gap:8,fontSize:11,color:'#64748b',marginBottom:2}}>
-                      <span style={{width:34,fontFamily:'monospace'}}>{String(h.hour).padStart(2, '0')}:00</span>
+                    <div key={h.hour} title={`Show only ${String(h.hour).padStart(2, '0')}:00 to ${String(h.hour).padStart(2, '0')}:59`}
+                      onClick={() => { const hh = String(h.hour).padStart(2, '0'); changeTimes(`${hh}:00`, `${hh}:59`); }}
+                      style={{display:'flex',alignItems:'center',gap:8,fontSize:11,color:'#64748b',marginBottom:2,cursor:'pointer'}}>
+                      <span style={{width:34,fontFamily:'monospace',color:BRAND,textDecoration:'underline'}}>{String(h.hour).padStart(2, '0')}:00</span>
                       <div style={{flex:1,display:'flex',height:9,background:'#f1f5f9',borderRadius:5,overflow:'hidden'}}>
                         <div style={{width:`${(h.sent / maxH) * 100}%`,background:GREEN}} />
                         <div style={{width:`${(h.failed / maxH) * 100}%`,background:RED}} />
