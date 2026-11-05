@@ -3159,6 +3159,10 @@ class ApiClient {
     sender_id?: string;
     template_id?: string;
     scheduled_at?: string;
+    /** Send even to numbers that already got this exact text today (the server skips them by default). */
+    allow_duplicates?: boolean;
+    /** Only protect against a repeat within the last N minutes (at least 10; absent = the whole day). */
+    duplicate_window_minutes?: number;
   }): Promise<ApiResponse<{
     message_id: string;
     base_message_id: string;
@@ -3166,11 +3170,14 @@ class ApiClient {
     cost_estimate: number;
     status: string;
     provider_response: Record<string, unknown>;
+    duplicates_skipped?: number;
   }>> {
+    // A big list is created on the server one number at a time and can take minutes. The default 30 s wait made the page give up while the server
+    // carried on and sent everything, so people pressed Send again and the same list went out several times. Wait up to 5 minutes.
     return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.SEND, {
       method: 'POST',
       body: JSON.stringify(data),
-    });
+    }, 5 * 60 * 1000);
   }
 
   // Legacy getSMSBalance - use new comprehensive version below

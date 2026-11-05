@@ -121,7 +121,19 @@ const SendSMS = () => {
   const [selectedTagGroup, setSelectedTagGroup] = useState("");
   const [scheduleType, setScheduleType] = useState<"now" | "later">(() => readSmsDraft().scheduleType ?? "now");
   const [scheduledDate, setScheduledDate] = useState(() => readSmsDraft().scheduledDate ?? "");
+  // Same message to the same number again: skip it when it already went out within this time ("off" sends it anyway). Remembered on this device.
+  type DupGuard = "10" | "60" | "day" | "off";
+  const [dupGuard, setDupGuard] = useState<DupGuard>(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem("sms_duplicate_guard") : null;
+    return saved === "10" || saved === "60" || saved === "day" || saved === "off" ? saved : "day";
+  });
+  const changeDupGuard = (v: DupGuard) => {
+    setDupGuard(v);
+    try { window.localStorage.setItem("sms_duplicate_guard", v); } catch { /* private mode */ }
+  };
   const [sending, setSending] = useState(false);
+  // After a send the page stopped waiting for, the server may still be sending: block a second press for a few minutes.
+  const [sendLocked, setSendLocked] = useState(false);
   const [sendProgress, setSendProgress] = useState(0);
   const [segmentContacts, setSegmentContacts] = useState<Contact[]>([]);
   const [isLoadingSegmentContacts, setIsLoadingSegmentContacts] = useState(false);
@@ -881,6 +893,10 @@ const SendSMS = () => {
         smsData.sender_id_record_id = senderObj.id;
       }
 
+      // Duplicate protection (the server skips numbers that already got this exact text inside the window)
+      if (dupGuard === "off") smsData.allow_duplicates = true;
+      else if (dupGuard === "10" || dupGuard === "60") smsData.duplicate_window_minutes = Number(dupGuard);
+
       // Only add optional fields if they have values
       if (scheduleType === "later" && scheduledDate) {
         smsData.scheduled_at = scheduledDate;
@@ -903,7 +919,18 @@ const SendSMS = () => {
         sender_id?: string;
         template_id?: string;
         scheduled_at?: string;
+        allow_duplicates?: boolean;
+        duplicate_window_minutes?: number;
       });
+
+      if (response.success && (response.data as Record<string, unknown> | undefined)?.status === "already_sent") {
+        setSending(false);
+        toast({
+          title: "Already sent",
+          description: "These numbers already received this exact SMS today, so nothing was sent again and no credits were used.",
+        });
+        return;
+      }
 
       if (response.success) {
         // Scheduled ("Send later") sends come back with status "scheduled" and are
@@ -922,6 +949,10 @@ const SendSMS = () => {
         const providerMsg = (providerResponse && typeof providerResponse === 'object' && 'message' in providerResponse)
           ? (providerResponse as Record<string, unknown>).message
           : null;
+        const skippedDuplicates = Number((response.data as Record<string, unknown> | undefined)?.duplicates_skipped || 0);
+        if (skippedDuplicates > 0) {
+          successMessage += ` — ${skippedDuplicates} number(s) skipped: they already received this exact SMS today.`;
+        }
         if (!isScheduled && providerMsg && typeof providerMsg === 'string') {
           successMessage = providerMsg; // "Message Submitted Successfully"
         } else if (!isScheduled && 'message' in response && typeof response.message === 'string' && response.message.trim()) {
@@ -951,6 +982,16 @@ const SendSMS = () => {
         }, 200);
       } else {
         setSending(false);
+        if (response.status === 0 && /timeout/i.test(String(response.error || ""))) {
+          // The page stopped waiting, but the server may still be sending. Do not let a second press send the list again.
+          setSendLocked(true);
+          setTimeout(() => setSendLocked(false), 3 * 60 * 1000);
+          toast({
+            title: "Still sending — please wait",
+            description: "Large lists can take a few minutes. Your SMS may already be going out. Check the Sent page before sending again.",
+          });
+          return;
+        }
         // Enhanced error handling with more details
         let errorMessage = response.error || response.message || "An error occurred while sending SMS";
 
@@ -1162,7 +1203,7 @@ const SendSMS = () => {
 
   const mode = selectedMode ?? "single";
   const recipientCount = getRecipientCount();
-  const canSend = !sending && !segmentInfo.isOverLimit && !!message.trim() && recipientCount > 0 && !!selectedSender;
+  const canSend = !sending && !sendLocked && !segmentInfo.isOverLimit && !!message.trim() && recipientCount > 0 && !!selectedSender;
 
   // Touch swipe across sub-tabs (Quick ↔ Bulk ↔ Group). At the edges, spill
   // into the adjacent sidebar page so the user can keep scrolling forward into
@@ -1612,6 +1653,28 @@ const SendSMS = () => {
                       />
                     </TabsContent>
                   </Tabs>
+                </Section>
+
+                {/* Duplicate protection */}
+                <Section title={language === "sw" ? "Kuzuia marudio" : "Stop duplicates"}>
+                  <Select value={dupGuard} onValueChange={(v) => changeDupGuard(v as DupGuard)}>
+                    <SelectTrigger className="h-11 rounded-xl border-transparent bg-muted/60 dark:bg-muted/30 text-[14px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">{language === "sw" ? "Usitume ujumbe huohuo kwa namba ile ile ndani ya dakika 10" : "Don't send the same message to the same number within 10 minutes"}</SelectItem>
+                      <SelectItem value="60">{language === "sw" ? "Usitume ujumbe huohuo kwa namba ile ile ndani ya saa 1" : "Don't send the same message to the same number within 1 hour"}</SelectItem>
+                      <SelectItem value="day">{language === "sw" ? "Usitume ujumbe huohuo kwa namba ile ile leo (inapendekezwa)" : "Don't send the same message to the same number again today (recommended)"}</SelectItem>
+                      <SelectItem value="off">{language === "sw" ? "Zima — tuma hata kama ilishatumwa" : "Off — send even if it was already sent"}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-2 text-[12px] leading-snug text-foreground/60">
+                    {dupGuard === "off"
+                      ? (language === "sw" ? "Namba zote zitapokea ujumbe hata kama zilishaupata. Utatozwa kwa kila SMS." : "Every number gets the message again, even if it already received it. You are charged for each SMS.")
+                      : (language === "sw"
+                        ? "Namba iliyopokea ujumbe huu hasa ndani ya muda huu itarukwa. Haitatozwa na hutaona marudio. Zilizoshindwa kutumwa bado zinaweza kutumwa tena."
+                        : "A number that already received this exact message inside this time is skipped: it is not sent again and not charged. Numbers where the send failed can still be sent again.")}
+                  </p>
                 </Section>
 
                 {/* Send Progress */}

@@ -8799,7 +8799,7 @@ function ApiAccountsTab() {
 //     (GET /api/admin/v1/system-sms-logs/by-sender), for at-a-glance monitoring.
 //   • "Browse messages" — pick one sender and read its individual messages.
 function SmsBySenderPage() {
-  const [tab, setTab] = useState('summary'); // 'summary' | 'browse'
+  const [tab, setTab] = useState('summary'); // 'summary' | 'browse' | 'balances'
   const TabBtn = ({ id, label }) => (
     <button
       type="button"
@@ -8817,8 +8817,188 @@ function SmsBySenderPage() {
       <div style={{display:'flex',gap:4,marginBottom:16,padding:4,background:'#f1f5f9',borderRadius:10,width:'fit-content'}}>
         <TabBtn id="summary" label="By sender ID" />
         <TabBtn id="browse"  label="Browse messages" />
+        <TabBtn id="balances" label="Customer balance history" />
       </div>
-      {tab === 'summary' ? <SmsBySenderSummary/> : <SmsBySenderTab/>}
+      {tab === 'summary' ? <SmsBySenderSummary/> : tab === 'browse' ? <SmsBySenderTab/> : <CustomerBalanceHistory/>}
+    </div>
+  );
+}
+
+// ─── Customer balance history ─────────────────────────────────────────────────
+// How many SMS each customer had on a chosen day and time (GET /api/admin/v1/sms-balance-history), and one customer's balance step by step
+// (GET /api/admin/v1/sms-balance-history/<tenant_id>). The history only exists from the day it was switched on.
+function CustomerBalanceHistory() {
+  const { onLogout } = React.useContext(AppContext);
+  const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const dayIso = (offset) => { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const num = (n) => (n === null || n === undefined ? '—' : Number(n).toLocaleString());
+
+  const [date, setDate]       = useState(todayIso());
+  const [time, setTime]       = useState('');
+  const [search, setSearch]   = useState('');
+  const [debSearch, setDebSearch] = useState('');
+  const [sort, setSort]       = useState('balance_desc');
+  const [only, setOnly]       = useState('');
+  const [page, setPage]       = useState(1);
+  const [rows, setRows]       = useState([]);
+  const [meta, setMeta]       = useState({});
+  const [info, setInfo]       = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState(null);
+  const [detail, setDetail]   = useState(null);        // the customer opened for a step-by-step view
+  const [timeline, setTimeline] = useState(null);
+  const [tlFrom, setTlFrom]   = useState(dayIso(-6));
+  const [tlTo, setTlTo]       = useState(todayIso());
+  const [tlLoading, setTlLoading] = useState(false);
+
+  useEffect(() => { const t = setTimeout(() => { setDebSearch(search.trim()); setPage(1); }, 350); return () => clearTimeout(t); }, [search]);
+
+  const load = useCallback(() => {
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams({ page: String(page), limit: '50', sort });
+    if (date) qs.set('date', date);
+    if (time) qs.set('time', time);
+    if (debSearch) qs.set('search', debSearch);
+    if (only) qs.set('only', only);
+    adminFetch(`/api/admin/v1/sms-balance-history?${qs.toString()}`, {}, onLogout)
+      .then(res => {
+        if (res.success) { setRows(res.data || []); setMeta(res.meta || {}); setInfo({ at: res.at, starts: res.history_starts }); }
+        else setError(res.error?.message || 'Could not load the balances.');
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [date, time, debSearch, sort, only, page, onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  const openCustomer = (row, from = tlFrom, to = tlTo) => {
+    setDetail(row); setTimeline(null); setTlLoading(true);
+    adminFetch(`/api/admin/v1/sms-balance-history/${row.tenant_id}?date_from=${from}&date_to=${to}`, {}, onLogout)
+      .then(res => { setTlLoading(false); if (res.success) setTimeline(res.data); })
+      .catch(() => setTlLoading(false));
+  };
+
+  const fmtMoment = (iso) => iso ? new Date(iso).toLocaleString() : '—';
+  const label = (txt) => <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>{txt}</label>;
+
+  return (
+    <div>
+      <div className="senda-card" style={{padding:16, marginBottom:16}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:10}}>
+          <div>{label('Day')}<input type="date" className="senda-input" value={date} onChange={e => { setDate(e.target.value); setPage(1); }} style={{height:38,fontSize:13}}/></div>
+          <div>{label('Time (optional)')}<input type="time" className="senda-input" value={time} onChange={e => { setTime(e.target.value); setPage(1); }} style={{height:38,fontSize:13}}/></div>
+          <div>{label('Customer')}<input className="senda-input" placeholder="Name or id…" value={search} onChange={e => setSearch(e.target.value)} style={{height:38,fontSize:13}}/></div>
+          <div>{label('Sort')}
+            <select className="senda-input" value={sort} onChange={e => { setSort(e.target.value); setPage(1); }} style={{height:38,fontSize:13}}>
+              <option value="balance_desc">Most SMS at that time</option>
+              <option value="balance_asc">Fewest SMS at that time</option>
+              <option value="used_desc">Most used by then</option>
+              <option value="now_desc">Most SMS now</option>
+              <option value="name">Name</option>
+            </select>
+          </div>
+          <div>{label('Show')}
+            <select className="senda-input" value={only} onChange={e => { setOnly(e.target.value); setPage(1); }} style={{height:38,fontSize:13}}>
+              <option value="">All customers</option>
+              <option value="known">Only with a record then</option>
+              <option value="changed">Only whose balance changed since</option>
+            </select>
+          </div>
+        </div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginTop:10}}>
+          <span style={{fontSize:11.5,color:'#64748b',fontWeight:700}}>Quick:</span>
+          <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:30}} onClick={() => { setDate(todayIso()); setTime(''); setPage(1); }}>Today (now)</button>
+          <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:30}} onClick={() => { setDate(dayIso(-1)); setTime(''); setPage(1); }}>End of yesterday</button>
+          <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:30}} onClick={() => { setDate(dayIso(-1)); setTime('00:00'); setPage(1); }}>Start of yesterday</button>
+          <span style={{fontSize:12,color:'#334155'}}>
+            Balance as at <b>{info.at ? `${info.at.date}${info.at.time ? ' ' + info.at.time : ' end of day'}` : '…'}</b>
+            {info.starts ? <> · history starts <b>{fmtMoment(info.starts)}</b></> : ' · history has not started yet'} (server time)
+          </span>
+        </div>
+        <div style={{fontSize:11.5,color:'#92400e',marginTop:8}}>
+          Balances are recorded from the day this was switched on. For a moment before a customer's first record the table says <b>not recorded</b> — it is never guessed.
+        </div>
+      </div>
+
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={load}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:900}}>
+              <thead><tr>
+                <th>Customer</th><th style={{textAlign:'right'}}>SMS at that time</th><th style={{textAlign:'right'}}>Used by then</th>
+                <th style={{textAlign:'right'}}>SMS now</th><th style={{textAlign:'right'}}>Change since</th><th style={{textAlign:'right'}}>Used since</th><th></th>
+              </tr></thead>
+              <tbody>
+                {rows.length === 0 && <tr><td colSpan={7} style={{textAlign:'center',color:'#94a3b8',padding:24}}>No customers found.</td></tr>}
+                {rows.map(r => (
+                  <tr key={r.tenant_id}>
+                    <td style={{fontWeight:600}}>{r.tenant_name}</td>
+                    <td style={{textAlign:'right',fontWeight:800,color:r.known ? '#0f172a' : '#94a3b8'}}>{r.known ? num(r.balance_at) : 'not recorded'}</td>
+                    <td style={{textAlign:'right'}}>{num(r.total_used_at)}</td>
+                    <td style={{textAlign:'right'}}>{num(r.balance_now)}</td>
+                    <td style={{textAlign:'right',color:r.change_since < 0 ? RED : r.change_since > 0 ? GREEN : '#64748b'}}>{r.change_since === null ? '—' : (r.change_since > 0 ? '+' : '') + num(r.change_since)}</td>
+                    <td style={{textAlign:'right'}}>{num(r.used_since)}</td>
+                    <td><button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => openCustomer(r)}>Step by step</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',fontSize:12,color:'#64748b'}}>
+            <span>{num(meta.total)} customers</span>
+            <span style={{display:'flex',gap:8,alignItems:'center'}}>
+              <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</button>
+              Page {page} of {meta.total_pages || 1}
+              <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page >= (meta.total_pages || 1)} onClick={() => setPage(p => p + 1)}>Next</button>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {detail && (
+        <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',zIndex:80,display:'flex',justifyContent:'flex-end'}} onClick={() => setDetail(null)}>
+          <div className="senda-card" style={{width:'min(560px,100%)',height:'100%',overflowY:'auto',padding:20,borderRadius:0}} onClick={e => e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
+              <div>
+                <div style={{fontSize:16,fontWeight:800,color:'#0f172a'}}>{detail.tenant_name}</div>
+                <div style={{fontSize:12,color:'#64748b'}}>SMS balance, step by step · now <b>{num(detail.balance_now)}</b></div>
+              </div>
+              <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => setDetail(null)}>Close</button>
+            </div>
+            <div style={{display:'flex',gap:8,alignItems:'flex-end',flexWrap:'wrap',marginBottom:12}}>
+              <div>{label('From')}<input type="date" className="senda-input" value={tlFrom} onChange={e => setTlFrom(e.target.value)} style={{height:36,fontSize:13}}/></div>
+              <div>{label('To')}<input type="date" className="senda-input" value={tlTo} onChange={e => setTlTo(e.target.value)} style={{height:36,fontSize:13}}/></div>
+              <button type="button" className="senda-btn senda-btn-sm" style={{height:36,background:BRAND,color:'#fff',border:'none'}} onClick={() => openCustomer(detail, tlFrom, tlTo)}>Show</button>
+              <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:36}} onClick={() => { setTlFrom(todayIso()); setTlTo(todayIso()); openCustomer(detail, todayIso(), todayIso()); }}>Today</button>
+            </div>
+            {tlLoading ? <LoadingState/> : !timeline ? null : (
+              <>
+                <div style={{fontSize:12.5,color:'#334155',marginBottom:8}}>
+                  {timeline.opening ? <>Opening balance (last record before {timeline.period.from}): <b>{num(timeline.opening.balance)}</b> at {fmtMoment(timeline.opening.at)}</> : <>No record before {timeline.period.from}.</>}
+                </div>
+                <table className="senda-table" style={{width:'100%'}}>
+                  <thead><tr><th>When</th><th style={{textAlign:'right'}}>Balance</th><th style={{textAlign:'right'}}>Used</th><th style={{textAlign:'right'}}>Added</th><th style={{textAlign:'right'}}>Unpaid</th></tr></thead>
+                  <tbody>
+                    {timeline.steps.length === 0 && <tr><td colSpan={5} style={{textAlign:'center',color:'#94a3b8',padding:18}}>The balance did not change in this period.</td></tr>}
+                    {timeline.steps.map((s, i) => (
+                      <tr key={i}>
+                        <td style={{fontSize:12}}>{fmtMoment(s.at)}</td>
+                        <td style={{textAlign:'right',fontWeight:800}}>{num(s.balance)}</td>
+                        <td style={{textAlign:'right',color:s.used ? RED : '#94a3b8'}}>{s.used ? '−' + num(s.used) : '—'}</td>
+                        <td style={{textAlign:'right',color:s.added ? GREEN : '#94a3b8'}}>{s.added ? '+' + num(s.added) : '—'}</td>
+                        <td style={{textAlign:'right',color:s.unpaid ? '#b45309' : '#94a3b8',fontWeight:s.unpaid ? 800 : 400}}>{s.unpaid ? num(s.unpaid) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div style={{fontSize:11.5,color:'#64748b',marginTop:8,lineHeight:1.55}}>
+                  <b>Unpaid</b> = SMS that were sent although the balance could not cover them (the balance was cut off at 0). Rows are one per minute at most: a big send shows as a few rows, not one per SMS.
+                  {timeline.truncated && <span style={{color:'#b91c1c'}}> Only the first {num(timeline.steps.length)} steps are shown; pick a shorter period.</span>}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
