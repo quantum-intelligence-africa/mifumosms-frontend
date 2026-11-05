@@ -8839,6 +8839,8 @@ function SmsBySenderSummary() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditErr, setAuditErr]         = useState(null);
   const [auditDate, setAuditDate]       = useState('');       // YYYY-MM-DD, today when the drawer opens
+  const [timeFrom, setTimeFrom]         = useState('');       // HH:MM, empty = from the start of the day
+  const [timeTo, setTimeTo]             = useState('');       // HH:MM, empty = to the end of the day
   const [allDates, setAllDates]         = useState(false);    // the failed list: only this day, or every date (the page's own date filters)
   const [progress, setProgress]         = useState(null);     // { done, total } while "resend all" runs
   const [search, setSearch]     = useState('');
@@ -8895,12 +8897,12 @@ function SmsBySenderSummary() {
 
   const todayLocal = () => new Date().toLocaleDateString('en-CA');          // YYYY-MM-DD on this computer
   // Load the audit of one day for a sender, and the batches that failed that day (or on every date when asked).
-  const loadDrawer = (sender, date, all) => {
+  const loadDrawer = (sender, date, all, tf = timeFrom, tt = timeTo) => {
     setBatches([]); setBError(null); setBLoading(true); setSelected(new Set());
     const qs = new URLSearchParams({ sender, limit:'50' });
     if (debTenant.trim()) qs.set('tenant', debTenant.trim());
     if (all) { if (dateFrom) qs.set('date_from', dateFrom); if (dateTo) qs.set('date_to', dateTo); }
-    else { qs.set('date_from', date); qs.set('date_to', date); }
+    else { qs.set('date', date); if (tf) qs.set('time_from', tf); if (tt) qs.set('time_to', tt); }
     adminFetch(`/api/admin/v1/system-sms-logs/sender-failures?${qs.toString()}`, {}, onLogout)
       .then(res => {
         if (res.success) setBatches(res.data || []);
@@ -8910,6 +8912,8 @@ function SmsBySenderSummary() {
       .finally(() => setBLoading(false));
     setAudit(null); setAuditErr(null); setAuditLoading(true);
     const aq = new URLSearchParams({ sender, date });
+    if (tf) aq.set('time_from', tf);
+    if (tt) aq.set('time_to', tt);
     if (debTenant.trim()) aq.set('tenant', debTenant.trim());
     adminFetch(`/api/admin/v1/system-sms-logs/sender-audit?${aq.toString()}`, {}, onLogout)
       .then(res => { if (res.success !== false && res.totals) setAudit(res); else if (res.data?.totals) setAudit(res.data); else setAuditErr(res.error?.message || 'Could not load the audit.'); })
@@ -8918,12 +8922,14 @@ function SmsBySenderSummary() {
   };
   const openSender = (sender) => {
     const d = todayLocal();
-    setDetailSender(sender); setAuditDate(d); setAllDates(false); setProgress(null);
-    loadDrawer(sender, d, false);
+    setDetailSender(sender); setAuditDate(d); setAllDates(false); setProgress(null); setTimeFrom(''); setTimeTo('');
+    loadDrawer(sender, d, false, '', '');
   };
-  const refreshBatches = () => { if (detailSender) loadDrawer(detailSender, auditDate, allDates); };
-  const changeAuditDate = (d) => { if (!d) return; setAuditDate(d); loadDrawer(detailSender, d, allDates); };
-  const changeAllDates = (v) => { setAllDates(v); loadDrawer(detailSender, auditDate, v); };
+  const refreshBatches = () => { if (detailSender) loadDrawer(detailSender, auditDate, allDates, timeFrom, timeTo); };
+  const changeAuditDate = (d) => { if (!d) return; setAuditDate(d); loadDrawer(detailSender, d, allDates, timeFrom, timeTo); };
+  const changeTimes = (tf, tt) => { setTimeFrom(tf); setTimeTo(tt); loadDrawer(detailSender, auditDate, allDates, tf, tt); };
+  const changeAllDates = (v) => { setAllDates(v); loadDrawer(detailSender, auditDate, v, timeFrom, timeTo); };
+  const hoursText = (w) => (w && !w.whole_day ? ` from ${w.time_from || '00:00'} to ${w.time_to || '23:59'}` : '');
 
   const downloadFailedCsv = () => {
     const rows = [['Phone', 'Reason', 'Time', 'Batch id'], ...((audit?.failed_recipients) || []).map(f => [f.phone, f.error, f.at, f.message_id])];
@@ -9020,11 +9026,13 @@ function SmsBySenderSummary() {
     if (!audit || !audit.totals.failed) return;
     const reasons = (audit.failure_reasons || []).slice(0, 3).map(r => `  • ${r.reason} (${r.count.toLocaleString()})`).join('\n');
     const balance = (audit.tenants || []).map(t => `${t.tenant_name}: ${t.balance_now.toLocaleString()} credits now`).join('; ');
-    if (!window.confirm(`Resend all ${audit.totals.failed.toLocaleString()} failed SMS of ${audit.date} (${audit.totals.failed_batches.toLocaleString()} sends)?\n\nWhy they failed:\n${reasons || '  (no reason recorded)'}\n\nNumbers that failed for a permanent reason (invalid or blocked) will fail again. Each SMS that now goes through is charged to the tenant (about 1 credit each). ${balance}\n\nIt stops by itself if the credits run out.`)) return;
+    if (!window.confirm(`Resend all ${audit.totals.failed.toLocaleString()} failed SMS of ${audit.date}${hoursText(audit.window)} (${audit.totals.failed_batches.toLocaleString()} sends)?\n\nWhy they failed:\n${reasons || '  (no reason recorded)'}\n\nNumbers that failed for a permanent reason (invalid or blocked) will fail again. Each SMS that now goes through is charged to the tenant (about 1 credit each). ${balance}\n\nIt stops by itself if the credits run out.`)) return;
     setResendingSelected(true);
     const ids = [];
     for (let p = 1; p <= 20; p++) {
-      const qs = new URLSearchParams({ sender: detailSender, limit: '100', page: String(p), date_from: auditDate, date_to: auditDate });
+      const qs = new URLSearchParams({ sender: detailSender, limit: '100', page: String(p), date: auditDate });
+      if (timeFrom) qs.set('time_from', timeFrom);
+      if (timeTo) qs.set('time_to', timeTo);
       if (debTenant.trim()) qs.set('tenant', debTenant.trim());
       const res = await adminFetch(`/api/admin/v1/system-sms-logs/sender-failures?${qs.toString()}`, {}, onLogout);
       if (!res.success) break;
@@ -9032,7 +9040,7 @@ function SmsBySenderSummary() {
       if (!res.meta?.has_next) break;
     }
     setResendingSelected(false);
-    if (!ids.length) { showToast('No failed sends found for that day.', 'error'); return; }
+    if (!ids.length) { showToast('No failed sends found for that period.', 'error'); return; }
     await doResendSelected(ids, true);
   };
 
@@ -9058,6 +9066,13 @@ function SmsBySenderSummary() {
         <b style={{fontSize:13,color:'#0f172a'}}>Audit of</b>
         <input type="date" className="senda-input" style={{height:32,fontSize:12.5,width:150}} max={todayLocal()} value={auditDate} onChange={e => changeAuditDate(e.target.value)} />
         <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => changeAuditDate(todayLocal())} style={{height:32}}>Today</button>
+        <label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#475569'}}>From
+          <input type="time" className="senda-input" style={{height:32,fontSize:12.5,width:110}} value={timeFrom} onChange={e => changeTimes(e.target.value, timeTo)} />
+        </label>
+        <label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#475569'}}>to
+          <input type="time" className="senda-input" style={{height:32,fontSize:12.5,width:110}} value={timeTo} onChange={e => changeTimes(timeFrom, e.target.value)} />
+        </label>
+        {(timeFrom || timeTo) && <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => changeTimes('', '')} style={{height:32}}>Whole day</button>}
         <label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#475569',cursor:'pointer'}}>
           <input type="checkbox" checked={allDates} onChange={e => changeAllDates(e.target.checked)} /> Failed list: every date
         </label>
@@ -9071,7 +9086,7 @@ function SmsBySenderSummary() {
           return (
             <div>
               <div style={{fontSize:13,color:'#0f172a',lineHeight:1.55,marginBottom:10}}>
-                On <b>{audit.date}</b>, <b>{num(t.attempts)}</b> SMS were attempted under <b>{detailSender}</b>:
+                On <b>{audit.date}</b>{audit.window && !audit.window.whole_day && <> between <b>{audit.window.time_from || '00:00'}</b> and <b>{audit.window.time_to || '23:59'}</b></>}, <b>{num(t.attempts)}</b> SMS were attempted under <b>{detailSender}</b>:
                 {' '}<b style={{color:GREEN}}>{num(t.sent)} sent</b> and <b style={{color:RED}}>{num(t.failed)} failed</b>.
                 {' '}Only the {num(t.sent)} that were sent cost credits ({num(t.credits_used)}); a failed SMS is not charged.
               </div>
@@ -9087,17 +9102,18 @@ function SmsBySenderSummary() {
                 <div key={tn.tenant_id} style={{border:'1px solid #dbeafe',background:'#f8fbff',borderRadius:10,padding:'10px 12px',marginBottom:12}}>
                   <div style={{fontSize:12.5,fontWeight:800,color:'#0f172a',marginBottom:6}}>SMS credits of {tn.tenant_name}</div>
                   {tn.opening_estimate == null ? (
-                    <div style={{fontSize:12,color:'#64748b'}}>Balance now: <b>{num(tn.balance_now)}</b> credits. The balance at the start of a past day cannot be worked out from here; choose today to see it.</div>
+                    <div style={{fontSize:12,color:'#64748b'}}>Balance now: <b>{num(tn.balance_now)}</b> credits. The balance before a period older than 31 days cannot be worked out from here.</div>
                   ) : (
                     <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'stretch'}}>
-                      <Cell label="Before (start of day)" value={num(tn.opening_estimate)} color="#0f172a" hint="Worked out: balance now + credits charged that day − credits added that day" />
-                      <Cell label="+ Added that day" value={num(tn.credits_added_that_day)} color={GREEN} hint={(tn.added_details || []).map(a => `${a.kind}: ${a.credits}`).join(', ') || 'No purchases that day'} />
-                      <Cell label="− Used that day" value={num(tn.credits_charged_that_day)} color={RED} hint="Charged for ALL this organization's senders that day" />
-                      <Cell label="= Now" value={num(tn.balance_now)} color={BRAND} />
+                      <Cell label={audit.window?.whole_day ? 'Before (start of day)' : `Before (${audit.window?.time_from || '00:00'})`} value={num(tn.opening_estimate)} color="#0f172a" hint="Worked out: balance now + everything charged since then − everything added since then" />
+                      <Cell label={audit.window?.whole_day ? '+ Added that day' : '+ Added in this period'} value={num(tn.credits_added_that_day)} color={GREEN} hint={(tn.added_details || []).map(a => `${a.kind}: ${a.credits}`).join(', ') || 'No purchases that day'} />
+                      <Cell label={audit.window?.whole_day ? '− Used that day' : '− Used in this period'} value={num(tn.credits_charged_that_day)} color={RED} hint="Charged for ALL this organization's senders in this period" />
+                      <Cell label={audit.window?.whole_day ? '= End of day' : `= After (${audit.window?.time_to || '23:59'})`} value={num(tn.closing_estimate)} color={BRAND} hint="Worked out from the figures on its left" />
+                      <Cell label="Now" value={num(tn.balance_now)} color="#475569" hint="The balance at this moment" />
                     </div>
                   )}
                   <div style={{fontSize:11.5,color:'#64748b',marginTop:6,lineHeight:1.5}}>
-                    {tn.opening_estimate != null && <>Before = now + used − added. Used that day covers all this organization's sender IDs ({num(tn.sender_credits_used)} of it by {detailSender}). The system keeps no balance history, so this is worked out, not read.</>}
+                    {tn.opening_estimate != null && <>Before = balance now + everything charged since then − everything added since then. Used covers all this organization's sender IDs ({num(tn.sender_credits_used)} of it by {detailSender}). The system keeps no balance history, so this is worked out, not read.</>}
                   </div>
                   {!tn.balance_check.consistent && (
                     <div style={{fontSize:11.5,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'6px 10px',marginTop:6}}>
@@ -9149,7 +9165,7 @@ function SmsBySenderSummary() {
               </div>
               {audit.failed_recipients_truncated && <div style={{fontSize:11,color:'#92400e'}}>The list has the first {num((audit.failed_recipients || []).length)} failed numbers only.</div>}
               {t.scan_truncated && <div style={{fontSize:11,color:'#92400e'}}>This day has more sends than the audit reads; the figures cover the newest ones.</div>}
-              <div style={{fontSize:11.5,color:'#94a3b8',marginTop:4}}>Below: the failed sends{allDates ? ' of every date' : ` of ${auditDate}`}. Tick the ones to resend, or resend a single send.</div>
+              <div style={{fontSize:11.5,color:'#94a3b8',marginTop:4}}>Below: the failed sends{allDates ? ' of every date' : ` of ${auditDate}${hoursText(audit.window)}`}. Tick the ones to resend, or resend a single send.</div>
             </div>
           );
         })()}
