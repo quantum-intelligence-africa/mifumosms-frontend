@@ -8988,7 +8988,7 @@ function SmsBySenderSummary() {
   };
 
   const downloadFailedCsv = () => {
-    const rows = [['Phone', 'Reason', 'Time', 'Batch id'], ...((audit?.failed_recipients) || []).map(f => [f.phone, f.error, f.at, f.message_id])];
+    const rows = [['Phone', 'Reason', 'Time', 'Batch id', 'Also sent in this period'], ...((audit?.failed_recipients) || []).map(f => [f.phone, f.error, f.at, f.message_id, f.also_sent ? `yes (${f.also_sent})` : 'no'])];
     const csv = rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
@@ -9268,6 +9268,18 @@ function SmsBySenderSummary() {
                     );
                   })()}
                   <div style={{fontSize:11.5,color:'#92400e',marginTop:8}}>{audit.provider.balance?.note}</div>
+                </div>
+              )}
+
+              {t.failed > 0 && (
+                <div style={{border:'1px solid #fecaca',background:'#fef2f2',borderRadius:10,padding:'10px 12px',marginBottom:12,fontSize:12.5,color:'#334155',lineHeight:1.65}}>
+                  <div style={{fontWeight:800,color:'#0f172a',marginBottom:4}}>The {num(t.failed)} failed — are those numbers also in the sent list?</div>
+                  {(audit.failure_reasons || []).slice(0, 3).map(r => <div key={r.reason}>{num(r.count)} failed: <b>{r.reason}</b></div>)}
+                  <div style={{marginTop:4}}>
+                    They are <b>{num(t.failed_numbers)}</b> different numbers.{' '}
+                    <b style={{color:'#b45309'}}>{num(t.failed_numbers_also_sent)}</b> of them also have a sent SMS in this period (already got it, do not resend).{' '}
+                    <b style={{color:RED}}>{num(t.failed_numbers_never_sent)}</b> never got it (safe to resend).
+                  </div>
                 </div>
               )}
 
