@@ -8842,6 +8842,8 @@ function SmsBySenderSummary() {
   const [timeFrom, setTimeFrom]         = useState('');       // HH:MM, empty = from the start of the day
   const [timeTo, setTimeTo]             = useState('');       // HH:MM, empty = to the end of the day
   const [allDates, setAllDates]         = useState(false);    // the failed list: only this day, or every date (the page's own date filters)
+  const [checking, setChecking]         = useState(false);    // asking the provider for the real status
+  const [checkNote, setCheckNote]       = useState('');
   const [progress, setProgress]         = useState(null);     // { done, total } while "resend all" runs
   const [search, setSearch]     = useState('');
   const [debounced, setDebounced] = useState('');
@@ -8922,7 +8924,7 @@ function SmsBySenderSummary() {
   };
   const openSender = (sender) => {
     const d = todayLocal();
-    setDetailSender(sender); setAuditDate(d); setAllDates(false); setProgress(null); setTimeFrom(''); setTimeTo('');
+    setDetailSender(sender); setAuditDate(d); setAllDates(false); setProgress(null); setTimeFrom(''); setTimeTo(''); setCheckNote('');
     loadDrawer(sender, d, false, '', '');
   };
   const refreshBatches = () => { if (detailSender) loadDrawer(detailSender, auditDate, allDates, timeFrom, timeTo); };
@@ -8930,6 +8932,26 @@ function SmsBySenderSummary() {
   const changeTimes = (tf, tt) => { setTimeFrom(tf); setTimeTo(tt); loadDrawer(detailSender, auditDate, allDates, tf, tt); };
   const changeAllDates = (v) => { setAllDates(v); loadDrawer(detailSender, auditDate, v, timeFrom, timeTo); };
   const hoursText = (w) => (w && !w.whole_day ? ` from ${w.time_from || '00:00'} to ${w.time_to || '23:59'}` : '');
+
+  // Ask the SMS provider (Textify...) for the real status of what it has not confirmed yet. The answers are recorded in the background, so the audit is
+  // read again twice afterwards.
+  const checkProvider = () => {
+    setChecking(true); setCheckNote('');
+    const body = { sender: detailSender, date: auditDate, time_from: timeFrom, time_to: timeTo };
+    if (debTenant.trim()) body.tenant = debTenant.trim();
+    adminFetch('/api/admin/v1/system-sms-logs/sender-audit/check-provider', { method: 'POST', body: JSON.stringify(body) }, onLogout)
+      .then(res => {
+        setChecking(false);
+        if (!res.success) { showToast(res.error?.message || 'Could not ask the provider.', 'error'); return; }
+        const d = res.data || {};
+        setCheckNote(d.recipients_to_check
+          ? `Asking the provider about ${d.recipients_to_check.toLocaleString()} recipient(s) in ${d.queued_batches} batch(es)${d.left_for_next_click ? `; ${d.left_for_next_click.toLocaleString()} more are left, click again after this finishes` : ''}. The numbers update by themselves in a moment.`
+          : d.no_provider ? 'The provider of this sender ID is not set, so it cannot be asked.' : 'Nothing is waiting for the provider to confirm.');
+        const reload = () => loadDrawer(detailSender, auditDate, allDates, timeFrom, timeTo);
+        setTimeout(reload, 8000); setTimeout(reload, 25000);
+      })
+      .catch(e => { setChecking(false); showToast(e.message, 'error'); });
+  };
 
   const downloadFailedCsv = () => {
     const rows = [['Phone', 'Reason', 'Time', 'Batch id'], ...((audit?.failed_recipients) || []).map(f => [f.phone, f.error, f.at, f.message_id])];
@@ -9088,7 +9110,7 @@ function SmsBySenderSummary() {
               <div style={{fontSize:13,color:'#0f172a',lineHeight:1.55,marginBottom:10}}>
                 On <b>{audit.date}</b>{audit.window && !audit.window.whole_day && <> between <b>{audit.window.time_from || '00:00'}</b> and <b>{audit.window.time_to || '23:59'}</b></>}, <b>{num(t.attempts)}</b> SMS were attempted under <b>{detailSender}</b>:
                 {' '}<b style={{color:GREEN}}>{num(t.sent)} sent</b> and <b style={{color:RED}}>{num(t.failed)} failed</b>.
-                {' '}Only the {num(t.sent)} that were sent cost credits ({num(t.credits_used)}); a failed SMS is not charged.
+                {' '}Credits charged: <b>{num(t.credits_used)}</b> (every SMS the provider accepted; one that failed when it was sent costs nothing).
               </div>
               <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
                 <Cell label="Attempted" value={num(t.attempts)} hint="Every recipient the system tried to send to that day" />
@@ -9122,6 +9144,32 @@ function SmsBySenderSummary() {
                   )}
                 </div>
               ))}
+
+              {audit.provider && (
+                <div style={{border:'1px solid #e2e8f0',borderRadius:10,padding:'10px 12px',marginBottom:12}}>
+                  <div style={{fontSize:12.5,fontWeight:800,color:'#0f172a',marginBottom:6}}>
+                    What the provider says{(audit.provider.names || []).length ? ` (${audit.provider.names.join(', ')})` : ''}
+                  </div>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:8}}>
+                    <Cell label="Confirmed delivered" value={num(audit.provider.delivered)} color={GREEN} hint="The provider's own delivery report says delivered" />
+                    <Cell label="Accepted, not confirmed" value={num(audit.provider.sent_unconfirmed)} color="#b45309" hint={`${num(audit.provider.unconfirmed_checkable)} of them can be asked about now`} />
+                    <Cell label="Failed after sending" value={num(audit.provider.failed_by_report)} color={RED} hint="Accepted, then the provider reported undelivered or failed. These were still charged." />
+                    <Cell label="Failed when sent" value={num(audit.provider.failed_at_send)} color={RED} hint="The provider refused them straight away. Not charged." />
+                  </div>
+                  <div style={{fontSize:11.5,color:'#64748b',lineHeight:1.55,marginBottom:8}}>
+                    "Sent" above means the provider accepted the SMS. "Confirmed delivered" is what the provider itself reported afterwards. Press the button to ask the provider about
+                    the {num(audit.provider.unconfirmed_checkable)} that it has not confirmed yet; it is asked message by message, nothing is sent and no credits are spent.
+                  </div>
+                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                    <button type="button" className="senda-btn senda-btn-sm" disabled={checking || !audit.provider.unconfirmed_checkable} onClick={checkProvider}
+                      style={{height:34,background:BRAND,color:'#fff',border:'none',opacity:(checking || !audit.provider.unconfirmed_checkable) ? .5 : 1}}>
+                      {checking ? 'Asking…' : `Check ${num(audit.provider.unconfirmed_checkable)} with the provider now`}
+                    </button>
+                    {checkNote && <span style={{fontSize:12,color:'#334155'}}>{checkNote}</span>}
+                  </div>
+                  <div style={{fontSize:11.5,color:'#92400e',marginTop:8}}>{audit.provider.balance?.note}</div>
+                </div>
+              )}
 
               <div style={{fontSize:12.5,fontWeight:800,color:'#0f172a',marginBottom:6}}>Why so many?</div>
               <ul style={{margin:'0 0 12px',paddingLeft:18,fontSize:12.5,color:'#334155',lineHeight:1.65}}>
