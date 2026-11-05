@@ -13879,12 +13879,20 @@ function AnalysisWhatsAppTab() {
       setSnNote({ ok: true, text: m }); showToast?.(m, 'success'); loadOrgs(); setLogTick(t => t + 1);
     });
   };
+  const refreshCfg = () => {
+    setCfgBusy(true);
+    voiceAdminFetch('/audio/admin/report-whatsapp/?refresh=1', {}, onLogout).then(res => {
+      setCfgBusy(false);
+      if (!res.success) { showToast?.(errText(res, 'Could not read the templates from WhatsApp.'), 'error'); return; }
+      setCfg(res.data); showToast?.('Read again from WhatsApp.', 'success');
+    }).catch(() => setCfgBusy(false));
+  };
   const saveCfg = () => {
     setCfgBusy(true);
     voiceAdminFetch('/audio/admin/report-whatsapp/', { method: 'PUT', body: JSON.stringify({ template_name: cfg.template_name, language_code: cfg.language_code }) }, onLogout).then(res => {
       setCfgBusy(false);
       if (!res.success) { showToast?.(errText(res, 'Could not save the template.'), 'error'); return; }
-      setCfg(res.data); showToast?.('WhatsApp template saved.', 'success');
+      setCfg(res.data); showToast?.(res.data.automatic ? 'Saved. The template is chosen automatically.' : 'WhatsApp template saved.', 'success');
     });
   };
   const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, on: !!o.whatsapp_enabled, text: (o.whatsapp_recipients || []).join('\n') });
@@ -13915,24 +13923,53 @@ function AnalysisWhatsAppTab() {
       </p>
       {error && <div style={{color:'#b91c1c',fontSize:13,marginBottom:10}}>{error}</div>}
 
-      {cfg && (
-        <div style={{...card,padding:'12px 16px'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-            <div style={{fontSize:14,fontWeight:800,color:'#0f172a'}}>Template</div>
-            <span style={{padding:'3px 10px',borderRadius:99,fontSize:11.5,fontWeight:700,background:cfg.number_ready ? '#dcfce7' : '#fef3c7',color:cfg.number_ready ? '#166534' : '#92400e'}}>
-              {cfg.number_ready ? "SENDA's WhatsApp number is ready" : "SENDA's WhatsApp number is not saved or not active (Admin, WhatsApp, Credentials)"}
-            </span>
-            {!cfg.template_name && <span style={{padding:'3px 10px',borderRadius:99,fontSize:11.5,fontWeight:700,background:'#fef3c7',color:'#92400e'}}>No template set: nothing is sent yet</span>}
-          </div>
-          <p style={{fontSize:11.5,color:'#94a3b8',margin:'6px 0 8px'}}>
-            One template name for every organization, with a <b>document</b> header (the PDF) and 5 body variables in this order: {(cfg.variables || []).map((v, i) => `{{${i + 1}}} ${v}`).join(', ')}.
-            Create it <b>twice under the same name</b> in Meta: once in Swahili (sw) and once in English (en). Each report uses the language chosen for the organization.
-          </p>
-          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-            <input value={cfg.template_name} onChange={e => setCfg({ ...cfg, template_name: e.target.value })} placeholder="template_name" className="senda-input" style={{flex:'1 1 220px',height:36,fontSize:13}}/>
-            <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={cfgBusy} onClick={saveCfg}>{cfgBusy ? 'Saving…' : 'Save template'}</button>
-          </div>
-        </div>)}
+      {cfg && (() => {
+        const own = cfg._own ?? !!cfg.template_name;                         // true = staff picked a template; false = automatic
+        const available = cfg.available || [];
+        const langName = (c) => ({ sw: 'Swahili', en: 'English' }[String(c).split('_')[0]] || c);
+        const describe = (lang) => cfg.resolved?.[lang] ? `${cfg.resolved[lang].name} (${cfg.resolved[lang].language})` : null;
+        const autoOk = !!(cfg.resolved?.sw || cfg.resolved?.en);
+        const pill = (text, good) => <span style={{padding:'3px 10px',borderRadius:99,fontSize:11.5,fontWeight:700,background:good ? '#dcfce7' : '#fef3c7',color:good ? '#166534' : '#92400e'}}>{text}</span>;
+        const radio = (checked, label, onPick, sub) => (
+          <label style={{display:'flex',gap:8,alignItems:'flex-start',cursor:'pointer',padding:'6px 0'}}>
+            <input type="radio" checked={checked} onChange={onPick} style={{marginTop:3}}/>
+            <span><b style={{fontSize:13,color:'#0f172a'}}>{label}</b>{sub}</span>
+          </label>);
+        return (
+          <div style={{...card,padding:'12px 16px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+              <div style={{fontSize:14,fontWeight:800,color:'#0f172a'}}>Template</div>
+              {pill(cfg.number_ready ? "SENDA's WhatsApp number is ready" : "SENDA's WhatsApp number is not saved or not active (Admin, WhatsApp, Credentials)", cfg.number_ready)}
+              {!own && (autoOk ? pill('Automatic: a template is chosen for you', true) : pill('Automatic: no approved template fits yet, nothing is sent', false))}
+              {own && !cfg.template_name && pill('Pick a template below', false)}
+            </div>
+            <p style={{fontSize:11.5,color:'#94a3b8',margin:'6px 0 6px'}}>
+              A template fits when it is <b>approved</b> by WhatsApp, has a <b>document</b> header (the PDF) and exactly 5 body variables in this order: {(cfg.variables || []).map((v, i) => `{{${i + 1}}} ${v}`).join(', ')}.
+              Create it in Meta in Swahili (sw) and English (en); each report uses the language chosen for the organization.
+            </p>
+            {radio(!own, 'Choose it automatically (recommended)', () => setCfg({ ...cfg, _own: false, template_name: '' }),
+              <div style={{fontSize:11.5,color:'#64748b',marginTop:2}}>
+                {autoOk
+                  ? <>Swahili reports use <b>{describe('sw') || 'nothing yet'}</b>; English reports use <b>{describe('en') || 'nothing yet'}</b>. It is read from WhatsApp, so a new approved template is picked up by itself.</>
+                  : <>The approved template that fits is picked from WhatsApp for each report. None fits yet, so nothing is sent until one is approved.</>}
+              </div>)}
+            {radio(own, 'Use a template I choose', () => setCfg({ ...cfg, _own: true, template_name: cfg.template_name || (available[0]?.name || '') }),
+              own ? (
+                <div style={{marginTop:6}}>
+                  {available.length > 0
+                    ? <select value={cfg.template_name} onChange={e => setCfg({ ...cfg, _own: true, template_name: e.target.value })} className="senda-input" style={{height:36,fontSize:13,minWidth:280}}>
+                        {!available.some(t => t.name === cfg.template_name) && <option value={cfg.template_name}>{cfg.template_name || 'Choose…'}</option>}
+                        {available.map(t => <option key={t.name} value={t.name}>{t.name} ({t.languages.map(langName).join(' + ')})</option>)}
+                      </select>
+                    : <input value={cfg.template_name} onChange={e => setCfg({ ...cfg, _own: true, template_name: e.target.value })} placeholder="template_name" className="senda-input" style={{height:36,fontSize:13,minWidth:280}}/>}
+                </div>) : null)}
+            {cfg.templates_problem && <div style={{fontSize:11.5,color:'#92400e',marginTop:4}}>{cfg.templates_problem}</div>}
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:8}}>
+              <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={cfgBusy || (own && !cfg.template_name)} onClick={saveCfg}>{cfgBusy ? 'Working…' : 'Save'}</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={cfgBusy} onClick={refreshCfg}>Read the templates from WhatsApp again</button>
+            </div>
+          </div>);
+      })()}
 
       <div style={{background:'#fff',border:'2px solid #dbeafe',borderRadius:12,padding:'14px 16px',marginBottom:16}}>
         <div style={{fontSize:14,fontWeight:800,color:'#0f172a'}}>Send a report now</div>
