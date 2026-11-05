@@ -9726,6 +9726,12 @@ function SmsBySenderTab() {
             <StatChip label="Delivered" value={summary.delivered} color={GREEN} />
             <StatChip label="Failed" value={summary.failed} color={RED} />
           </div>
+          {summary.sources && (
+            <div style={{fontSize:11.5,color:'#334155',marginBottom:6}}>
+              Where these rows come from — send records: <b>{(summary.sources.messages.total||0).toLocaleString()}</b> ({(summary.sources.messages.sent||0).toLocaleString()} sent, {(summary.sources.messages.failed||0).toLocaleString()} failed)
+              {' · '}SMS log only: <b>{(summary.sources.sms_log_only.total||0).toLocaleString()}</b> ({(summary.sources.sms_log_only.sent||0).toLocaleString()} sent, {(summary.sources.sms_log_only.failed||0).toLocaleString()} failed)
+            </div>
+          )}
           <div style={{fontSize:11.5,color:'#94a3b8',marginBottom:16}}>
             One row per recipient — a single bulk send to many numbers is expanded here.
             “Sent” counts recipients (which is why it can far exceed the number of send actions);
