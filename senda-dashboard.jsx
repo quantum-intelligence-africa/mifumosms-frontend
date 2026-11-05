@@ -9562,6 +9562,8 @@ function SmsBySenderTab() {
   const [statusF, setStatusF]         = useState('all');
   const [dateFrom, setDateFrom]       = useState('');
   const [dateTo, setDateTo]           = useState('');
+  const [timeFrom, setTimeFrom]       = useState('');   // HH:MM, optional
+  const [timeTo, setTimeTo]           = useState('');   // HH:MM, optional (this minute is included)
   const [page, setPage]               = useState(1);
 
   const [items, setItems]             = useState([]);
@@ -9610,6 +9612,8 @@ function SmsBySenderTab() {
     if (debounced.trim())   qs.set('search', debounced.trim());
     if (dateFrom)           qs.set('date_from', dateFrom);
     if (dateTo)             qs.set('date_to', dateTo);
+    if (timeFrom)           qs.set('time_from', timeFrom);
+    if (timeTo)             qs.set('time_to', timeTo);
 
     adminFetch(`/api/admin/v1/sender-ids/${encodeURIComponent(selected)}/messages?${qs.toString()}`, {}, onLogout)
       .then(res => {
@@ -9623,12 +9627,18 @@ function SmsBySenderTab() {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, [selected, page, statusF, debounced, dateFrom, dateTo, onLogout]);
+  }, [selected, page, statusF, debounced, dateFrom, dateTo, timeFrom, timeTo, onLogout]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const pages = meta.total_pages || 1;
   const total = meta.total || 0;
+
+  const isoDay = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const setRange = (from, to, tf = '', tt = '') => { setDateFrom(from); setDateTo(to); setTimeFrom(tf); setTimeTo(tt); setPage(1); };
+  const rangeText = (dateFrom || dateTo || timeFrom || timeTo)
+    ? `${dateFrom || dateTo || 'today'}${timeFrom ? ' ' + timeFrom : ' 00:00'}  →  ${dateTo || dateFrom || 'today'}${timeTo ? ' ' + timeTo + ':59' : ' 23:59'}`
+    : 'all dates';
 
   const exportCsv = () => {
     if (!selected) return;
@@ -9637,6 +9647,8 @@ function SmsBySenderTab() {
     if (debounced.trim())   qs.set('search', debounced.trim());
     if (dateFrom)           qs.set('date_from', dateFrom);
     if (dateTo)             qs.set('date_to', dateTo);
+    if (timeFrom)           qs.set('time_from', timeFrom);
+    if (timeTo)             qs.set('time_to', timeTo);
     const token = getToken();
     fetch(`${BASE_URL}/api/admin/v1/sender-ids/${encodeURIComponent(selected)}/messages?${qs.toString()}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -9771,6 +9783,18 @@ function SmsBySenderTab() {
                   onChange={e=>{ setDateTo(e.target.value); setPage(1); }}
                   style={{height:38,fontSize:13}}/>
               </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>From time</label>
+                <input type="time" className="senda-input" value={timeFrom}
+                  onChange={e=>{ setTimeFrom(e.target.value); setPage(1); }}
+                  style={{height:38,fontSize:13}}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>To time</label>
+                <input type="time" className="senda-input" value={timeTo}
+                  onChange={e=>{ setTimeTo(e.target.value); setPage(1); }}
+                  style={{height:38,fontSize:13}}/>
+              </div>
               <div style={{display:'flex',alignItems:'flex-end',gap:8}}>
                 <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{height:38,display:'inline-flex',alignItems:'center',gap:6}}>
                   <RefreshCw size={14} strokeWidth={2.2}/> Refresh
@@ -9778,6 +9802,14 @@ function SmsBySenderTab() {
                 <button className="senda-btn senda-btn-sm" onClick={exportCsv}
                   style={{height:38,background:BRAND,color:'#fff',border:'none'}}>Export CSV</button>
               </div>
+            </div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginTop:10}}>
+              <span style={{fontSize:11.5,color:'#64748b',fontWeight:700}}>Quick:</span>
+              <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:30}} onClick={() => setRange(isoDay(0), isoDay(0))}>Today</button>
+              <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:30}} onClick={() => setRange(isoDay(-1), isoDay(-1))}>Yesterday</button>
+              <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:30}} onClick={() => setRange(isoDay(-6), isoDay(0))}>Last 7 days</button>
+              <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:30}} onClick={() => setRange('', '')}>All dates</button>
+              <span style={{fontSize:12,color:'#334155'}}>Showing: <b>{rangeText}</b> (server time). Pick a day, then a From / To time to see a clock range, e.g. 08:00 to 08:59.</span>
             </div>
           </div>
 

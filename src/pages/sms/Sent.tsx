@@ -34,6 +34,12 @@ const Sent = () => {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [daily, setDaily] = useState<{ date: string; sent: number; unique_numbers: number; repeats: number; delivered: number; failed: number; messages: number }[]>([]);
+  const [dailyDays, setDailyDays] = useState(7);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [timeFrom, setTimeFrom] = useState("");
+  const [timeTo, setTimeTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize("sent");
   const [viewMessage, setViewMessage] = useState<SMSMessageItem | null>(null);
@@ -64,6 +70,10 @@ const Sent = () => {
         page: currentPage,
         page_size: pageSize,
         search: search || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+        time_from: timeFrom || undefined,
+        time_to: timeTo || undefined,
       });
       if (response.success && response.data) {
         setMessages(response.data.results || []);
@@ -82,16 +92,39 @@ const Sent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, pageSize, search, toast, t]);
+  }, [currentPage, pageSize, search, dateFrom, dateTo, timeFrom, timeTo, toast, t]);
+
+  useEffect(() => {
+    let alive = true;
+    apiClient.getSMSDailySummary({ days: dailyDays }).then((res) => {
+      const body = res.success ? ((res.data as any)?.data ?? res.data) : null;
+      if (alive) setDaily(body?.days || []);
+    }).catch(() => { if (alive) setDaily([]); });
+    return () => { alive = false; };
+  }, [dailyDays]);
 
   useEffect(() => {
     loadMessages();
-  }, [currentPage, pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize, dateFrom, dateTo, timeFrom, timeTo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = () => {
     setCurrentPage(1);
     loadMessages();
   };
+
+  const isoDay = (offset = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const setRange = (from: string, to: string) => {
+    setDateFrom(from);
+    setDateTo(to);
+    setTimeFrom("");
+    setTimeTo("");
+    setCurrentPage(1);
+  };
+  const filtered = !!(dateFrom || dateTo || timeFrom || timeTo);
 
   const recipientOf = (m: SMSMessageItem) =>
     m.recipient_number || m.contact_phone || m.contact_name || "—";
@@ -169,6 +202,107 @@ const Sent = () => {
                         {t("sms.common.refresh")}
                       </Button>
                     </div>
+                  </div>
+
+                  {/* Day and clock range */}
+                  <div className="mt-3 flex flex-wrap items-end gap-3">
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold text-text-subtle">{t("sms.common.filter_date_from")}</label>
+                      <Input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
+                        className="glass-subtle h-9 border-0 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold text-text-subtle">{t("sms.common.filter_date_to")}</label>
+                      <Input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
+                        className="glass-subtle h-9 border-0 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold text-text-subtle">{t("sms.common.filter_time_from")}</label>
+                      <Input
+                        type="time"
+                        value={timeFrom}
+                        onChange={(e) => { setTimeFrom(e.target.value); setCurrentPage(1); }}
+                        className="glass-subtle h-9 border-0 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold text-text-subtle">{t("sms.common.filter_time_to")}</label>
+                      <Input
+                        type="time"
+                        value={timeTo}
+                        onChange={(e) => { setTimeTo(e.target.value); setCurrentPage(1); }}
+                        className="glass-subtle h-9 border-0 text-xs"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => setRange(isoDay(0), isoDay(0))}>
+                        {t("sms.common.filter_today")}
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => setRange(isoDay(-1), isoDay(-1))}>
+                        {t("sms.common.filter_yesterday")}
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-9 text-xs" disabled={!filtered} onClick={() => setRange("", "")}>
+                        {t("sms.common.filter_clear")}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* SMS sent per day */}
+              <Card className="glass border-0 mb-4 sm:mb-6">
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span>{t("sms.common.daily_title")}</span>
+                    <span className="flex items-center gap-1">
+                      {[7, 14, 31].map((n) => (
+                        <Button key={n} size="sm" variant={dailyDays === n ? "default" : "outline"} className="h-7 px-2 text-[11px]" onClick={() => setDailyDays(n)}>
+                          {t("sms.common.daily_last", { count: n })}
+                        </Button>
+                      ))}
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <p className="mb-2 text-[11px] text-text-subtle">{t("sms.common.daily_hint")}</p>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">{t("sms.common.daily_col_day")}</TableHead>
+                          <TableHead className="text-right text-xs">{t("sms.common.daily_col_sent")}</TableHead>
+                          <TableHead className="text-right text-xs">{t("sms.common.daily_col_unique")}</TableHead>
+                          <TableHead className="text-right text-xs">{t("sms.common.daily_col_delivered")}</TableHead>
+                          <TableHead className="text-right text-xs">{t("sms.common.daily_col_failed")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {daily.map((d) => (
+                          <TableRow
+                            key={d.date}
+                            onClick={() => setRange(d.date, d.date)}
+                            className={`cursor-pointer ${dateFrom === d.date && dateTo === d.date ? "bg-muted/60" : ""}`}
+                          >
+                            <TableCell className="text-xs font-medium">{d.date}</TableCell>
+                            <TableCell className="text-right text-xs font-semibold tabular-nums">{d.sent.toLocaleString()}</TableCell>
+                            <TableCell className="text-right text-xs tabular-nums">
+                              {d.unique_numbers.toLocaleString()}
+                              {d.repeats > 0 && <span className="ml-1 text-[10px] text-amber-600">({d.repeats.toLocaleString()} {t("sms.common.daily_repeats")})</span>}
+                            </TableCell>
+                            <TableCell className="text-right text-xs tabular-nums text-green-600">{d.delivered.toLocaleString()}</TableCell>
+                            <TableCell className="text-right text-xs tabular-nums text-red-600">{d.failed.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 </CardContent>
               </Card>

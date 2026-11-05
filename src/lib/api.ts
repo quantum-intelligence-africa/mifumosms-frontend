@@ -3244,6 +3244,11 @@ class ApiClient {
     /** Rows per page; use 1 when only `count` is needed. */
     page_size?: number;
     search?: string;
+    /** YYYY-MM-DD; with time_from / time_to (HH:MM) a clock range. A time without a date means today. */
+    date_from?: string;
+    date_to?: string;
+    time_from?: string;
+    time_to?: string;
   }): Promise<ApiResponse<{
     count: number;
     next: string | null;
@@ -3251,6 +3256,10 @@ class ApiClient {
     results: SMSMessageItem[];
   }>> {
     const queryParams = new URLSearchParams();
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+    if (params?.time_from) queryParams.append('time_from', params.time_from);
+    if (params?.time_to) queryParams.append('time_to', params.time_to);
     if (params?.status) queryParams.append('status', params.status);
     if (params?.status__in) queryParams.append('status__in', params.status__in);
     if (params?.page) queryParams.append('page', params.page.toString());
@@ -3260,6 +3269,20 @@ class ApiClient {
     const qs = queryParams.toString();
     const endpoint = `${API_CONFIG.ENDPOINTS.MESSAGING.SMS.MESSAGES}${qs ? `?${qs}` : ''}`;
     return this.request(endpoint);
+  }
+
+  /** SMS sent per day, counted per recipient (default the last 7 days). */
+  async getSMSDailySummary(params?: { days?: number; date_from?: string; date_to?: string }): Promise<ApiResponse<{
+    success?: boolean;
+    days: { date: string; sent: number; unique_numbers: number; repeats: number; delivered: number; failed: number; messages: number }[];
+    totals: { sent: number; delivered: number; failed: number };
+  }>> {
+    const q = new URLSearchParams();
+    if (params?.days) q.append('days', String(params.days));
+    if (params?.date_from) q.append('date_from', params.date_from);
+    if (params?.date_to) q.append('date_to', params.date_to);
+    const qs = q.toString();
+    return this.request(`${API_CONFIG.ENDPOINTS.MESSAGING.SMS.MESSAGES}daily-summary/${qs ? `?${qs}` : ''}`);
   }
 
   /** Re-queue a failed SMS message (Outbox retry). */
