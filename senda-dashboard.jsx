@@ -8835,6 +8835,12 @@ function SmsBySenderSummary() {
   const [busy, setBusy]         = useState(''); // message_id being resent/notified
   const [selected, setSelected] = useState(() => new Set()); // message_ids checked in the drawer
   const [resendingSelected, setResendingSelected] = useState(false);
+  const [audit, setAudit]               = useState(null);     // the one-day audit of the opened sender
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditErr, setAuditErr]         = useState(null);
+  const [auditDate, setAuditDate]       = useState('');       // YYYY-MM-DD, today when the drawer opens
+  const [allDates, setAllDates]         = useState(false);    // the failed list: only this day, or every date (the page's own date filters)
+  const [progress, setProgress]         = useState(null);     // { done, total } while "resend all" runs
   const [search, setSearch]     = useState('');
   const [debounced, setDebounced] = useState('');
   const [statusF, setStatusF]   = useState('all');
@@ -8887,14 +8893,14 @@ function SmsBySenderSummary() {
     setTenantF(''); setDebTenant(''); setDateFrom(''); setDateTo(''); setPage(1);
   };
 
-  // Open the failed-batches drawer for a sender and load its failed sends.
-  const openSender = (sender) => {
-    setDetailSender(sender);
+  const todayLocal = () => new Date().toLocaleDateString('en-CA');          // YYYY-MM-DD on this computer
+  // Load the audit of one day for a sender, and the batches that failed that day (or on every date when asked).
+  const loadDrawer = (sender, date, all) => {
     setBatches([]); setBError(null); setBLoading(true); setSelected(new Set());
     const qs = new URLSearchParams({ sender, limit:'50' });
     if (debTenant.trim()) qs.set('tenant', debTenant.trim());
-    if (dateFrom) qs.set('date_from', dateFrom);
-    if (dateTo)   qs.set('date_to', dateTo);
+    if (all) { if (dateFrom) qs.set('date_from', dateFrom); if (dateTo) qs.set('date_to', dateTo); }
+    else { qs.set('date_from', date); qs.set('date_to', date); }
     adminFetch(`/api/admin/v1/system-sms-logs/sender-failures?${qs.toString()}`, {}, onLogout)
       .then(res => {
         if (res.success) setBatches(res.data || []);
@@ -8902,8 +8908,31 @@ function SmsBySenderSummary() {
       })
       .catch(e => setBError(e.message))
       .finally(() => setBLoading(false));
+    setAudit(null); setAuditErr(null); setAuditLoading(true);
+    const aq = new URLSearchParams({ sender, date });
+    if (debTenant.trim()) aq.set('tenant', debTenant.trim());
+    adminFetch(`/api/admin/v1/system-sms-logs/sender-audit?${aq.toString()}`, {}, onLogout)
+      .then(res => { if (res.success !== false && res.totals) setAudit(res); else if (res.data?.totals) setAudit(res.data); else setAuditErr(res.error?.message || 'Could not load the audit.'); })
+      .catch(e => setAuditErr(e.message))
+      .finally(() => setAuditLoading(false));
   };
-  const refreshBatches = () => { if (detailSender) openSender(detailSender); };
+  const openSender = (sender) => {
+    const d = todayLocal();
+    setDetailSender(sender); setAuditDate(d); setAllDates(false); setProgress(null);
+    loadDrawer(sender, d, false);
+  };
+  const refreshBatches = () => { if (detailSender) loadDrawer(detailSender, auditDate, allDates); };
+  const changeAuditDate = (d) => { if (!d) return; setAuditDate(d); loadDrawer(detailSender, d, allDates); };
+  const changeAllDates = (v) => { setAllDates(v); loadDrawer(detailSender, auditDate, v); };
+
+  const downloadFailedCsv = () => {
+    const rows = [['Phone', 'Reason', 'Time', 'Batch id'], ...((audit?.failed_recipients) || []).map(f => [f.phone, f.error, f.at, f.message_id])];
+    const csv = rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    link.download = `failed-${detailSender}-${audit?.date || auditDate}.csv`;
+    link.click();
+  };
 
   const doResend = (mid) => {
     if (!window.confirm("Resend the failed recipients of this batch?\n\nThis re-sends only the numbers that failed (never the ones already sent) and charges the tenant's SMS balance.")) return;
@@ -8947,10 +8976,10 @@ function SmsBySenderSummary() {
 
   // Resend every checked batch, one after another (same endpoint as a single
   // "Resend N failed" click), then reload the drawer once at the end.
-  const doResendSelected = async () => {
-    const ids = [...selected];
+  const doResendSelected = async (idsArg, skipConfirm = false) => {
+    const ids = Array.isArray(idsArg) ? idsArg : [...selected];
     if (ids.length === 0) return;
-    if (!window.confirm(`Resend the failed recipients of ${ids.length} selected batch(es)?\n\nThis re-sends only the numbers that failed in each batch and charges each batch's tenant SMS balance.`)) return;
+    if (!skipConfirm && !window.confirm(`Resend the failed recipients of ${ids.length} selected batch(es)?\n\nThis re-sends only the numbers that failed in each batch and charges each batch's tenant SMS balance.`)) return;
     setResendingSelected(true);
     let batchesOk = 0, batchesErr = 0, sentTotal = 0, failedTotal = 0;
     // Real per-batch error reasons (e.g. "NO_PROVIDER: ...", "INSUFFICIENT_CREDITS: ...")
@@ -8968,12 +8997,15 @@ function SmsBySenderSummary() {
         } else {
           batchesErr++;
           errorMessages.add(res.error?.message || 'Unknown error');
+          if (/INSUFFICIENT|insufficient/.test(`${res.error?.code || ''} ${res.error?.message || ''}`)) break;   // the credits ran out: stop here
         }
       } catch (e) {
         batchesErr++;
         errorMessages.add(e.message || 'Network error');
       }
+      setProgress({ done: ids.indexOf(mid) + 1, total: ids.length });
     }
+    setProgress(null);
     setBusy(''); setResendingSelected(false); setSelected(new Set());
     let msg = `Resent ${ids.length} batch(es): ${sentTotal} recipient(s) sent, ${failedTotal} still failed`;
     if (batchesErr) {
@@ -8981,6 +9013,27 @@ function SmsBySenderSummary() {
     }
     showToast(msg, batchesErr ? 'error' : 'success');
     refreshBatches(); fetchData();
+  };
+
+  // Every failed batch of the chosen day (all pages), resent one after another. Failed SMS cost nothing; only the ones that now go through are charged.
+  const resendAllFailed = async () => {
+    if (!audit || !audit.totals.failed) return;
+    const reasons = (audit.failure_reasons || []).slice(0, 3).map(r => `  • ${r.reason} (${r.count.toLocaleString()})`).join('\n');
+    const balance = (audit.tenants || []).map(t => `${t.tenant_name}: ${t.balance_now.toLocaleString()} credits now`).join('; ');
+    if (!window.confirm(`Resend all ${audit.totals.failed.toLocaleString()} failed SMS of ${audit.date} (${audit.totals.failed_batches.toLocaleString()} sends)?\n\nWhy they failed:\n${reasons || '  (no reason recorded)'}\n\nNumbers that failed for a permanent reason (invalid or blocked) will fail again. Each SMS that now goes through is charged to the tenant (about 1 credit each). ${balance}\n\nIt stops by itself if the credits run out.`)) return;
+    setResendingSelected(true);
+    const ids = [];
+    for (let p = 1; p <= 20; p++) {
+      const qs = new URLSearchParams({ sender: detailSender, limit: '100', page: String(p), date_from: auditDate, date_to: auditDate });
+      if (debTenant.trim()) qs.set('tenant', debTenant.trim());
+      const res = await adminFetch(`/api/admin/v1/system-sms-logs/sender-failures?${qs.toString()}`, {}, onLogout);
+      if (!res.success) break;
+      (res.data || []).forEach(x => ids.push(x.message_id));
+      if (!res.meta?.has_next) break;
+    }
+    setResendingSelected(false);
+    if (!ids.length) { showToast('No failed sends found for that day.', 'error'); return; }
+    await doResendSelected(ids, true);
   };
 
   const StatChip = ({ label, value, color }) => (
@@ -8991,6 +9044,117 @@ function SmsBySenderSummary() {
   );
 
   const lbl = {fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4};
+
+  const num = (n) => (n ?? 0).toLocaleString();
+  const Cell = ({ label, value, color, hint }) => (
+    <div style={{flex:'1 1 110px',minWidth:104,padding:'8px 10px',background:'#f8fafc',border:'1px solid #eef2f7',borderRadius:10}} title={hint}>
+      <div style={{fontSize:10.5,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em'}}>{label}</div>
+      <div style={{fontSize:19,fontWeight:800,color:color||'#0f172a',marginTop:2}}>{value}</div>
+    </div>
+  );
+  const auditPanel = (
+    <div style={{marginBottom:16}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:10}}>
+        <b style={{fontSize:13,color:'#0f172a'}}>Audit of</b>
+        <input type="date" className="senda-input" style={{height:32,fontSize:12.5,width:150}} max={todayLocal()} value={auditDate} onChange={e => changeAuditDate(e.target.value)} />
+        <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => changeAuditDate(todayLocal())} style={{height:32}}>Today</button>
+        <label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#475569',cursor:'pointer'}}>
+          <input type="checkbox" checked={allDates} onChange={e => changeAllDates(e.target.checked)} /> Failed list: every date
+        </label>
+      </div>
+      {auditLoading ? <div style={{fontSize:12.5,color:'#94a3b8',padding:'10px 0'}}>Working out the audit…</div>
+        : auditErr ? <div style={{fontSize:12.5,color:'#b91c1c'}}>{auditErr}</div>
+        : audit && (() => {
+          const t = audit.totals;
+          const peak = [...(audit.by_hour || [])].sort((x, y) => (y.sent + y.failed) - (x.sent + x.failed))[0];
+          const maxH = Math.max(1, ...(audit.by_hour || []).map(h => h.sent + h.failed));
+          return (
+            <div>
+              <div style={{fontSize:13,color:'#0f172a',lineHeight:1.55,marginBottom:10}}>
+                On <b>{audit.date}</b>, <b>{num(t.attempts)}</b> SMS were attempted under <b>{detailSender}</b>:
+                {' '}<b style={{color:GREEN}}>{num(t.sent)} sent</b> and <b style={{color:RED}}>{num(t.failed)} failed</b>.
+                {' '}Only the {num(t.sent)} that were sent cost credits ({num(t.credits_used)}); a failed SMS is not charged.
+              </div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
+                <Cell label="Attempted" value={num(t.attempts)} hint="Every recipient the system tried to send to that day" />
+                <Cell label="Sent" value={num(t.sent)} color={GREEN} />
+                <Cell label="Failed" value={num(t.failed)} color={RED} />
+                <Cell label="Credits used" value={num(t.credits_used)} color={BRAND} hint="Sent recipients x message segments" />
+                <Cell label="Different numbers" value={num(t.distinct_numbers)} hint="How many different phone numbers were tried" />
+              </div>
+
+              {(audit.tenants || []).map(tn => (
+                <div key={tn.tenant_id} style={{border:'1px solid #dbeafe',background:'#f8fbff',borderRadius:10,padding:'10px 12px',marginBottom:12}}>
+                  <div style={{fontSize:12.5,fontWeight:800,color:'#0f172a',marginBottom:6}}>SMS credits of {tn.tenant_name}</div>
+                  {tn.opening_estimate == null ? (
+                    <div style={{fontSize:12,color:'#64748b'}}>Balance now: <b>{num(tn.balance_now)}</b> credits. The balance at the start of a past day cannot be worked out from here; choose today to see it.</div>
+                  ) : (
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'stretch'}}>
+                      <Cell label="Before (start of day)" value={num(tn.opening_estimate)} color="#0f172a" hint="Worked out: balance now + credits charged that day − credits added that day" />
+                      <Cell label="+ Added that day" value={num(tn.credits_added_that_day)} color={GREEN} hint={(tn.added_details || []).map(a => `${a.kind}: ${a.credits}`).join(', ') || 'No purchases that day'} />
+                      <Cell label="− Used that day" value={num(tn.credits_charged_that_day)} color={RED} hint="Charged for ALL this organization's senders that day" />
+                      <Cell label="= Now" value={num(tn.balance_now)} color={BRAND} />
+                    </div>
+                  )}
+                  <div style={{fontSize:11.5,color:'#64748b',marginTop:6,lineHeight:1.5}}>
+                    {tn.opening_estimate != null && <>Before = now + used − added. Used that day covers all this organization's sender IDs ({num(tn.sender_credits_used)} of it by {detailSender}). The system keeps no balance history, so this is worked out, not read.</>}
+                  </div>
+                  {!tn.balance_check.consistent && (
+                    <div style={{fontSize:11.5,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'6px 10px',marginTop:6}}>
+                      The balance does not add up: purchased − used is {num(tn.balance_check.expected)}, but the balance is {num(tn.balance_check.actual)} (difference {num(tn.balance_check.difference)}). Credits were changed another way (a manual top-up or correction), so the figures above are approximate.
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <div style={{fontSize:12.5,fontWeight:800,color:'#0f172a',marginBottom:6}}>Why so many?</div>
+              <ul style={{margin:'0 0 12px',paddingLeft:18,fontSize:12.5,color:'#334155',lineHeight:1.65}}>
+                <li><b>{num(t.messages)}</b> sends (batches) produced <b>{num(t.attempts)}</b> attempts to <b>{num(t.distinct_numbers)}</b> different numbers.
+                  {t.extra_attempts > 0 ? <> <b style={{color:'#b45309'}}>{num(t.extra_attempts)} attempts were repeats</b>: {num(t.repeated_numbers)} number(s) were tried more than once.</> : ' No number was tried twice.'}</li>
+                {(audit.top_repeated || []).length > 0 && (
+                  <li>Tried most often: {audit.top_repeated.slice(0, 5).map(r => `${r.phone} ×${r.attempts} (${r.sent} sent, ${r.failed} failed)`).join(' · ')}</li>
+                )}
+                {(audit.sources || []).length > 0 && (
+                  <li>Sent by: {audit.sources.slice(0, 4).map(s => `${s.source}${s.user ? ` (${s.user})` : ''}: ${num(s.attempts)}`).join(' · ')}</li>
+                )}
+                {peak && <li>Busiest hour: <b>{String(peak.hour).padStart(2, '0')}:00</b> with {num(peak.sent + peak.failed)} attempts.</li>}
+                {(audit.failure_reasons || []).length > 0 && (
+                  <li>Why they failed: {audit.failure_reasons.slice(0, 4).map(r => `${r.reason} (${num(r.count)})`).join(' · ')}</li>
+                )}
+              </ul>
+
+              {(audit.by_hour || []).length > 1 && (
+                <div style={{marginBottom:12}}>
+                  {audit.by_hour.map(h => (
+                    <div key={h.hour} style={{display:'flex',alignItems:'center',gap:8,fontSize:11,color:'#64748b',marginBottom:2}}>
+                      <span style={{width:34,fontFamily:'monospace'}}>{String(h.hour).padStart(2, '0')}:00</span>
+                      <div style={{flex:1,display:'flex',height:9,background:'#f1f5f9',borderRadius:5,overflow:'hidden'}}>
+                        <div style={{width:`${(h.sent / maxH) * 100}%`,background:GREEN}} />
+                        <div style={{width:`${(h.failed / maxH) * 100}%`,background:RED}} />
+                      </div>
+                      <span style={{width:90,textAlign:'right'}}>{num(h.sent)} ok · {num(h.failed)} failed</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:6}}>
+                <button type="button" className="senda-btn senda-btn-sm" disabled={!t.failed || resendingSelected} onClick={resendAllFailed}
+                  style={{height:34,background:BRAND,color:'#fff',border:'none',opacity:(!t.failed || resendingSelected) ? .5 : 1}}>
+                  {progress ? `Resending ${progress.done} / ${progress.total}…` : resendingSelected ? 'Working…' : `Resend all ${num(t.failed)} failed of this day`}
+                </button>
+                <button type="button" className="senda-btn senda-btn-sm senda-btn-ghost" disabled={!(audit.failed_recipients || []).length} onClick={downloadFailedCsv} style={{height:34}}>
+                  Download the failed numbers (CSV)
+                </button>
+              </div>
+              {audit.failed_recipients_truncated && <div style={{fontSize:11,color:'#92400e'}}>The list has the first {num((audit.failed_recipients || []).length)} failed numbers only.</div>}
+              {t.scan_truncated && <div style={{fontSize:11,color:'#92400e'}}>This day has more sends than the audit reads; the figures cover the newest ones.</div>}
+              <div style={{fontSize:11.5,color:'#94a3b8',marginTop:4}}>Below: the failed sends{allDates ? ' of every date' : ` of ${auditDate}`}. Tick the ones to resend, or resend a single send.</div>
+            </div>
+          );
+        })()}
+    </div>
+  );
 
   return (
     <div>
@@ -9075,7 +9239,7 @@ function SmsBySenderSummary() {
                 {items.map((r, i) => (
                   <tr key={r.sender_id || i}
                       onClick={()=>openSender(r.sender_id || '(no sender ID)')}
-                      title="Click to view and resend failed messages"
+                      title="Click for the audit of today and to resend failed messages"
                       style={{cursor:'pointer'}}>
                     <td style={{fontWeight:700,color:'#0f172a'}}>{r.sender_id || '(no sender ID)'}</td>
                     <td>
@@ -9124,8 +9288,8 @@ function SmsBySenderSummary() {
           <div onClick={e=>e.stopPropagation()} style={{width:'min(680px,100%)',height:'100%',background:'#fff',display:'flex',flexDirection:'column'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:'1px solid #eef2f7'}}>
               <div style={{minWidth:0}}>
-                <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>Failed batches — {detailSender}</h3>
-                <p style={{fontSize:12,color:'#94a3b8',margin:'2px 0 0'}}>Review a send that had failures, then resend just the failed numbers or ask the user to.</p>
+                <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>SMS audit — {detailSender}</h3>
+                <p style={{fontSize:12,color:'#94a3b8',margin:'2px 0 0'}}>How many were sent and failed, the credits, and why. Then resend just the failed numbers or ask the user to.</p>
               </div>
               <button className="senda-btn senda-btn-sm" onClick={()=>setDetailSender(null)} style={{height:32,border:'1.5px solid #e2e8f0',background:'#fff'}}><X size={16}/></button>
             </div>
@@ -9136,13 +9300,14 @@ function SmsBySenderSummary() {
                   {selected.size > 0 ? `${selected.size} selected` : 'Select all'}
                 </label>
                 <button className="senda-btn senda-btn-sm" disabled={selected.size===0 || resendingSelected}
-                  onClick={doResendSelected}
+                  onClick={() => doResendSelected()}
                   style={{height:32,background:BRAND,color:'#fff',border:'none',opacity:(selected.size===0||resendingSelected)?.5:1}}>
                   {resendingSelected ? 'Resending…' : `Resend ${selected.size || ''} selected`}
                 </button>
               </div>
             )}
             <div style={{flex:1,overflowY:'auto',padding:'16px 20px'}}>
+              {auditPanel}
               {bLoading ? <LoadingState/> : bError ? <ErrorState message={bError} onRetry={refreshBatches}/> :
                batches.length === 0 ? (
                  <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No failed batches for this sender. 🎉</div>
