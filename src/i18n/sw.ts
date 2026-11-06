@@ -153,6 +153,8 @@ const sw: Record<string, string> = {
   "voice.ai_settings.language_en": "Kiingereza",
   "voice.ai_settings.email_label": "Nitumie barua pepe kila uchambuzi unapokamilika",
   "voice.ai_settings.email_hint": "Ni anwani ulizoorodhesha hapa chini tu (na anwani yoyote ambayo Msaada wa SENDA umekupangia) zinazopokea, pamoja na muhtasari, tatizo na hatua. Kuwa mmiliki au msimamizi hakuongezi anwani: orodhesha zile zinazopaswa kupokea.",
+  "voice.ai_settings.whatsapp_label": "Tuma ripoti pia kwa WhatsApp",
+  "voice.ai_settings.whatsapp_hint": "Namba za WhatsApp zitakazopokea ripoti ile ile ya simu (pamoja na PDF) wakati huo huo na barua pepe. Tenganisha namba kwa koma, mf. 0712345678.",
   "voice.ai_settings.email_extra_label": "Tuma pia kwa (tenganisha anwani kwa koma)",
   "voice.ai_settings.toggle_summary": "Muhtasari wa simu",
   "voice.ai_settings.toggle_sentiment": "Hisia za mteja",

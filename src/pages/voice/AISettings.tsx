@@ -23,6 +23,7 @@ interface AISettings {
   transcription_language: "" | "sw" | "en" | "auto";
   email_analysis: boolean;
   email_recipients: string[];
+  whatsapp_recipients: string[];
   consent_acknowledged_at: string | null;
   updated_at: string;
 }
@@ -41,6 +42,7 @@ export default function AISettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recipientsDraft, setRecipientsDraft] = useState("");
+  const [waDraft, setWaDraft] = useState("");
 
   const fetchSettings = useCallback(async () => {
     setIsLoading(true);
@@ -49,6 +51,7 @@ export default function AISettings() {
     if (res.success && res.data) {
       setSettings(res.data);
       setRecipientsDraft((res.data.email_recipients || []).join(", "));
+      setWaDraft((res.data.whatsapp_recipients || []).join(", "));
     } else {
       setError(res.error || t("voice.ai_settings.error_loading"));
     }
@@ -66,6 +69,7 @@ export default function AISettings() {
     setIsSaving(false);
     if (res.success && res.data) {
       setSettings(res.data);
+      setWaDraft((res.data.whatsapp_recipients || []).join(", "));
     } else {
       toast({ title: t("voice.ai_settings.save_failed"), description: res.error || t("common.try_again_desc"), variant: "destructive" });
     }
@@ -220,6 +224,23 @@ export default function AISettings() {
                           />
                         </div>
                       )}
+                    </div>
+
+                    <div className="space-y-1 border-t border-border pt-3">
+                      <Label htmlFor="whatsapp_recipients" className="text-sm font-normal text-foreground">{t("voice.ai_settings.whatsapp_label")}</Label>
+                      <p className="text-xs text-muted-foreground">{t("voice.ai_settings.whatsapp_hint")}</p>
+                      <Input
+                        id="whatsapp_recipients"
+                        value={waDraft}
+                        placeholder="0712345678, 255713345678"
+                        disabled={isSaving || !settings.enabled}
+                        onChange={(e) => setWaDraft(e.target.value)}
+                        onBlur={() => {
+                          const list = waDraft.split(/[,;]+/).map((v) => v.trim()).filter(Boolean);
+                          // compare what was typed with what is saved, ignoring spaces, so only a real change is sent
+                          if (list.join(",") !== (settings.whatsapp_recipients || []).join(",")) void patch({ whatsapp_recipients: list });
+                        }}
+                      />
                     </div>
 
                     <div className="flex items-center justify-between gap-3 border-t border-border pt-3 opacity-60">

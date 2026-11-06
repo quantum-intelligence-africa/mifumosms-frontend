@@ -154,6 +154,8 @@ const translations = {
     "voice.ai_settings.language_en": "English",
     "voice.ai_settings.email_label": "Email me each finished analysis",
     "voice.ai_settings.email_hint": "Only the addresses you list below (and any address SENDA support assigned to you) receive it, with the summary, the issue and the actions. Being an owner or admin does not add an address: list the ones that should get it.",
+    "voice.ai_settings.whatsapp_label": "Send the report on WhatsApp too",
+    "voice.ai_settings.whatsapp_hint": "WhatsApp numbers that receive the same call report (with the PDF) at the same time as the email. Separate numbers with commas, e.g. 0712345678.",
     "voice.ai_settings.email_extra_label": "Send the analysis to (separate addresses with commas)",
     "voice.ai_settings.toggle_summary": "Post-call summary",
     "voice.ai_settings.toggle_sentiment": "Customer sentiment",
