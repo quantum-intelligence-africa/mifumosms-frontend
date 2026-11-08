@@ -6632,7 +6632,7 @@ function UsersTab() {
   };
 
   const deleteUser = (u) => {
-    if (!window.confirm(`Move ${u.name} to trash? They'll be signed out and unable to log in. This can be undone from the "Deleted" filter.`)) return;
+    if (!window.confirm(`Move ${u.name} to trash? They'll be signed out and unable to log in. This can be undone from the Trash filter.`)) return;
     setBusyId(u.id);
     adminFetch(`/users/${u.id}/delete`, { method: 'DELETE' }, onLogout)
       .then(res => {
@@ -6728,7 +6728,7 @@ function UsersTab() {
           {['all','active','suspended','deleted'].map(f=>(
             <button key={f} className="senda-btn senda-btn-sm" onClick={()=>{setFilterStatus(f);setPage(1);}}
               style={{background:filterStatus===f?(f==='suspended'||f==='deleted'?RED:f==='active'?GREEN:BRAND):'#f1f5f9',color:filterStatus===f?'#fff':'#64748b',border:'none'}}>
-              {f.charAt(0).toUpperCase()+f.slice(1)}
+              {f==='deleted' ? <><Trash2 size={12} strokeWidth={2.3}/> Trash</> : f.charAt(0).toUpperCase()+f.slice(1)}
             </button>
           ))}
         </div>
@@ -6766,6 +6766,12 @@ function UsersTab() {
           </div>
         )}
       </div>
+      {filterStatus==='deleted' && (
+        <div style={{display:'flex',alignItems:'center',gap:10,background:'#fef2f2',border:'1px solid #fecaca',color:'#991b1b',borderRadius:10,padding:'10px 14px',fontSize:13,marginBottom:14}}>
+          <Trash2 size={16} strokeWidth={2.2}/>
+          <span><b>Trash</b> — deleted users. They cannot sign in. Use the restore button on a row to bring a user back.</span>
+        </div>
+      )}
 
       {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
         <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
@@ -7404,7 +7410,7 @@ function UserDetailView({ user, onClose, onChanged, isSuperAdmin }) {
   };
 
   const deleteUser = () => {
-    if (!window.confirm(`Move ${d.name} to trash? They'll be signed out and unable to log in. This can be undone from the "Deleted" filter.`)) return;
+    if (!window.confirm(`Move ${d.name} to trash? They'll be signed out and unable to log in. This can be undone from the Trash filter.`)) return;
     setBusy(true);
     adminFetch(`/users/${user.id}/delete`, { method: 'DELETE' }, onLogout)
       .then(res => {
