@@ -17069,23 +17069,25 @@ function WaOtpTab() {
       .finally(() => setSaving(false));
   };
 
-  const label = { fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:4 };
-  const input = { width:'100%', padding:'9px 11px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:13, boxSizing:'border-box', background:'#fff' };
-  const hint  = { fontSize:11.5, color:'#94a3b8', margin:'4px 0 0' };
+  const label = { fontSize:12.5, fontWeight:700, color:'#334155', display:'block', marginBottom:6 };
+  const input = { width:'100%', height:42, padding:'0 12px', border:'1px solid #d9e0ea', borderRadius:10, fontSize:13.5, boxSizing:'border-box', background:'#fff', color:'#0f172a', outline:'none' };
+  const hint  = { fontSize:12, color:'#64748b', margin:'6px 0 0', lineHeight:1.5 };
   const chosen = `${form.template_name}|${form.template_language}`;
   const inList = templates.some(t => `${t.name}|${t.language}` === chosen);
   const blocked = saving || (form.enabled && !inList);
   const status = info.active && info.has_credential ? ['Live', '#d1fae5', '#065f46']
     : info.active ? ['On, but no WhatsApp number found', '#fef3c7', '#92400e'] : ['Off', '#f1f5f9', '#475569'];
+  const card = { background:'#fff', border:'1px solid #e8edf4', borderRadius:14, padding:'20px 22px' };
+  const step = (n) => <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',width:22,height:22,borderRadius:99,background:'#eff6ff',color:'#1d4ed8',fontSize:12,fontWeight:800,marginRight:8}}>{n}</span>;
+  const picked = templates.find(t=>`${t.name}|${t.language}`===chosen);
 
   return (
-    <div style={{padding:24,maxWidth:640}}>
-      <div style={{marginBottom:18}}>
-        <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>WhatsApp Verification Codes</h2>
-        <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
-          Send sign-up, account-confirmation and password-reset codes over WhatsApp. If WhatsApp cannot deliver, the
-          code goes by SMS as before. Your WhatsApp number and its approved templates are read directly from the
-          credentials you saved under WhatsApp Credentials, so there is nothing to type.
+    <div style={{padding:'28px 32px',maxWidth:900,margin:'0 auto'}}>
+      <div style={{marginBottom:22}}>
+        <h2 style={{fontSize:22,fontWeight:800,color:'#0f172a',margin:0}}>WhatsApp Verification Codes</h2>
+        <p style={{fontSize:13.5,color:'#64748b',margin:'6px 0 0',lineHeight:1.55,maxWidth:680}}>
+          Send sign-up, account-confirmation and password-reset codes over WhatsApp. If WhatsApp cannot deliver, the code goes by SMS as before.
+          Your WhatsApp number and its approved templates come from the credentials saved under WhatsApp Credentials.
         </p>
       </div>
       {error ? (
@@ -17093,56 +17095,60 @@ function WaOtpTab() {
       ) : loading ? (
         <div style={{padding:24,textAlign:'center',color:'#94a3b8',fontSize:13}}>Loading…</div>
       ) : (
-        <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:18,display:'grid',gap:16}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+        <div style={{display:'grid',gap:16}}>
+          <div style={{...card,display:'flex',alignItems:'center',justifyContent:'space-between',gap:16}}>
             <div>
-              <div style={{fontSize:13.5,fontWeight:600,color:'#0f172a'}}>Deliver codes over WhatsApp</div>
-              <div style={{fontSize:11.5,marginTop:3}}>
-                <span style={{display:'inline-block',padding:'2px 9px',borderRadius:99,fontWeight:700,background:status[1],color:status[2]}}>{status[0]}</span>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <span style={{fontSize:15,fontWeight:700,color:'#0f172a'}}>Deliver codes over WhatsApp</span>
+                <span style={{padding:'3px 10px',borderRadius:99,fontSize:11.5,fontWeight:700,background:status[1],color:status[2]}}>{status[0]}</span>
               </div>
+              <div style={{fontSize:12.5,color:'#64748b',marginTop:4}}>Turn it on, choose the number and the template below, then press Save.</div>
             </div>
-            <button onClick={()=>setForm(f=>({...f,enabled:!f.enabled}))}
-              style={{padding:'6px 14px',borderRadius:99,border:'none',cursor:'pointer',fontSize:12,fontWeight:700,
-                background:form.enabled?'#d1fae5':'#f1f5f9',color:form.enabled?'#065f46':'#475569'}}>
-              {form.enabled ? 'On' : 'Off'}
+            <button type="button" role="switch" aria-checked={!!form.enabled} aria-label="Deliver codes over WhatsApp" onClick={()=>setForm(f=>({...f,enabled:!f.enabled}))}
+              style={{position:'relative',width:50,height:28,borderRadius:99,border:'none',cursor:'pointer',flexShrink:0,transition:'background .15s',background:form.enabled?'#16a34a':'#cbd5e1'}}>
+              <span style={{position:'absolute',top:3,left:form.enabled?25:3,width:22,height:22,borderRadius:99,background:'#fff',boxShadow:'0 1px 3px rgba(0,0,0,.25)',transition:'left .15s'}} />
             </button>
           </div>
 
           {info.numbers.length === 0 ? (
-            <div style={{fontSize:13,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'10px 14px'}}>
+            <div style={{fontSize:13,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'12px 16px'}}>
               No active platform WhatsApp number is saved yet. Add one under <b>WhatsApp Credentials</b> (Phone Number ID, access token and WABA ID), then come back.
             </div>
-          ) : (<>
-            <div>
-              <label style={label} htmlFor="wa-otp-pid">Send from this WhatsApp number</label>
-              <select id="wa-otp-pid" style={input} value={form.phone_number_id}
-                onChange={e=>setForm(f=>({...f,phone_number_id:e.target.value,template_name:'',template_language:'en'}))}>
-                {info.numbers.map(n => <option key={n.phone_number_id} value={n.phone_number_id}>{n.label}{n.display_phone_number ? ` · ${n.display_phone_number}` : ''} ({n.phone_number_id})</option>)}
-              </select>
-            </div>
-            <div>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                <label style={label} htmlFor="wa-otp-tpl">Approved template</label>
-                <button onClick={()=>loadTemplates(form.phone_number_id)} disabled={tplState.loading} className="senda-btn senda-btn-sm"
-                  style={{background:'#f1f5f9',color:'#475569',border:'none',marginBottom:4}}>{tplState.loading ? 'Loading…' : 'Refresh from WhatsApp'}</button>
+          ) : (
+            <div style={{...card,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:22,alignItems:'start'}}>
+              <div>
+                <label style={label} htmlFor="wa-otp-pid">{step(1)}Send from this WhatsApp number</label>
+                <select id="wa-otp-pid" style={input} value={form.phone_number_id}
+                  onChange={e=>setForm(f=>({...f,phone_number_id:e.target.value,template_name:'',template_language:'en'}))}>
+                  {info.numbers.map(n => <option key={n.phone_number_id} value={n.phone_number_id}>{n.label}{n.display_phone_number ? ` · ${n.display_phone_number}` : ''}</option>)}
+                </select>
+                <p style={hint}>Codes are sent from this number.</p>
               </div>
-              <select id="wa-otp-tpl" style={input} value={inList ? chosen : ''} disabled={tplState.loading || templates.length===0}
-                onChange={e=>{ const [name, language] = e.target.value.split('|'); setForm(f=>({...f,template_name:name||'',template_language:language||'en'})); }}>
-                <option value="">{tplState.loading ? 'Loading templates…' : templates.length ? 'Choose a template…' : 'No approved templates found'}</option>
-                {templates.map(t => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name} ({t.language}) · {({AUTHENTICATION:'Authentication',UTILITY:'Utility',MARKETING:'Marketing'})[t.category] || t.category}{t.has_copy_button ? ' · copy-code button' : ''}</option>)}
-              </select>
-              {tplState.error && <p style={{...hint,color:'#b91c1c'}}>{tplState.error}</p>}
-              {!tplState.error && !tplState.loading && templates.length===0 && <p style={hint}>No approved template was found on this number's WhatsApp Business Account. Check that the WABA ID under WhatsApp Credentials is the account that owns the template.</p>}
-              {form.template_name && !inList && !tplState.loading && !tplState.error && <p style={{...hint,color:'#92400e'}}>The saved template "{form.template_name}" ({form.template_language}) is no longer in the approved list. Choose another.</p>}
-              {inList && templates.find(t=>`${t.name}|${t.language}`===chosen)?.category !== 'AUTHENTICATION' && <p style={{...hint,color:'#92400e'}}>WhatsApp designs <b>Authentication</b> templates for codes. This one is not, so it works only if its body takes the code as {'{{1}}'}.</p>}
+              <div>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                  <label style={label} htmlFor="wa-otp-tpl">{step(2)}Approved template</label>
+                  <button type="button" onClick={()=>loadTemplates(form.phone_number_id)} disabled={tplState.loading}
+                    style={{height:28,padding:'0 12px',borderRadius:8,border:'1px solid #d9e0ea',background:'#fff',color:'#334155',fontSize:12,fontWeight:600,cursor:'pointer',marginBottom:6}}>{tplState.loading ? 'Loading…' : 'Refresh'}</button>
+                </div>
+                <select id="wa-otp-tpl" style={input} value={inList ? chosen : ''} disabled={tplState.loading || templates.length===0}
+                  onChange={e=>{ const [name, language] = e.target.value.split('|'); setForm(f=>({...f,template_name:name||'',template_language:language||'en'})); }}>
+                  <option value="">{tplState.loading ? 'Loading templates…' : templates.length ? 'Choose a template…' : 'No approved templates found'}</option>
+                  {templates.map(t => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name} ({t.language}){t.has_copy_button ? ' · copy-code button' : ''}</option>)}
+                </select>
+                {picked && <p style={hint}>{({AUTHENTICATION:'Authentication',UTILITY:'Utility',MARKETING:'Marketing'})[picked.category] || picked.category} template · {picked.language}{picked.has_copy_button ? ' · with copy-code button' : ''}</p>}
+                {tplState.error && <p style={{...hint,color:'#b91c1c'}}>{tplState.error}</p>}
+                {!tplState.error && !tplState.loading && templates.length===0 && <p style={hint}>No approved template was found on this number's WhatsApp Business Account. Check that the WABA ID under WhatsApp Credentials is the account that owns the template.</p>}
+                {form.template_name && !inList && !tplState.loading && !tplState.error && <p style={{...hint,color:'#92400e'}}>The saved template "{form.template_name}" ({form.template_language}) is no longer in the approved list. Choose another.</p>}
+                {picked && picked.category !== 'AUTHENTICATION' && <p style={{...hint,color:'#92400e'}}>WhatsApp designs <b>Authentication</b> templates for codes. This one is not, so it works only if its body takes the code as {'{{1}}'}.</p>}
+              </div>
             </div>
-          </>)}
+          )}
 
-          <div style={{display:'flex',alignItems:'center',gap:12}}>
-            <button onClick={save} disabled={blocked} className="senda-btn"
-              style={{background:'#0f172a',color:'#fff',border:'none',opacity:blocked?.6:1}}>{saving ? 'Saving…' : 'Save'}</button>
-            {form.enabled && !inList && <span style={{fontSize:11.5,color:'#92400e'}}>Choose a template to turn this on.</span>}
-            {info.updated_at && <span style={{fontSize:11.5,color:'#94a3b8'}}>Last saved {new Date(info.updated_at).toLocaleString()}</span>}
+          <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+            <button type="button" onClick={save} disabled={blocked}
+              style={{height:42,padding:'0 28px',borderRadius:10,border:'none',background:'#0f172a',color:'#fff',fontSize:14,fontWeight:700,cursor:blocked?'not-allowed':'pointer',opacity:blocked?.5:1}}>{saving ? 'Saving…' : 'Save settings'}</button>
+            {form.enabled && !inList && <span style={{fontSize:12.5,color:'#92400e'}}>Choose a template to turn this on.</span>}
+            {info.updated_at && <span style={{fontSize:12.5,color:'#94a3b8'}}>Last saved {new Date(info.updated_at).toLocaleString()}</span>}
           </div>
         </div>
       )}
