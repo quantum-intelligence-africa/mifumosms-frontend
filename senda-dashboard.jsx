@@ -6446,6 +6446,117 @@ function PartnersTab() {
   );
 }
 
+// ─── Trash ────────────────────────────────────────────────────────────────────
+// One place to see everything that was deleted and bring it back. Today only users are moved to trash (every other delete is final), so
+// users are the first section; a new kind of deleted item gets its own section here when it becomes recoverable.
+function TrashTab() {
+  const { showToast, onLogout, adminInfo } = React.useContext(AppContext);
+  const isSuperAdmin = adminInfo?.role === 'super_admin';
+  const [search, setSearch] = useState('');
+  const [items, setItems] = useState([]);
+  const [meta, setMeta] = useState({});
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+  const PER = 20;
+
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams({ page, limit: PER, status: 'deleted' });
+    if (search.trim()) qs.set('search', search.trim());
+    adminFetch(`/users?${qs}`, {}, onLogout)
+      .then(res => {
+        if (res.success) { setItems(res.data || []); setMeta(res.meta || {}); }
+        else setError(res.error?.message || 'Failed to load the trash.');
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [page, search, onLogout]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const restore = (u) => {
+    if (!window.confirm(`Restore ${u.name}? They will be able to sign in again.`)) return;
+    setBusyId(u.id);
+    adminFetch(`/users/${u.id}/restore`, { method: 'PATCH' }, onLogout)
+      .then(res => {
+        if (res.success) { showToast?.(`${u.name} restored.`, 'success'); fetchData(); }
+        else showToast?.(res.error?.message || 'Failed to restore.', 'error');
+      })
+      .catch(() => showToast?.('Failed to restore.', 'error'))
+      .finally(() => setBusyId(null));
+  };
+
+  const total = meta.total || 0;
+  const pages = meta.total_pages || 1;
+  const when = (v) => v ? new Date(v).toLocaleString() : '—';
+
+  return (
+    <div className="senda-fade-in">
+      <div style={{display:'flex',alignItems:'center',gap:10,background:'#fef2f2',border:'1px solid #fecaca',color:'#991b1b',borderRadius:10,padding:'12px 16px',fontSize:13,marginBottom:16}}>
+        <Trash2 size={18} strokeWidth={2.2}/>
+        <span><b>Trash</b> — everything that was deleted and can still be brought back. Deleted users cannot sign in; their purchases, campaigns and history are kept.</span>
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',borderBottom:'1px solid #eef2f7',flexWrap:'wrap'}}>
+          <div style={{fontSize:14,fontWeight:700,color:'#0f172a'}}>Deleted users</div>
+          <span style={{fontSize:12,fontWeight:700,background:'#fee2e2',color:'#b91c1c',borderRadius:99,padding:'2px 10px'}}>{total}</span>
+          <input className="senda-input" placeholder="Search by name, email…" value={search}
+            onChange={e=>{setSearch(e.target.value);setPage(1);}} style={{marginLeft:'auto',width:260,height:36,fontSize:13}}/>
+        </div>
+
+        {error ? (
+          <div style={{padding:20,color:'#b91c1c',fontSize:13}}>{error}</div>
+        ) : loading ? (
+          <div style={{padding:28,textAlign:'center',color:'#94a3b8',fontSize:13}}>Loading…</div>
+        ) : items.length === 0 ? (
+          <div style={{padding:'40px 16px',textAlign:'center',color:'#94a3b8',fontSize:13}}>
+            <Trash2 size={28} strokeWidth={1.6} style={{marginBottom:8}}/>
+            <div>{search.trim() ? 'No deleted user matches your search.' : 'The trash is empty.'}</div>
+          </div>
+        ) : (
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{width:'100%'}}>
+              <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Registered</th><th>Deleted on</th><th></th></tr></thead>
+              <tbody>
+                {items.map(u => (
+                  <tr key={u.id}>
+                    <td style={{fontSize:12,color:'#64748b'}}>{u.id}</td>
+                    <td style={{fontWeight:600}}>{u.name}</td>
+                    <td style={{fontSize:12.5,color:'#475569'}}>{u.email}</td>
+                    <td style={{fontSize:12.5,color:'#475569'}}>{u.phone || '—'}</td>
+                    <td style={{fontSize:12.5,textTransform:'capitalize'}}>{String(u.role || '').replace('_',' ')}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{u.joined_at ? new Date(u.joined_at).toLocaleDateString() : '—'}</td>
+                    <td style={{fontSize:12,color:'#b91c1c',fontWeight:600}}>{when(u.deleted_at)}</td>
+                    <td style={{textAlign:'right'}}>
+                      {isSuperAdmin && (
+                        <button className="senda-btn senda-btn-sm" disabled={busyId===u.id} onClick={()=>restore(u)}
+                          style={{background:'#d1fae5',color:'#065f46',border:'none'}}>
+                          <RotateCcw size={13} strokeWidth={2.3}/> {busyId===u.id ? 'Restoring…' : 'Restore'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {pages > 1 && (
+          <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,padding:'12px 16px',borderTop:'1px solid #eef2f7',fontSize:12.5,color:'#64748b'}}>
+            <button className="senda-btn senda-btn-sm" disabled={page<=1} onClick={()=>setPage(p=>p-1)} style={{background:'#f1f5f9',color:'#334155',border:'none'}}>Previous</button>
+            <span>Page {page} of {pages}</span>
+            <button className="senda-btn senda-btn-sm" disabled={page>=pages} onClick={()=>setPage(p=>p+1)} style={{background:'#f1f5f9',color:'#334155',border:'none'}}>Next</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Users Management Tab ─────────────────────────────────────────────────────
 // Full CRUD lives here for a super_admin: create, edit profile, change role,
 // suspend/activate, grant/revoke IVR access, reset password, and soft-delete
@@ -19227,6 +19338,30 @@ function SmsBroadcastTab() {
     } catch { showToast('Network error', 'error'); }
   }, [onLogout, showToast, loadSchedules]);
 
+  // Edit a saved schedule (label, message, repeat and time). The audience stays as it was created: to change it, make a new schedule.
+  const [editing, setEditing] = useState(null);   // the schedule being edited, or null
+  const [editForm, setEditForm] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const openEdit = useCallback((s) => {
+    setEditing(s);
+    setEditForm({ name: s.name || '', message: s.message || '', frequency: s.frequency, send_time: s.send_time || '08:00', weekdays: [...(s.weekdays || [])], skip_already_sent: !!s.skip_already_sent });
+  }, []);
+  const saveEdit = useCallback(async () => {
+    if (!editing || !editForm) return;
+    if (!editForm.message.trim()) { showToast('The message cannot be empty', 'error'); return; }
+    if (editForm.frequency === 'weekly' && editForm.weekdays.length === 0) { showToast('Pick at least one weekday', 'error'); return; }
+    setSavingEdit(true);
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/schedules/${editing.id}`, {
+        method:'PATCH',
+        body: JSON.stringify({ ...editForm, name: editForm.name.trim(), weekdays: editForm.frequency === 'weekly' ? editForm.weekdays : [] }),
+      }, onLogout);
+      if (res.success) { showToast('Schedule updated', 'success'); setEditing(null); setEditForm(null); loadSchedules(); }
+      else showToast(res.error?.message || 'Failed to update schedule', 'error');
+    } catch { showToast('Network error', 'error'); }
+    finally { setSavingEdit(false); }
+  }, [editing, editForm, onLogout, showToast, loadSchedules]);
+
   // ── Single direct message ──
   // Debounced sender search (name / account / phone / email).
   useEffect(() => {
@@ -19879,7 +20014,7 @@ function SmsBroadcastTab() {
           : s.frequency === 'daily' ? `Daily · ${s.send_time}`
           : `Weekly · ${(s.weekdays||[]).map(d=>['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d]).join(', ')} · ${s.send_time}`;
         const audienceOf = (s) => `${AUDIENCES.find(a=>a.id===s.audience)?.label || s.audience}${s.partner_name ? ` · ${s.partner_name}` : ''}`;
-        return (
+        return (<>
         <div className="senda-card" style={{ padding:0, overflow:'hidden' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'16px 20px', borderBottom:'1px solid #eef2f7', flexWrap:'wrap' }}>
             <div style={{ minWidth:0 }}>
@@ -19909,6 +20044,10 @@ function SmsBroadcastTab() {
                   </div>
                   <div style={{ fontSize:12.5, color:'#475569', background:'#f8fafc', borderRadius:8, padding:'8px 10px', marginBottom:12, lineHeight:1.5, maxHeight:66, overflow:'hidden' }}>{s.message}</div>
                   <div style={{ display:'flex', gap:8 }}>
+                    <button className="senda-btn senda-btn-sm" onClick={()=>openEdit(s)}
+                      style={{ flex:1, height:34, border:'1.5px solid #bfdbfe', background:'#fff', color:'#2563eb', fontWeight:700 }}>
+                      Edit
+                    </button>
                     <button className="senda-btn senda-btn-sm" onClick={()=>toggleSchedule(s)}
                       style={{ flex:1, height:34, border:'1.5px solid #e2e8f0', background:'#fff', color:s.is_active ? '#d97706' : '#16a34a', fontWeight:700 }}>
                       {s.is_active ? 'Pause' : 'Resume'}
@@ -19943,6 +20082,10 @@ function SmsBroadcastTab() {
                     <td style={{ padding:'10px 14px' }}><Pill color={s.is_active ? '#16a34a' : '#94a3b8'}>{s.is_active ? 'Active' : 'Paused'}</Pill></td>
                     <td style={{ padding:'10px 14px', color:'#475569', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.message}</td>
                     <td style={{ padding:'10px 14px', whiteSpace:'nowrap' }}>
+                      <button className="senda-btn senda-btn-sm" onClick={()=>openEdit(s)}
+                        style={{ height:30, border:'1.5px solid #bfdbfe', background:'#fff', color:'#2563eb', fontWeight:700, marginRight:8 }}>
+                        Edit
+                      </button>
                       <button className="senda-btn senda-btn-sm" onClick={()=>toggleSchedule(s)}
                         style={{ height:30, border:'1.5px solid #e2e8f0', background:'#fff', color:s.is_active ? '#d97706' : '#16a34a', fontWeight:700, marginRight:8 }}>
                         {s.is_active ? 'Pause' : 'Resume'}
@@ -19959,7 +20102,62 @@ function SmsBroadcastTab() {
             </div>
           )}
         </div>
-      );})()}
+        {editing && editForm && (
+          <div onClick={()=>!savingEdit && setEditing(null)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+            <div onClick={e=>e.stopPropagation()} style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', padding:24 }}>
+              <h3 style={{ fontSize:17, fontWeight:800, color:'#0f172a', margin:0 }}>Edit scheduled broadcast</h3>
+              <div style={{ fontSize:12.5, color:'#64748b', margin:'4px 0 18px' }}>
+                Audience: <b>{audienceOf(editing)}</b> (cannot be changed — create a new schedule for another audience). Changes apply from the next run.
+              </div>
+
+              <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:6 }}>Label <span style={{ color:'#94a3b8', fontWeight:500 }}>(optional)</span></label>
+              <input className="senda-input" value={editForm.name} maxLength={120} onChange={e=>setEditForm(f=>({ ...f, name:e.target.value }))}/>
+
+              <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', margin:'16px 0 6px' }}>Message</label>
+              <textarea className="senda-input" rows={6} value={editForm.message} onChange={e=>setEditForm(f=>({ ...f, message:e.target.value }))}
+                style={{ height:'auto', padding:'12px 14px', resize:'vertical', lineHeight:1.5 }}/>
+              <div style={{ fontSize:11, color:'#94a3b8', marginTop:6 }}>{editForm.message.length} characters · you can use {'{{name}}'} and {'{{business_name}}'}</div>
+
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginTop:16 }}>
+                <div>
+                  <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:6 }}>Repeat</label>
+                  <select className="senda-input" value={editForm.frequency} onChange={e=>setEditForm(f=>({ ...f, frequency:e.target.value }))}>
+                    <option value="once">Once</option>
+                    <option value="daily">Every day</option>
+                    <option value="weekly">Every week</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:6 }}>Time</label>
+                  <input className="senda-input" type="time" value={editForm.send_time} onChange={e=>setEditForm(f=>({ ...f, send_time:e.target.value }))}/>
+                </div>
+              </div>
+
+              {editForm.frequency === 'weekly' && (
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:14 }}>
+                  {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((lbl, d) => {
+                    const on = editForm.weekdays.includes(d);
+                    return (
+                      <button key={d} type="button" onClick={()=>setEditForm(f=>({ ...f, weekdays: on ? f.weekdays.filter(x=>x!==d) : [...f.weekdays, d].sort() }))}
+                        style={{ padding:'7px 12px', borderRadius:99, border:'1.5px solid '+(on ? '#2563eb' : '#e2e8f0'), background:on ? '#2563eb' : '#fff', color:on ? '#fff' : '#475569', fontSize:12.5, fontWeight:700, cursor:'pointer' }}>{lbl}</button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <label style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#334155', marginTop:16, cursor:'pointer' }}>
+                <input type="checkbox" checked={editForm.skip_already_sent} onChange={e=>setEditForm(f=>({ ...f, skip_already_sent:e.target.checked }))}/>
+                Skip people who already received this message
+              </label>
+
+              <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:22 }}>
+                <button className="senda-btn senda-btn-sm" disabled={savingEdit} onClick={()=>setEditing(null)} style={{ height:38, padding:'0 18px', border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', fontWeight:700 }}>Cancel</button>
+                <button className="senda-btn senda-btn-primary senda-btn-sm" disabled={savingEdit} onClick={saveEdit} style={{ height:38, padding:'0 22px', fontWeight:700 }}>{savingEdit ? 'Saving…' : 'Save changes'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+        </>);})()}
 
       {view === 'history' && (
         <div className="senda-card" style={{ padding:0, overflow:'hidden' }}>
@@ -21208,6 +21406,7 @@ const NAV_GROUPS = [
     { id:'idleusers',     Icon:Clock,        label:'Idle Users'       },
     { id:'engagement',    Icon:MessageSquare, label:'Engagement'      },
     { id:'featureaccess', Icon:UserCheck,    label:'Feature Access'   },
+    { id:'trash',         Icon:Trash2,       label:'Trash'            },
     { id:'deletionrequests', Icon:Trash2,    label:'Inbox Data Deletion' },
   ]},
   { title: 'Partners', items: [
@@ -25497,6 +25696,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     idleusers:    <RegisteredIdleTab/>,
     whatsapp:     <WhatsAppTab/>,
     loginactivity:<LoginActivityTab/>,
+    trash:        <TrashTab/>,
     deletionrequests:<DeletionRequestsTab/>,
     callcenterplans:<CallCenterPlansTab/>,
     comingsoon:   <ComingSoonTab/>,
