@@ -20102,61 +20102,81 @@ function SmsBroadcastTab() {
             </div>
           )}
         </div>
-        {editing && editForm && (
-          <div onClick={()=>!savingEdit && setEditing(null)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-            <div onClick={e=>e.stopPropagation()} style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', padding:24 }}>
-              <h3 style={{ fontSize:17, fontWeight:800, color:'#0f172a', margin:0 }}>Edit scheduled broadcast</h3>
-              <div style={{ fontSize:12.5, color:'#64748b', margin:'4px 0 18px' }}>
-                Audience: <b>{audienceOf(editing)}</b> (cannot be changed — create a new schedule for another audience). Changes apply from the next run.
+        {editing && editForm && createPortal((() => {
+          const seg = smsSegments(editForm.message);
+          const field = { fontSize:12.5, fontWeight:700, color:'#334155', display:'block', marginBottom:7 };
+          const freqs = [['once','Once'],['daily','Every day'],['weekly','Every week']];
+          return (
+          <div onClick={()=>!savingEdit && setEditing(null)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.5)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+            <div onClick={e=>e.stopPropagation()} style={{ background:'#fff', borderRadius:18, width:'100%', maxWidth:600, maxHeight:'calc(100vh - 32px)', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 24px 60px rgba(15,23,42,.35)' }}>
+              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, padding:'20px 24px 14px', borderBottom:'1px solid #eef2f7' }}>
+                <div style={{ minWidth:0 }}>
+                  <h3 style={{ fontSize:18, fontWeight:800, color:'#0f172a', margin:0 }}>Edit scheduled broadcast</h3>
+                  <div style={{ fontSize:12.5, color:'#64748b', marginTop:6, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                    <span>Sends to</span>
+                    <span style={{ background:'#eff6ff', color:'#1d4ed8', borderRadius:99, padding:'3px 11px', fontWeight:700 }}>{audienceOf(editing)}</span>
+                    <span style={{ color:'#94a3b8' }}>· audience is fixed, changes apply from the next run</span>
+                  </div>
+                </div>
+                <button type="button" aria-label="Close" onClick={()=>setEditing(null)} disabled={savingEdit}
+                  style={{ border:'none', background:'#f1f5f9', color:'#475569', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:18, lineHeight:1, flexShrink:0 }}>×</button>
               </div>
 
-              <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:6 }}>Label <span style={{ color:'#94a3b8', fontWeight:500 }}>(optional)</span></label>
-              <input className="senda-input" value={editForm.name} maxLength={120} onChange={e=>setEditForm(f=>({ ...f, name:e.target.value }))}/>
-
-              <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', margin:'16px 0 6px' }}>Message</label>
-              <textarea className="senda-input" rows={6} value={editForm.message} onChange={e=>setEditForm(f=>({ ...f, message:e.target.value }))}
-                style={{ height:'auto', padding:'12px 14px', resize:'vertical', lineHeight:1.5 }}/>
-              <div style={{ fontSize:11, color:'#94a3b8', marginTop:6 }}>{editForm.message.length} characters · you can use {'{{name}}'} and {'{{business_name}}'}</div>
-
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginTop:16 }}>
+              <div style={{ padding:'20px 24px', overflowY:'auto', display:'grid', gap:20 }}>
                 <div>
-                  <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:6 }}>Repeat</label>
-                  <select className="senda-input" value={editForm.frequency} onChange={e=>setEditForm(f=>({ ...f, frequency:e.target.value }))}>
-                    <option value="once">Once</option>
-                    <option value="daily">Every day</option>
-                    <option value="weekly">Every week</option>
-                  </select>
+                  <label style={field}>Label <span style={{ color:'#94a3b8', fontWeight:500 }}>(optional, only you see it)</span></label>
+                  <input className="senda-input" value={editForm.name} maxLength={120} onChange={e=>setEditForm(f=>({ ...f, name:e.target.value }))}/>
                 </div>
+
                 <div>
-                  <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:6 }}>Time</label>
-                  <input className="senda-input" type="time" value={editForm.send_time} onChange={e=>setEditForm(f=>({ ...f, send_time:e.target.value }))}/>
+                  <label style={field}>Message</label>
+                  <textarea className="senda-input" rows={6} value={editForm.message} onChange={e=>setEditForm(f=>({ ...f, message:e.target.value }))}
+                    style={{ height:'auto', padding:'12px 14px', resize:'vertical', lineHeight:1.55 }}/>
+                  <div style={{ display:'flex', justifyContent:'space-between', gap:10, flexWrap:'wrap', fontSize:11.5, color:'#94a3b8', marginTop:6 }}>
+                    <span>Use {'{{name}}'} and {'{{business_name}}'} to personalise</span>
+                    <span>{seg.len} characters · {seg.segments} SMS segment{seg.segments!==1?'s':''}</span>
+                  </div>
                 </div>
+
+                <div style={{ background:'#f8fafc', border:'1px solid #eef2f7', borderRadius:14, padding:16, display:'grid', gap:14 }}>
+                  <div style={{ fontSize:13, fontWeight:800, color:'#0f172a' }}>When to send</div>
+                  <div style={{ display:'flex', gap:6, background:'#e8edf4', padding:4, borderRadius:12 }}>
+                    {freqs.map(([v, lbl]) => (
+                      <button key={v} type="button" onClick={()=>setEditForm(f=>({ ...f, frequency:v }))}
+                        style={{ flex:1, height:36, border:'none', borderRadius:9, cursor:'pointer', fontSize:13, fontWeight:700, background:editForm.frequency===v ? '#fff' : 'transparent', color:editForm.frequency===v ? '#1d4ed8' : '#64748b', boxShadow:editForm.frequency===v ? '0 1px 3px rgba(15,23,42,.15)' : 'none' }}>{lbl}</button>
+                    ))}
+                  </div>
+                  {editForm.frequency === 'weekly' && (
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                      {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((lbl, d) => {
+                        const on = editForm.weekdays.includes(d);
+                        return (
+                          <button key={d} type="button" onClick={()=>setEditForm(f=>({ ...f, weekdays: on ? f.weekdays.filter(x=>x!==d) : [...f.weekdays, d].sort() }))}
+                            style={{ flex:'1 1 56px', height:36, borderRadius:10, border:'1.5px solid '+(on ? '#2563eb' : '#dbe2ec'), background:on ? '#2563eb' : '#fff', color:on ? '#fff' : '#475569', fontSize:12.5, fontWeight:700, cursor:'pointer' }}>{lbl}</button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                    <label style={{ ...field, marginBottom:0 }}>At</label>
+                    <input className="senda-input" type="time" value={editForm.send_time} onChange={e=>setEditForm(f=>({ ...f, send_time:e.target.value }))} style={{ maxWidth:170 }}/>
+                  </div>
+                </div>
+
+                <label style={{ display:'flex', alignItems:'center', gap:10, fontSize:13.5, color:'#334155', cursor:'pointer' }}>
+                  <input type="checkbox" checked={editForm.skip_already_sent} onChange={e=>setEditForm(f=>({ ...f, skip_already_sent:e.target.checked }))} style={{ width:18, height:18 }}/>
+                  Skip people who already received this message
+                </label>
               </div>
 
-              {editForm.frequency === 'weekly' && (
-                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:14 }}>
-                  {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((lbl, d) => {
-                    const on = editForm.weekdays.includes(d);
-                    return (
-                      <button key={d} type="button" onClick={()=>setEditForm(f=>({ ...f, weekdays: on ? f.weekdays.filter(x=>x!==d) : [...f.weekdays, d].sort() }))}
-                        style={{ padding:'7px 12px', borderRadius:99, border:'1.5px solid '+(on ? '#2563eb' : '#e2e8f0'), background:on ? '#2563eb' : '#fff', color:on ? '#fff' : '#475569', fontSize:12.5, fontWeight:700, cursor:'pointer' }}>{lbl}</button>
-                    );
-                  })}
-                </div>
-              )}
-
-              <label style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#334155', marginTop:16, cursor:'pointer' }}>
-                <input type="checkbox" checked={editForm.skip_already_sent} onChange={e=>setEditForm(f=>({ ...f, skip_already_sent:e.target.checked }))}/>
-                Skip people who already received this message
-              </label>
-
-              <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:22 }}>
-                <button className="senda-btn senda-btn-sm" disabled={savingEdit} onClick={()=>setEditing(null)} style={{ height:38, padding:'0 18px', border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', fontWeight:700 }}>Cancel</button>
-                <button className="senda-btn senda-btn-primary senda-btn-sm" disabled={savingEdit} onClick={saveEdit} style={{ height:38, padding:'0 22px', fontWeight:700 }}>{savingEdit ? 'Saving…' : 'Save changes'}</button>
+              <div style={{ display:'flex', gap:10, justifyContent:'flex-end', padding:'14px 24px', borderTop:'1px solid #eef2f7', background:'#fff' }}>
+                <button className="senda-btn senda-btn-sm" disabled={savingEdit} onClick={()=>setEditing(null)} style={{ height:40, padding:'0 20px', border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', fontWeight:700 }}>Cancel</button>
+                <button className="senda-btn senda-btn-primary senda-btn-sm" disabled={savingEdit} onClick={saveEdit} style={{ height:40, padding:'0 24px', fontWeight:700 }}>{savingEdit ? 'Saving…' : 'Save changes'}</button>
               </div>
             </div>
           </div>
-        )}
+          );
+        })(), document.body)}
         </>);})()}
 
       {view === 'history' && (
