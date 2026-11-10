@@ -239,8 +239,8 @@ All colors MUST be HSL for consistency and theming.
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        /* PWA: prevent rubber-band overscroll and tap highlight */
-        overscroll-behavior-y: contain;
+        /* PWA: tap highlight off. (Overscroll containment is set only on the installed-app shell below: on the plain
+           page it must not be here, because it stops a swipe from reaching the page scroll.) */
         -webkit-tap-highlight-color: transparent;
         -webkit-touch-callout: none;
     }
@@ -415,6 +415,11 @@ All colors MUST be HSL for consistency and theming.
         body.app-shell .app-shell-main[data-sticky-bottom-bar] {
             padding-bottom: calc(var(--mobile-bottom-clearance) + 80px) !important;
         }
+    }
+
+    /* PWA shell: no rubber-band overscroll on the outer page. */
+    body.app-shell {
+        overscroll-behavior-y: contain;
     }
 
     /* Smooth, momentum-style scrolling on iOS inside main. */

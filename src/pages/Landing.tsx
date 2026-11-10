@@ -703,11 +703,11 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           }
 
           /* Prevent horizontal scrolling without affecting vertical scroll.
-             Only body gets overflow-x: hidden; html stays default so the
-             window remains the scrolling element. */
+             Use clip, never hidden/auto: with html already set to clip, a body that is hidden/auto becomes its own
+             scroll container, and on phones a swipe on the page then goes nowhere (the page cannot be scrolled). */
           body {
-            overflow-x: hidden;
-            overflow-y: auto;
+            overflow-x: clip;
+            overflow-y: visible;
             max-width: 100%;
           }
           html {
