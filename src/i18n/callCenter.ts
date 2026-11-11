@@ -112,6 +112,7 @@ export const ccEn = {
   "cc.history.detail_left_while_waiting": "Hung up while waiting in the queue",
   "cc.history.detail_queue_timeout": "Waited too long in the queue",
   "cc.history.detail_queue_full": "The queue was full",
+  "cc.calls.missed_at": "Missed at",
   "cc.history.detail_no_agent_answered": "Agents were rung and nobody answered",
   "cc.history.detail_rejected_by_agents": "Every agent declined",
   "cc.history.detail_failed": "The call failed",

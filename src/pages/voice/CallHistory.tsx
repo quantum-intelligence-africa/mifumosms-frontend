@@ -79,6 +79,8 @@ interface CallSummary {
   call_outcome?: string;
   /** Why the call ended this way (queue timeout, asked for a callback, ...); "" when there is nothing more to say. */
   outcome_detail?: string;
+  /** For a call nobody took: the agents (branches) it rang and the team it was sent to; null when answered or unknown. */
+  missed_for?: { agents: string[]; team: string | null } | null;
   agent_name?: string;
   is_simulated: boolean;
   started_at: string;
@@ -626,7 +628,17 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                                 )}
                               </TableCell>
                               <TableCell className="whitespace-nowrap">
-                                <AgentChip name={call.agent?.name} department={call.agent?.department} />
+                                {!call.agent && call.missed_for ? (
+                                  <div className="max-w-[14rem]" title={[...call.missed_for.agents, call.missed_for.team].filter(Boolean).join(", ")}>
+                                    <p className="text-[11px] font-medium uppercase tracking-wide text-destructive">{t("cc.calls.missed_at")}</p>
+                                    <p className="truncate text-sm text-foreground">{call.missed_for.agents.length ? call.missed_for.agents.join(", ") : call.missed_for.team}</p>
+                                    {call.missed_for.agents.length > 0 && call.missed_for.team && !call.missed_for.agents.includes(call.missed_for.team) && (
+                                      <p className="truncate text-xs text-muted-foreground">{call.missed_for.team}</p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <AgentChip name={call.agent?.name} department={call.agent?.department} />
+                                )}
                               </TableCell>
                               <TableCell className="whitespace-nowrap">
                                 <p className="font-mono text-sm text-foreground">{started.toLocaleDateString(appLocale(), { month: "short", day: "2-digit" })}</p>
@@ -719,6 +731,14 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                                           <dd>
                                             <Badge variant={missed ? "destructive" : "default"}>{outcomeLabel(call, t)}</Badge>
                                           </dd>
+                                          {!detail.agent && call.missed_for && (
+                                            <>
+                                              <dt className="text-muted-foreground">{t("cc.calls.missed_at")}</dt>
+                                              <dd className="text-foreground">
+                                                {[...call.missed_for.agents, ...(call.missed_for.team && !call.missed_for.agents.includes(call.missed_for.team) ? [call.missed_for.team] : [])].join(" · ")}
+                                              </dd>
+                                            </>
+                                          )}
                                           {detail.agent && (
                                             <>
                                               <dt className="text-muted-foreground">{t("voice.calls.col_agent")}</dt>

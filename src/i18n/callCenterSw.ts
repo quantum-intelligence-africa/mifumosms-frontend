@@ -105,6 +105,7 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.history.detail_left_while_waiting": "Alikata simu akisubiri kwenye foleni",
   "cc.history.detail_queue_timeout": "Alisubiri muda mrefu sana kwenye foleni",
   "cc.history.detail_queue_full": "Foleni ilikuwa imejaa",
+  "cc.calls.missed_at": "Haikupokelewa kwa",
   "cc.history.detail_no_agent_answered": "Wahudumu waliitwa na hakuna aliyepokea",
   "cc.history.detail_rejected_by_agents": "Kila mhudumu alikataa",
   "cc.history.detail_failed": "Simu ilishindikana",
