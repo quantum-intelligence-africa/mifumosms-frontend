@@ -16,6 +16,7 @@ import { voiceApi } from "@/services/voiceApi";
 
 interface AISettings {
   enabled: boolean;
+  platform_managed?: boolean;
   post_call_summary: boolean;
   sentiment_analysis: boolean;
   intent_detection: boolean;
@@ -140,7 +141,7 @@ export default function AISettings() {
                         </CardDescription>
                       </div>
                     </div>
-                    <Switch checked={settings.enabled} onCheckedChange={handleMasterToggle} disabled={isSaving} />
+                    <Switch checked={settings.enabled} onCheckedChange={handleMasterToggle} disabled={isSaving || settings.platform_managed} />
                   </CardHeader>
 
                   {!settings.enabled && (

@@ -15914,7 +15914,8 @@ function VoiceNumbersTab() {
   const [helpNumber, setHelpNumber] = useState('');                   // the number on the website's "Need help? Call us" button
   const [helpSaved, setHelpSaved]   = useState('');
   const [diarizeMono, setDiarizeMono] = useState(false);              // speaker separation on short single-channel recordings
-  const [enforcePlan, setEnforcePlan] = useState(true);       // organizations with no active plan hear two beeps (and plan limits apply)
+  const [aiAll, setAiAll] = useState(true);                 // AI call analysis for every organization, one switch (on by default)
+  const [enforcePlan, setEnforcePlan] = useState(true);      // organizations with no active plan hear two beeps (and plan limits apply)
   const [builtInMusic, setBuiltInMusic] = useState(true);   // SENDA's own waiting-music file on or off for the whole platform
   const [defaultMsg, setDefaultMsg] = useState('');   // what callers hear on any switched-off number without its own message
   const [defaultDraft, setDefaultDraft] = useState('');
@@ -15984,6 +15985,7 @@ function VoiceNumbersTab() {
       if (res.success) {
         setBuiltInMusic(res.data?.built_in_waiting_music !== false);
         setEnforcePlan(res.data?.enforce_plan !== false);
+        setAiAll(res.data?.ai_analysis_all !== false);
         setCallSummaryEmails(res.data?.call_summary_emails === true);
         setDiarizeMono(res.data?.diarize_mono_calls === true);
         setHelpNumber(res.data?.help_call_number || ''); setHelpSaved(res.data?.help_call_number || '');
@@ -16331,6 +16333,19 @@ function VoiceNumbersTab() {
       </div>
 
       <LiveVoiceCard/>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>AI call analysis</div>
+        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
+          <input type="checkbox" checked={aiAll} onChange={e => saveFlag('ai_analysis_all', e.target.checked, setAiAll, aiAll,
+            ['AI call analysis is on for every organization (calls that end from now on).', 'AI call analysis is back to each organization’s own switch.'])} style={{marginTop:3}}/>
+          <span><b>Analyse every organization's calls</b>: transcript, summary, sentiment and the emails and reports, with no switch for customers to find.</span>
+        </label>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
+          On by default: this is the one place to control it. Customers see it as on and cannot turn it off. It covers calls that end after you switch it on; older calls are not analysed.
+          Each analysed call uses speech-to-text and AI credits, so check your ElevenLabs and Hugging Face balances first.
+        </p>
+      </div>
 
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Call transcription</div>
