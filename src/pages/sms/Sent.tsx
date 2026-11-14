@@ -134,11 +134,10 @@ const Sent = () => {
   const extraRecipients = (m: SMSMessageItem) =>
     m.recipient_count && m.recipient_count > 1 ? m.recipient_count - 1 : 0;
 
-  const statusVariant = (status: string) =>
-    status === "delivered" ? "default" : "secondary";
+  // Customers see only "Sent" (accepted by the network) or "Failed": delivery reports are not shown.
+  const statusVariant = (_status: string) => "secondary" as const;
 
-  const statusLabel = (status: string) =>
-    status === "delivered" ? t("status.delivered") : t("status.sent");
+  const statusLabel = (_status: string) => t("status.sent");
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "—";
@@ -280,7 +279,6 @@ const Sent = () => {
                           <TableHead className="text-xs">{t("sms.common.daily_col_day")}</TableHead>
                           <TableHead className="text-right text-xs">{t("sms.common.daily_col_sent")}</TableHead>
                           <TableHead className="text-right text-xs">{t("sms.common.daily_col_unique")}</TableHead>
-                          <TableHead className="text-right text-xs">{t("sms.common.daily_col_delivered")}</TableHead>
                           <TableHead className="text-right text-xs">{t("sms.common.daily_col_failed")}</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -297,7 +295,6 @@ const Sent = () => {
                               {d.unique_numbers.toLocaleString()}
                               {d.repeats > 0 && <span className="ml-1 text-[10px] text-amber-600">({d.repeats.toLocaleString()} {t("sms.common.daily_repeats")})</span>}
                             </TableCell>
-                            <TableCell className="text-right text-xs tabular-nums text-green-600">{d.delivered.toLocaleString()}</TableCell>
                             <TableCell className="text-right text-xs tabular-nums text-red-600">{d.failed.toLocaleString()}</TableCell>
                           </TableRow>
                         ))}
