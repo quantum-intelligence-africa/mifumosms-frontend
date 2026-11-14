@@ -15922,6 +15922,8 @@ function VoiceNumbersTab() {
   const [helpNumber, setHelpNumber] = useState('');                   // the number on the website's "Need help? Call us" button
   const [helpSaved, setHelpSaved]   = useState('');
   const [diarizeMono, setDiarizeMono] = useState(false);              // speaker separation on short single-channel recordings
+  const [noiseClean, setNoiseClean] = useState('ffmpeg');       // background-noise cleanup before transcription: off / ffmpeg / deepfilter
+  const [noiseAvail, setNoiseAvail] = useState({ ffmpeg: true, deepfilter: false });
   const [aiAll, setAiAll] = useState(true);                 // AI call analysis for every organization, one switch (on by default)
   const [enforcePlan, setEnforcePlan] = useState(true);      // organizations with no active plan hear two beeps (and plan limits apply)
   const [builtInMusic, setBuiltInMusic] = useState(true);   // SENDA's own waiting-music file on or off for the whole platform
@@ -15994,6 +15996,7 @@ function VoiceNumbersTab() {
         setBuiltInMusic(res.data?.built_in_waiting_music !== false);
         setEnforcePlan(res.data?.enforce_plan !== false);
         setAiAll(res.data?.ai_analysis_all !== false);
+        setNoiseClean(res.data?.noise_cleanup || 'ffmpeg'); setNoiseAvail(res.data?.noise_cleanup_available || { ffmpeg: true, deepfilter: false });
         setCallSummaryEmails(res.data?.call_summary_emails === true);
         setDiarizeMono(res.data?.diarize_mono_calls === true);
         setHelpNumber(res.data?.help_call_number || ''); setHelpSaved(res.data?.help_call_number || '');
@@ -16357,6 +16360,20 @@ function VoiceNumbersTab() {
 
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Call transcription</div>
+        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',margin:'8px 0 4px',fontSize:13,color:'#0f172a'}}>
+          <b>Reduce background noise</b> before transcribing:
+          <select value={noiseClean} onChange={e => saveFlag('noise_cleanup', e.target.value, setNoiseClean, noiseClean,
+            [`Noise cleanup: ${e.target.value === 'off' ? 'off' : e.target.value === 'deepfilter' ? 'DeepFilterNet' : 'FFmpeg'}.`, 'Noise cleanup updated.'])}
+            style={{height:32,borderRadius:8,border:'1px solid #e2e8f0',padding:'0 8px',fontSize:13}}>
+            <option value="off">Off</option>
+            <option value="ffmpeg" disabled={!noiseAvail.ffmpeg}>FFmpeg (high-pass + noise filter){noiseAvail.ffmpeg ? '' : ' - not installed'}</option>
+            <option value="deepfilter" disabled={!noiseAvail.deepfilter}>DeepFilterNet (speech enhancement){noiseAvail.deepfilter ? '' : ' - not installed'}</option>
+          </select>
+        </div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 10px'}}>
+          The cleaned audio is used only for the transcript: the stored recording is never changed, and if cleaning fails the original audio is used. Applies to calls analysed from now on.
+          Compare the options on real calls first with <code>python manage.py compare_cleanup</code> on the voice server.
+        </p>
         <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
           <input type="checkbox" checked={diarizeMono} onChange={e => saveFlag('diarize_mono_calls', e.target.checked, setDiarizeMono, diarizeMono,
             ['Speaker separation is on for new transcriptions.', 'Speaker separation is off.'])} style={{marginTop:3}}/>
