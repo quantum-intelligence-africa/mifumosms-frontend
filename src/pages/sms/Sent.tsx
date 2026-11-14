@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { Fragment, useState, useEffect, useCallback } from "react";
 import { logger } from "@/utils/logger";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -34,7 +34,8 @@ const Sent = () => {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [daily, setDaily] = useState<{ date: string; sent: number; unique_numbers: number; repeats: number; delivered: number; failed: number; messages: number }[]>([]);
+  const [daily, setDaily] = useState<{ date: string; sent: number; unique_numbers: number; repeats: number; repeated_numbers?: { phone: string; times: number }[]; delivered: number; failed: number; messages: number }[]>([]);
+  const [openRepeats, setOpenRepeats] = useState<string | null>(null);   // the day whose repeated numbers are shown
   const [dailyDays, setDailyDays] = useState(7);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -284,8 +285,8 @@ const Sent = () => {
                       </TableHeader>
                       <TableBody>
                         {daily.map((d) => (
+                          <Fragment key={d.date}>
                           <TableRow
-                            key={d.date}
                             onClick={() => setRange(d.date, d.date)}
                             className={`cursor-pointer ${dateFrom === d.date && dateTo === d.date ? "bg-muted/60" : ""}`}
                           >
@@ -293,10 +294,33 @@ const Sent = () => {
                             <TableCell className="text-right text-xs font-semibold tabular-nums">{d.sent.toLocaleString()}</TableCell>
                             <TableCell className="text-right text-xs tabular-nums">
                               {d.unique_numbers.toLocaleString()}
-                              {d.repeats > 0 && <span className="ml-1 text-[10px] text-amber-600">({d.repeats.toLocaleString()} {t("sms.common.daily_repeats")})</span>}
+                              {d.repeats > 0 && (
+                                <button
+                                  type="button"
+                                  className="ml-1 text-[10px] text-amber-600 underline decoration-dotted underline-offset-2"
+                                  onClick={(e) => { e.stopPropagation(); setOpenRepeats(openRepeats === d.date ? null : d.date); }}
+                                >
+                                  ({d.repeats.toLocaleString()} {t("sms.common.daily_repeats")})
+                                </button>
+                              )}
                             </TableCell>
                             <TableCell className="text-right text-xs tabular-nums text-red-600">{d.failed.toLocaleString()}</TableCell>
                           </TableRow>
+                          {openRepeats === d.date && (
+                            <TableRow className="bg-amber-50/60 hover:bg-amber-50/60">
+                              <TableCell colSpan={4} className="py-2">
+                                <p className="mb-1.5 text-[11px] font-medium text-text-subtle">{t("sms.common.daily_repeated_title")}</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(d.repeated_numbers ?? []).map((r) => (
+                                    <span key={r.phone} className="rounded-md border border-amber-200 bg-white px-2 py-0.5 text-[11px] tabular-nums">
+                                      {r.phone} <span className="font-semibold text-amber-700">× {r.times}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          </Fragment>
                         ))}
                       </TableBody>
                     </Table>

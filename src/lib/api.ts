@@ -3281,7 +3281,7 @@ class ApiClient {
   /** SMS sent per day, counted per recipient (default the last 7 days). */
   async getSMSDailySummary(params?: { days?: number; date_from?: string; date_to?: string }): Promise<ApiResponse<{
     success?: boolean;
-    days: { date: string; sent: number; unique_numbers: number; repeats: number; delivered: number; failed: number; messages: number }[];
+    days: { date: string; sent: number; unique_numbers: number; repeats: number; repeated_numbers?: { phone: string; times: number }[]; delivered: number; failed: number; messages: number }[];
     totals: { sent: number; delivered: number; failed: number };
   }>> {
     const q = new URLSearchParams();

@@ -856,6 +856,8 @@ const translations = {
     "sms.common.daily_col_sent": "Sent",
     "sms.common.daily_col_unique": "Different numbers",
     "sms.common.daily_repeats": "repeats",
+    "sms.common.daily_repeated_title": "Numbers sent more than once on this day",
+    "sms.common.daily_repeated_times": "times",
     "sms.common.daily_col_delivered": "Confirmed delivered",
     "sms.common.daily_col_failed": "Failed",
     "sms.sent.load_error_title": "Failed to load sent messages",

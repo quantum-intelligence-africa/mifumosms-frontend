@@ -757,6 +757,8 @@ const sw: Record<string, string> = {
   "sms.common.daily_col_sent": "Zilizotumwa",
   "sms.common.daily_col_unique": "Namba tofauti",
   "sms.common.daily_repeats": "marudio",
+  "sms.common.daily_repeated_title": "Namba zilizotumiwa zaidi ya mara moja siku hii",
+  "sms.common.daily_repeated_times": "mara",
   "sms.common.daily_col_delivered": "Zilizothibitishwa kufika",
   "sms.common.daily_col_failed": "Zilizoshindwa",
   "sms.sent.load_error_title": "Imeshindikana kupakia ujumbe uliotumwa",
