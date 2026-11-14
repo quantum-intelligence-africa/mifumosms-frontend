@@ -12759,7 +12759,8 @@ function FreeCreditExpirySettings() {
 // Mifumo sets aside a pool of free SMS per partner; the partner's own system hands it out to the tenants it created through the Partner API.
 // Backed by /api/admin/v1/free-sms-pool/partners (+ /<account_id>/pool, /<account_id>/entries). The same rules apply here and in the API.
 const FREE_POOL_KINDS = [
-  { id: '',         label: 'All' },
+  { id: 'pool',     label: 'Pool changes' },
+  { id: '',         label: 'Everything' },
   { id: 'grant',    label: 'Given' },
   { id: 'revoke',   label: 'Taken back' },
   { id: 'expire',   label: 'Expired' },
@@ -12843,14 +12844,14 @@ function FreePoolDialog({ partner, onClose, onDone }) {
 
 function FreePoolHistory({ partner, onBack }) {
   const { onLogout } = React.useContext(AppContext);
-  const [kind, setKind]     = useState('');
+  const [kind, setKind]     = useState('pool');   // opens on the pool's own top-ups and sets; "Everything" adds the per-customer grants and expiries
   const [search, setSearch] = useState('');
   const { rows, loading, error, page, setPage, hasNext, count, pageSize, setPageSize, summary, reload } =
     usePagedList(`/api/admin/v1/free-sms-pool/partners/${partner.account_id}/entries`, { kind, search }, onLogout);
   return (
     <div>
       <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={onBack} style={{marginBottom:12}}>‹ All partners</button>
-      <SectionHeader title={`${partner.name} — free SMS history`} subtitle="Everything given, taken back, expired or changed in the pool, newest first"/>
+      <SectionHeader title={`${partner.name} — free SMS history`} subtitle={kind === 'pool' ? 'Every time the pool was set or topped up, newest first. Choose "Everything" to also see what was given to customers, taken back or expired.' : 'Everything given, taken back, expired or changed in the pool, newest first'}/>
       {summary && (
         <div style={{display:'flex',gap:12,marginBottom:14,flexWrap:'wrap'}}>
           {[['Set aside', summary.assigned], ['Given out', summary.granted], ['Left to give', summary.remaining]].map(([label, value]) => (
@@ -12877,7 +12878,7 @@ function FreePoolHistory({ partner, onBack }) {
             <table className="senda-table" style={{minWidth:980}}>
               <thead><tr><th>When</th><th>What</th><th>Business</th><th>SMS</th><th>Period</th><th>Reason</th><th>Key</th><th>By</th><th>Left in pool</th></tr></thead>
               <tbody>
-                {rows.length === 0 && <tr><td colSpan={9} style={{textAlign:'center',color:'#94a3b8',padding:24}}>Nothing here yet.</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={9} style={{textAlign:'center',color:'#94a3b8',padding:24}}>{kind === 'pool' ? 'No pool top-ups or sets have been recorded here yet.' : 'Nothing here yet.'}</td></tr>}
                 {rows.map(r => {
                   const style = FREE_POOL_KIND_STYLE[r.kind] || FREE_POOL_KIND_STYLE.expire;
                   return (
@@ -12890,7 +12891,14 @@ function FreePoolHistory({ partner, onBack }) {
                       <td style={{fontSize:12,color:'#64748b',maxWidth:220}}>{r.reason || '—'}</td>
                       <td style={{fontSize:11,color:'#94a3b8',fontFamily:'monospace',maxWidth:180,overflow:'hidden',textOverflow:'ellipsis'}} title={r.idempotency_key}>{r.idempotency_key || '—'}</td>
                       <td style={{fontSize:11,color:'#94a3b8'}}>{r.by || 'API'}</td>
-                      <td style={{fontSize:12,color:'#64748b'}}>{r.pool_remaining_after.toLocaleString()}</td>
+                      <td style={{fontSize:12,color:'#64748b',whiteSpace:'nowrap'}}>
+                        {r.left_before != null
+                          ? <><span>{r.left_before.toLocaleString()} → <b style={{color:'#0f172a'}}>{r.pool_remaining_after.toLocaleString()}</b></span>
+                              <span style={{marginLeft:6,fontWeight:700,color:r.pool_remaining_after >= r.left_before ? '#065f46' : '#991b1b'}}>
+                                ({r.pool_remaining_after >= r.left_before ? '+' : '−'}{Math.abs(r.pool_remaining_after - r.left_before).toLocaleString()})
+                              </span></>
+                          : r.pool_remaining_after.toLocaleString()}
+                      </td>
                     </tr>
                   );
                 })}
@@ -12951,7 +12959,7 @@ function FreeSmsPoolTab() {
                       </td>
                       <td style={{whiteSpace:'nowrap',textAlign:'right'}}>
                         <button className="senda-btn senda-btn-sm" onClick={()=>setEditing(r)} style={{background:BRAND,color:'#fff',border:'none',marginRight:6}}>Set / top up</button>
-                        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={()=>setViewing(r)}>History</button>
+                        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={()=>setViewing(r)}>Pool history</button>
                       </td>
                     </tr>
                   );
