@@ -19179,6 +19179,7 @@ function SmsBroadcastTab() {
   // send even though they're otherwise eligible. Cleared whenever a fresh preview
   // is loaded (new audience/segment/sender choice, or a manual refresh).
   const [excludedIds, setExcludedIds] = useState(() => new Set());
+  const [recipientSearch, setRecipientSearch] = useState('');
 
   const [sending, setSending]         = useState(false);
   const [progress, setProgress]       = useState(null);
@@ -19560,6 +19561,10 @@ function SmsBroadcastTab() {
   const seg = smsSegments(message);
   const stats = preview?.stats;
   const visibleRecipients = (preview?.recipients || []).filter(r => !excludedIds.has(r.tenant_id));
+  const recipientQuery = recipientSearch.trim().toLowerCase();
+  const searchedRecipients = recipientQuery
+    ? visibleRecipients.filter(r => [r.sender_name, r.email, r.tenant_name].some(v => (v || '').toLowerCase().includes(recipientQuery)))
+    : visibleRecipients;
   const eligibleCount = stats ? Math.max(0, stats.eligible - excludedIds.size) : 0;
   const removeRecipient = (tenantId) => setExcludedIds(prev => new Set(prev).add(tenantId));
   const live = progress && !progress.is_complete && sending;
@@ -19861,6 +19866,11 @@ function SmsBroadcastTab() {
                     </div>
                   </div>
                 )}
+                {visibleRecipients.length > 0 && (
+                  <input type="search" value={recipientSearch} onChange={e=>setRecipientSearch(e.target.value)}
+                    placeholder="Search sender ID, email or name…"
+                    style={{ width:'100%', boxSizing:'border-box', marginBottom:8, padding:'8px 12px', fontSize:12.5, border:'1px solid #e2e8f0', borderRadius:10, outline:'none' }}/>
+                )}
                 {visibleRecipients.length > 0 ? (
                   <div style={{ maxHeight:280, overflowY:'auto', border:'1px solid #eef2f7', borderRadius:10 }}>
                     <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
@@ -19875,9 +19885,15 @@ function SmsBroadcastTab() {
                         </tr>
                       </thead>
                       <tbody>
-                        {visibleRecipients.map((r,i) => (
+                        {searchedRecipients.length === 0 && (
+                          <tr><td colSpan={6} style={{ padding:'14px 12px', color:'#94a3b8', textAlign:'center' }}>No recipient matches “{recipientSearch}”.</td></tr>
+                        )}
+                        {searchedRecipients.map((r,i) => (
                           <tr key={r.tenant_id || i} style={{ borderTop:'1px solid #f1f5f9' }}>
-                            <td style={{ padding:'8px 12px', color:'#0f172a' }}>{r.tenant_name || '—'}</td>
+                            <td style={{ padding:'8px 12px', color:'#0f172a' }}>
+                              {r.tenant_name || '—'}
+                              {r.email && <div style={{ fontSize:10.5, color:'#94a3b8' }}>{r.email}</div>}
+                            </td>
                             <td style={{ padding:'8px 12px', color:'#64748b', fontFamily:'monospace' }}>{r.phone_masked}</td>
                             <td style={{ padding:'8px 12px' }}><Pill color={BRAND}>{r.sender_name}</Pill></td>
                             <td style={{ padding:'8px 12px', textAlign:'right', color:'#0f172a' }}>{(r.credits||0).toLocaleString()}</td>
