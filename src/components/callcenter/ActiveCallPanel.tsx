@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useCallCenter } from "@/contexts/CallCenterContext";
 import { formatDuration, useElapsed } from "./callUtils";
 import { TransferDialog } from "./TransferDialog";
+import { LiveTranscript } from "./LiveTranscript";
 import { callCenterApi, describeError } from "@/services/callCenterApi";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
@@ -135,6 +136,8 @@ export function ActiveCallPanel() {
           <span className="text-[11px]">{t("cc.call.note")}</span>
         </Button>
       </div>
+
+      <LiveTranscript callId={active.callId} />
 
       {active.callId && <TransferDialog open={transferring} onOpenChange={setTransferring} callId={active.callId} />}
 
