@@ -344,7 +344,6 @@ const SenderNames = () => {
   const [editingSender, setEditingSender] = useState<SenderNameRequest | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editSenderName, setEditSenderName] = useState("");
-  const [editUseCase, setEditUseCase] = useState("");
   const [editSampleContent, setEditSampleContent] = useState("");
   const [editSelectedFiles, setEditSelectedFiles] = useState<File[]>([]);
   const [selectedSender, setSelectedSender] = useState<SenderNameRequest | UnifiedSenderName | null>(null);
@@ -632,16 +631,15 @@ const SenderNames = () => {
       const unifiedSender = sender as UnifiedSenderName;
       setEditingSender(unifiedSender as unknown as SenderNameRequest);
       setEditSenderName(unifiedSender.sender_id);
-      setEditUseCase(unifiedSender.tenant_name || '');
       const sampleContent = (unifiedSender as unknown as Record<string, unknown>)?.sample_content as string | undefined;
       setEditSampleContent(sampleContent || '');
     } else {
       const legacySender = sender as SenderNameRequest;
       setEditingSender(legacySender);
       setEditSenderName(legacySender.sender_name);
-      setEditUseCase(legacySender.use_case);
+      // The server's "use_case" is the sample message (sample_content) under another name.
       const sampleContent = (legacySender as unknown as Record<string, unknown>)?.sample_content as string | undefined;
-      setEditSampleContent(sampleContent || '');
+      setEditSampleContent(sampleContent || legacySender.use_case || '');
     }
     setEditSelectedFiles([]);
     setShowEditDialog(true);
@@ -649,13 +647,22 @@ const SenderNames = () => {
 
   const handleEditSubmit = async () => {
     if (!editingSender) return;
+    if (!editSenderName.trim() || !editSampleContent.trim()) {
+      toast({
+        title: t("pg.Settings.0001"),
+        description: editSenderName.trim() ? "Sample message is required" : "Sender name is required",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setSubmitting(true);
     try {
+      // PATCH /messaging/sender-requests/{id}/ : the name, the sample message and any new documents.
+      // A request that "requires changes" goes back to the review queue.
       const updateData = {
-        sender_name: editSenderName,
-        use_case: editUseCase,
-        sample_content: editSampleContent.trim() || undefined,
+        sender_name: editSenderName.trim(),
+        sample_content: editSampleContent.trim(),
         supporting_documents: editSelectedFiles.length > 0 ? editSelectedFiles : undefined
       };
 
@@ -665,7 +672,6 @@ const SenderNames = () => {
         setShowEditDialog(false);
         setEditingSender(null);
         setEditSenderName("");
-        setEditUseCase("");
         setEditSampleContent("");
         setEditSelectedFiles([]);
         toast({
@@ -2482,7 +2488,6 @@ const SenderNames = () => {
                   // Reset form when closing
                   setEditingSender(null);
                   setEditSenderName("");
-                  setEditUseCase("");
                   setEditSampleContent("");
                   setEditSelectedFiles([]);
                 }
@@ -2496,6 +2501,12 @@ const SenderNames = () => {
                     {t("pg.SenderNames.0644")}
                   </DialogDescription>
                 </DialogHeader>
+
+                {editingSender?.status === "requires_changes" && (editingSender.change_details?.reason || editingSender.rejection_reason) && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-2 text-xs text-amber-800">
+                    {editingSender.change_details?.reason || editingSender.rejection_reason}
+                  </div>
+                )}
 
                 <div className="space-y-2 sm:space-y-2.5">
                   <div className="space-y-1">

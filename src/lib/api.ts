@@ -328,7 +328,9 @@ export interface Template {
   formatted_body_text?: string;
   preview_text: string;
   description?: string;
-  variables: string[];
+  // The list endpoint only returns variables_count; the detail endpoint also returns the names.
+  variables?: string[];
+  variable_mapping?: Record<string, string>;
   variables_count: number;
   status: 'draft' | 'pending' | 'approved' | 'rejected';
   status_display: string;
@@ -352,6 +354,7 @@ export interface CreateTemplateRequest {
   channel: 'sms' | 'whatsapp' | 'email' | 'all';
   body_text: string;
   description?: string;
+  variable_mapping?: Record<string, string>;
 }
 
 export interface TemplateUpdateRequest {
@@ -361,22 +364,49 @@ export interface TemplateUpdateRequest {
   channel?: 'sms' | 'whatsapp' | 'email' | 'all';
   body_text?: string;
   description?: string;
+  variable_mapping?: Record<string, string>;
 }
 
-export interface TemplateListResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: {
-    templates: Template[];
-    filter_options: {
-      categories: Array<{ value: string; label: string }>;
-      languages: Array<{ value: string; label: string }>;
-      channels: Array<{ value: string; label: string }>;
-      statuses: Array<{ value: string; label: string }>;
-    };
-    total_count: number;
+export interface TemplateFilterOptions {
+  categories: Array<{ value: string; label: string }>;
+  languages: Array<{ value: string; label: string }>;
+  channels: Array<{ value: string; label: string }>;
+  statuses: Array<{ value: string; label: string }>;
+}
+
+export interface TemplateListPayload {
+  templates: Template[];
+  filter_options: TemplateFilterOptions;
+  total_count: number;
+}
+
+// GET /messaging/templates/ is paginated ({count, next, previous, results: {templates, ...}}),
+// an unpaginated reply is {templates, ...}; the page reads both.
+export interface TemplateListResponse extends Partial<TemplateListPayload> {
+  count?: number;
+  next?: string | null;
+  previous?: string | null;
+  results?: TemplateListPayload;
+}
+
+export interface TemplateStatistics {
+  overview: {
+    total_templates: number;
+    approved_templates: number;
+    draft_templates: number;
+    favorite_templates: number;
+    approval_rate: number;
   };
+  category_breakdown: Array<{ category: string; category_display: string; count: number }>;
+  language_breakdown: Array<{ language: string; language_display: string; count: number }>;
+  channel_breakdown: Array<{ channel: string; channel_display: string; count: number }>;
+}
+
+export interface TemplateAvailableVariable {
+  key: string;
+  label: string;
+  source: string;
+  description: string;
 }
 
 // Integration API Types
@@ -2896,8 +2926,8 @@ class ApiClient {
     });
   }
 
-  async incrementTemplateUsage(templateId: string): Promise<ApiResponse<{ usage_count: number }>> {
-    return this.request<{ usage_count: number }>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.INCREMENT_USAGE(templateId), {
+  async incrementTemplateUsage(templateId: string): Promise<ApiResponse<{ usage_count: number; last_used_at: string | null }>> {
+    return this.request<{ usage_count: number; last_used_at: string | null }>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.INCREMENT_USAGE(templateId), {
       method: 'POST',
     });
   }
@@ -2914,29 +2944,24 @@ class ApiClient {
     });
   }
 
-  async getTemplateVariables(templateId: string): Promise<ApiResponse<{ variables: string[] }>> {
-    return this.request<{ variables: string[] }>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.VARIABLES(templateId));
+  async getTemplateVariables(templateId: string): Promise<ApiResponse<{ template_id: string; template_name: string; variables: string[]; variables_count: number }>> {
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.VARIABLES(templateId));
   }
 
-  async copyTemplate(templateId: string, newName?: string): Promise<ApiResponse<Template>> {
-    return this.request<Template>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.COPY(templateId), {
+  // Placeholders a template may use ({{name}}, {{phone}}, {{email}}), filled from the contact at send time.
+  async getTemplateAvailableVariables(): Promise<ApiResponse<{ success: boolean; data: { variables: TemplateAvailableVariable[] } }>> {
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_AVAILABLE_VARIABLES);
+  }
+
+  async copyTemplate(templateId: string, newName?: string): Promise<ApiResponse<{ message: string; template: Template }>> {
+    return this.request<{ message: string; template: Template }>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.COPY(templateId), {
       method: 'POST',
-      body: JSON.stringify({ name: newName }),
+      body: JSON.stringify(newName ? { name: newName } : {}),
     });
   }
 
-  async getTemplateStatistics(): Promise<ApiResponse<{
-    total_templates: number;
-    approved_templates: number;
-    pending_templates: number;
-    draft_templates: number;
-    rejected_templates: number;
-    favorite_templates: number;
-    templates_by_category: Record<string, number>;
-    templates_by_language: Record<string, number>;
-    templates_by_channel: Record<string, number>;
-  }>> {
-    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_STATISTICS);
+  async getTemplateStatistics(): Promise<ApiResponse<TemplateStatistics>> {
+    return this.request<TemplateStatistics>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_STATISTICS);
   }
 
   // =============================================
@@ -5569,11 +5594,44 @@ class ApiClient {
   }
 
   async updateSenderNameRequest(requestId: string, data: UpdateSenderNameRequest): Promise<ApiResponse<SenderNameRequest>> {
-    const updateData: { status?: string; admin_notes?: string } = {};
-    if (data.status) updateData.status = data.status;
-    if (data.admin_notes) updateData.admin_notes = data.admin_notes;
+    // Admin-only status/notes changes keep using the admin call.
+    if (data.status || data.admin_notes) {
+      const updateData: { status?: string; admin_notes?: string } = {};
+      if (data.status) updateData.status = data.status;
+      if (data.admin_notes) updateData.admin_notes = data.admin_notes;
+      return this.updateRequest(requestId, updateData);
+    }
+    return this.resubmitSenderRequest(requestId, data);
+  }
 
-    return this.updateRequest(requestId, updateData);
+  // A customer edits their own request (status pending / requires_changes / awaiting_kyc).
+  // PATCH /api/messaging/sender-requests/{id}/  (multipart: requested_sender_id, sample_content, kyc_documents)
+  // A request in "requires_changes" goes back to "pending" for review.
+  async resubmitSenderRequest(requestId: string, data: UpdateSenderNameRequest): Promise<ApiResponse<SenderNameRequest>> {
+    try {
+      const form = new FormData();
+      if (data.sender_name !== undefined) form.append('requested_sender_id', data.sender_name);
+      const sample = data.sample_content ?? data.use_case;
+      if (sample !== undefined) form.append('sample_content', sample);
+      (data.supporting_documents || []).forEach((file) => form.append('kyc_documents', file));
+      const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/${requestId}/`, {
+        method: 'PATCH',
+        headers: this.getHeaders(false),
+        body: form,
+      });
+      // The view answers {success, message, data: <the updated request>}.
+      const result = await this.handleResponse<{ data?: SenderNameRequest }>(response);
+      if (result.success && result.data?.data) {
+        return { ...result, data: result.data.data };
+      }
+      return result as unknown as ApiResponse<SenderNameRequest>;
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0,
+      };
+    }
   }
 
   async deleteSenderNameRequest(requestId: string): Promise<ApiResponse> {

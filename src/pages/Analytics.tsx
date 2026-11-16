@@ -1,26 +1,25 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   TrendingUp,
-  TrendingDown,
   BarChart3,
   PieChart,
   Download,
   Calendar,
-  Filter,
   Users,
   MessageSquare,
   Send,
   Target,
   Eye,
-  MousePointer,
   DollarSign,
-  Globe,
   ArrowLeft,
   ChevronRight,
   Activity,
-  Zap,
-  TrendingUp as RevenueIcon
+  Loader2,
+  RefreshCw,
+  AlertCircle,
+  FileText,
+  TrendingUp as CostIcon
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -43,7 +42,15 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
-import { appLocale } from "@/utils/appLocale";
+import { appLocale, appLanguage } from "@/utils/appLocale";
+import {
+  loadAnalytics,
+  buildAnalyticsCsv,
+  downloadCsv,
+  percentChange,
+  type AnalyticsData,
+  type RangeKey,
+} from "@/lib/analyticsApi";
 // jspdf + html2canvas together are ~540 kB (158 kB gzip). They are imported lazily
 // inside handleExportToPDF so they only download when the user clicks "Export PDF".
 
@@ -67,6 +74,35 @@ interface AnalyticsCategory {
   color: string;
 }
 
+// Words that have no key in the shared dictionaries: English / Kiswahili.
+const tx = (en: string, sw: string) => (appLanguage() === "sw" ? sw : en);
+
+const PATH_LABELS: Record<string, [string, string]> = {
+  single: ["Single SMS", "SMS moja"],
+  bulk: ["Bulk SMS", "SMS nyingi"],
+  campaign: ["Campaign", "Kampeni"],
+  api: ["API", "API"],
+  broadcast: ["Broadcast", "Matangazo"],
+  verification: ["Verification", "Uthibitisho"],
+  notification: ["Notification", "Arifa"],
+  invitation: ["Invitation", "Mwaliko"],
+  scheduled: ["Scheduled", "Zilizopangwa"],
+  template: ["Template", "Kiolezo"],
+};
+const pathLabel = (key: string) => {
+  const entry = PATH_LABELS[key];
+  return entry ? tx(entry[0], entry[1]) : key;
+};
+
+const PALETTE = [
+  'hsl(var(--primary))',
+  'hsl(var(--secondary))',
+  'hsl(var(--accent))',
+  'hsl(var(--success))',
+  'hsl(var(--muted-foreground))',
+  'hsl(var(--destructive))',
+];
+
 const Analytics = () => {
   const { t } = useLanguage();
 
@@ -78,20 +114,36 @@ const Analytics = () => {
   const [searchParams] = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState("30d");
-  const [selectedChannel, setSelectedChannel] = useState("all");
+  const [dateRange, setDateRange] = useState<RangeKey>("30d");
   const [isExporting, setIsExporting] = useState(false);
-  const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
-
-  // Handle URL parameters
-  useEffect(() => {
-    const campaignId = searchParams.get('campaign');
-    if (campaignId) {
-      setSelectedCampaign(campaignId);
-      // You can add additional logic here to filter data by campaign
-    }
-  }, [searchParams]);
+  const selectedCampaign = searchParams.get('campaign');
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const analyticsContentRef = useRef<HTMLDivElement>(null);
+
+  // A link to a campaign's analytics opens the Campaigns section on that campaign.
+  useEffect(() => {
+    if (selectedCampaign) setCurrentCategory("campaigns");
+  }, [selectedCampaign]);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      setData(await loadAnalytics(dateRange, selectedCampaign));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dateRange, selectedCampaign]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const num = (n: number | undefined | null) => (n ?? 0).toLocaleString(appLocale());
+  const money = (n: number | undefined | null) => `Tsh ${Math.round(n ?? 0).toLocaleString(appLocale())}`;
+  const pct = (n: number | undefined | null) => `${(n ?? 0).toFixed(1)}%`;
+  const rate = (part: number, whole: number) => (whole > 0 ? (part / whole) * 100 : 0);
+  const shortDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(appLocale(), { month: 'short', day: 'numeric' });
 
   const analyticsCategories: AnalyticsCategory[] = [
     {
@@ -116,28 +168,93 @@ const Analytics = () => {
       color: "bg-purple-500"
     },
     {
-      id: "revenue",
-      title: t("pages.analytics.category.revenue.title"),
-      description: t("pages.analytics.category.revenue.desc"),
-      icon: RevenueIcon,
+      // The old "Revenue" section had no data behind it (nothing records revenue). What the system does
+      // record is what the SMS cost, so this section shows that.
+      id: "cost",
+      title: tx("Cost", "Gharama"),
+      description: tx("What your SMS cost, and where", "SMS zako zilivyogharimu, na wapi"),
+      icon: CostIcon,
       color: "bg-emerald-500"
     }
   ];
 
-  // Mock data for charts
+  const daily = data?.daily ?? [];
+  const summary = data?.summary ?? null;
+
+  const changeText = (now: number, before: number | undefined | null) => {
+    const c = percentChange(now, before);
+    if (c === null) return undefined;
+    return `${c >= 0 ? '+' : ''}${c.toFixed(1)}% ${tx("vs previous period", "dhidi ya kipindi kilichopita")}`;
+  };
+
+  const metrics = useMemo(() => {
+    if (!data) return [];
+    const list: Array<{ title: string; value: string; change?: string; icon: React.ComponentType<{ className?: string }>; description: string }> = [];
+    if (data.summary) {
+      list.push({
+        title: t("dashboard.metric.total_messages"),
+        value: num(data.summary.total_messages),
+        change: changeText(data.summary.total_messages, data.previous?.total_messages),
+        icon: MessageSquare,
+        description: tx("SMS in the selected period", "SMS katika kipindi kilichochaguliwa"),
+      });
+      list.push({
+        title: tx("Send success rate", "Kiwango cha kutuma"),
+        value: pct(data.summary.success_rate),
+        change: data.previous && data.previous.total_messages > 0
+          ? `${data.summary.success_rate - data.previous.success_rate >= 0 ? '+' : ''}${(data.summary.success_rate - data.previous.success_rate).toFixed(1)} ${tx("pts vs previous period", "pointi dhidi ya kipindi kilichopita")}`
+          : undefined,
+        icon: Target,
+        description: tx("SMS accepted for sending / all SMS", "SMS zilizokubaliwa kutumwa / SMS zote"),
+      });
+      list.push({
+        title: tx("Segments", "Vipande"),
+        value: num(data.summary.total_segments),
+        change: changeText(data.summary.total_segments, data.previous?.total_segments),
+        icon: BarChart3,
+        description: tx("SMS parts sent", "Vipande vya SMS vilivyotumwa"),
+      });
+      list.push({
+        title: tx("SMS cost", "Gharama ya SMS"),
+        value: money(data.summary.total_cost),
+        change: changeText(data.summary.total_cost, data.previous?.total_cost),
+        icon: DollarSign,
+        description: tx("As recorded in the usage log", "Kama ilivyorekodiwa kwenye kumbukumbu"),
+      });
+    }
+    if (data.overview) {
+      list.push({
+        title: tx("Read rate", "Kiwango cha kusomwa"),
+        value: pct(data.overview.messages.read_rate),
+        icon: Eye,
+        description: tx("Delivered conversation messages that were read (all time)", "Ujumbe wa mazungumzo uliosomwa (wakati wote)"),
+      });
+      list.push({
+        title: t("dashboard.metric.active_contacts"),
+        value: num(data.overview.contacts.total),
+        icon: Users,
+        description: tx(`${num(data.overview.contacts.opted_in)} opted in (all time)`, `${num(data.overview.contacts.opted_in)} wamekubali (wakati wote)`),
+      });
+    }
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, t]);
+
+  const labels = daily.map((d) => shortDate(d.date));
+
   const messageVolumeData = {
-    labels: ['Mar 1', 'Mar 5', 'Mar 10', 'Mar 15', 'Mar 20', 'Mar 25', 'Mar 30'],
+    labels,
     datasets: [
       {
-        label: 'WhatsApp',
-        data: [1200, 1900, 3000, 5000, 4500, 6000, 7200],
+        label: tx("SMS", "SMS"),
+        data: daily.map((d) => d.messages),
         borderColor: 'hsl(var(--primary))',
         backgroundColor: 'hsl(var(--primary) / 0.1)',
         tension: 0.4,
       },
       {
-        label: 'SMS',
-        data: [800, 1200, 1800, 2200, 2800, 3200, 3600],
+        label: tx("Segments", "Vipande"),
+        data: daily.map((d) => d.segments),
         borderColor: 'hsl(var(--secondary))',
         backgroundColor: 'hsl(var(--secondary) / 0.1)',
         tension: 0.4,
@@ -146,11 +263,11 @@ const Analytics = () => {
   };
 
   const deliveryRateData = {
-    labels: ['Mar 1', 'Mar 5', 'Mar 10', 'Mar 15', 'Mar 20', 'Mar 25', 'Mar 30'],
+    labels,
     datasets: [
       {
-        label: 'Delivery Rate (%)',
-        data: [94, 96, 95, 97, 96, 98, 97],
+        label: tx("Send success rate (%)", "Kiwango cha kutuma (%)"),
+        data: daily.map((d) => Number(rate(d.successful, d.messages).toFixed(1))),
         borderColor: 'hsl(var(--success))',
         backgroundColor: 'hsl(var(--success) / 0.1)',
         fill: true,
@@ -159,102 +276,49 @@ const Analytics = () => {
     ],
   };
 
-  const channelDistributionData = {
-    labels: ['WhatsApp', 'SMS', 'Email'],
+  const pathEntries = Object.entries(data?.byPath ?? {}).sort((a, b) => b[1].count - a[1].count);
+  const pathDistributionData = {
+    labels: pathEntries.map(([key]) => pathLabel(key)),
     datasets: [
       {
-        data: [65, 30, 5],
-        backgroundColor: [
-          'hsl(var(--primary))',
-          'hsl(var(--secondary))',
-          'hsl(var(--accent))',
-        ],
+        data: pathEntries.map(([, v]) => v.count),
+        backgroundColor: pathEntries.map((_, i) => PALETTE[i % PALETTE.length]),
         borderWidth: 0,
       },
     ],
   };
 
-  const campaignPerformanceData = {
-    labels: ['Welcome Series', 'Product Launch', 'Customer Survey', 'Flash Sale', 'Security Notice'],
+  const dailyCostData = {
+    labels,
     datasets: [
       {
-        label: 'Open Rate (%)',
-        data: [85, 72, 68, 91, 76],
-        backgroundColor: 'hsl(var(--primary))',
-      },
-      {
-        label: 'Click Rate (%)',
-        data: [24, 18, 15, 35, 12],
-        backgroundColor: 'hsl(var(--secondary))',
+        label: tx("Cost (Tsh)", "Gharama (Tsh)"),
+        data: daily.map((d) => d.cost),
+        borderColor: 'hsl(var(--primary))',
+        backgroundColor: 'hsl(var(--primary) / 0.1)',
+        fill: true,
+        tension: 0.4,
       },
     ],
   };
 
-  const countryData = [
-    { country: "Kenya", messages: 12500, percentage: 35, flag: "🇰🇪" },
-    { country: "Nigeria", messages: 8900, percentage: 25, flag: "🇳🇬" },
-    { country: "Egypt", messages: 6200, percentage: 17, flag: "🇪🇬" },
-    { country: "South Africa", messages: 4800, percentage: 13, flag: "🇿🇦" },
-    { country: "Ghana", messages: 3600, percentage: 10, flag: "🇬🇭" },
-  ];
-
-  const topCampaigns = [
-    { name: "Welcome Series", sent: 12500, delivered: 12100, opened: 10200, clicked: 2800, revenue: "Tsh 4,200" },
-    { name: "Product Launch", sent: 8900, delivered: 8650, opened: 6200, clicked: 1580, revenue: "Tsh 8,900" },
-    { name: "Customer Survey", sent: 6200, delivered: 6050, opened: 4100, clicked: 920, revenue: "Tsh 1,200" },
-    { name: "Flash Sale", sent: 4800, delivered: 4720, opened: 4350, clicked: 1680, revenue: "Tsh 15,600" },
-  ];
-
-  const metrics = [
-    {
-      title: t("dashboard.metric.total_messages"),
-      value: "45,280",
-      change: "+12.5%",
-      changeType: "positive" as const,
-      icon: MessageSquare,
-      description: t("dashboard.metric.last_30_days")
-    },
-    {
-      title: t("dashboard.performance.delivery_rate"),
-      value: "96.8%",
-      change: "+2.1%",
-      changeType: "positive" as const,
-      icon: Target,
-      description: t("pages.analytics.metric.avg_across_channels")
-    },
-    {
-      title: t("pages.analytics.metric.open_rate"),
-      value: "78.4%",
-      change: "-1.2%",
-      changeType: "negative" as const,
-      icon: Eye,
-      description: t("pages.analytics.metric.open_rate_desc")
-    },
-    {
-      title: t("pages.analytics.metric.click_rate"),
-      value: "24.6%",
-      change: "+5.8%",
-      changeType: "positive" as const,
-      icon: MousePointer,
-      description: t("pages.analytics.metric.click_rate_desc")
-    },
-    {
-      title: t("dashboard.metric.active_contacts"),
-      value: "8,940",
-      change: "+8.9%",
-      changeType: "positive" as const,
-      icon: Users,
-      description: t("dashboard.metric.engaged_this_month")
-    },
-    {
-      title: t("pages.analytics.metric.revenue_impact"),
-      value: "Tsh 42,800",
-      change: "+18.7%",
-      changeType: "positive" as const,
-      icon: DollarSign,
-      description: t("pages.analytics.metric.attributed_revenue")
-    }
-  ];
+  const campaigns = data?.campaigns ?? [];
+  const topCampaigns = [...campaigns].sort((a, b) => b.sent_count - a.sent_count).slice(0, 8);
+  const campaignPerformanceData = {
+    labels: topCampaigns.slice(0, 5).map((c) => c.name),
+    datasets: [
+      {
+        label: tx("Delivered (% of sent)", "Zilizofika (% ya zilizotumwa)"),
+        data: topCampaigns.slice(0, 5).map((c) => Number(rate(c.delivered_count, c.sent_count).toFixed(1))),
+        backgroundColor: 'hsl(var(--primary))',
+      },
+      {
+        label: tx("Read (% of delivered)", "Zilizosomwa (% ya zilizofika)"),
+        data: topCampaigns.slice(0, 5).map((c) => Number(rate(c.read_count, c.delivered_count).toFixed(1))),
+        backgroundColor: 'hsl(var(--secondary))',
+      },
+    ],
+  };
 
   const chartOptions = {
     responsive: true,
@@ -297,6 +361,7 @@ const Analytics = () => {
         },
       },
       y: {
+        beginAtZero: true,
         grid: {
           color: 'hsl(var(--border))',
         },
@@ -308,6 +373,11 @@ const Analytics = () => {
         },
       },
     },
+  };
+
+  const handleExportCsv = () => {
+    if (!data) return;
+    downloadCsv(`analytics-report-${data.startDate}_${data.endDate}.csv`, buildAnalyticsCsv(data));
   };
 
   // PDF Export Function
@@ -346,10 +416,9 @@ const Analytics = () => {
       pdf.text(t("pages.analytics.pdf.title"), 20, 20);
       pdf.setFontSize(12);
       pdf.text(t("pages.analytics.pdf.generated_on", { date: new Date().toLocaleDateString(appLocale()) }), 20, 30);
-      pdf.text(t("pages.analytics.pdf.date_range", { range: dateRange }), 20, 35);
-      pdf.text(t("pages.analytics.pdf.channel", { channel: selectedChannel }), 20, 40);
+      pdf.text(t("pages.analytics.pdf.date_range", { range: data ? `${data.startDate} - ${data.endDate}` : dateRange }), 20, 35);
 
-      position = 50; // Start image below title
+      position = 45; // Start image below title
       heightLeft = imgHeight;
 
       // Add the image
@@ -376,355 +445,428 @@ const Analytics = () => {
     }
   };
 
+  const NoData = ({ text }: { text?: string }) => (
+    <p className="text-xs text-text-subtle py-6 text-center">{text ?? tx("No data for this period yet.", "Hakuna data kwa kipindi hiki bado.")}</p>
+  );
+
   const renderCategoryContent = () => {
     const category = analyticsCategories.find(cat => cat.id === currentCategory);
     if (!category) return null;
 
+    if (isLoading && !data) {
+      return (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      );
+    }
+    if (!data) return null;
+
+    const coreFailed = data.failed.filter((f) => f !== "previous");
+    const everythingFailed = !data.summary && !data.daily && !data.byPath && !data.overview && !data.campaigns;
+    if (everythingFailed) {
+      return (
+        <div className="text-center py-12">
+          <AlertCircle className="w-8 h-8 mx-auto mb-3 text-destructive" />
+          <p className="text-sm text-foreground mb-3">{tx("Could not load the analytics.", "Imeshindwa kupakia uchambuzi.")}</p>
+          <Button variant="outline" size="sm" onClick={load}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            {tx("Try again", "Jaribu tena")}
+          </Button>
+        </div>
+      );
+    }
+
+    const partialNote = coreFailed.length > 0 ? (
+      <div className="flex items-center gap-2 p-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 text-xs">
+        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+        <span className="flex-1">{tx("Some figures could not be loaded:", "Baadhi ya takwimu hazikupakiwa:")} {coreFailed.join(", ")}</span>
+        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={load}>{tx("Retry", "Jaribu tena")}</Button>
+      </div>
+    ) : null;
+
     switch (currentCategory) {
       case "overview":
-  return (
+        return (
           <div className="space-y-3">
-              {/* Key Metrics */}
+            {partialNote}
+            {/* Key Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                {metrics.map((metric, index) => (
-                  <Card key={index} className="glass border-0">
+              {metrics.map((metric, index) => (
+                <Card key={index} className="glass border-0">
                   <CardContent className="p-2">
                     <div className="flex items-center gap-1 mb-1">
                       <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center">
                         <metric.icon className="w-3 h-3 text-primary" />
-                        </div>
                       </div>
+                    </div>
                     <p className="text-xs font-medium text-text-subtle mb-1 truncate">{metric.title}</p>
                     <div className="flex items-baseline gap-1">
                       <h3 className="text-sm font-bold text-foreground">{metric.value}</h3>
-                      </div>
-                    <p className="text-xs text-text-subtle mt-1 line-clamp-1">{metric.description}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                    </div>
+                    {metric.change && <p className="text-xs text-text-subtle mt-1">{metric.change}</p>}
+                    <p className="text-xs text-text-subtle mt-1 line-clamp-2">{metric.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                      {/* Message Volume */}
-                      <Card className="glass border-0">
+              {/* Message Volume */}
+              <Card className="glass border-0">
                 <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <BarChart3 className="w-4 h-4 text-primary" />
-                            {t("dashboard.performance.message_volume")}
-                          </CardTitle>
-                        </CardHeader>
+                    {t("dashboard.performance.message_volume")}
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="p-3 pt-0">
-                  <div className="h-40">
-                            <Line data={messageVolumeData} options={chartOptions} />
-                          </div>
-                        </CardContent>
-                      </Card>
+                  {daily.length > 0 ? (
+                    <div className="h-40">
+                      <Line data={messageVolumeData} options={chartOptions} />
+                    </div>
+                  ) : <NoData />}
+                </CardContent>
+              </Card>
 
-                      {/* Delivery Rate */}
-                      <Card className="glass border-0">
+              {/* Send success trend */}
+              <Card className="glass border-0">
                 <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Target className="w-4 h-4 text-success" />
-                            {t("pages.analytics.chart.delivery_rate_trend")}
-                          </CardTitle>
-                        </CardHeader>
+                    {tx("Send success rate by day", "Kiwango cha kutuma kwa siku")}
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="p-3 pt-0">
-                  <div className="h-40">
-                            <Line data={deliveryRateData} options={chartOptions} />
-                          </div>
-                        </CardContent>
-                      </Card>
+                  {daily.length > 0 ? (
+                    <div className="h-40">
+                      <Line data={deliveryRateData} options={chartOptions} />
+                    </div>
+                  ) : <NoData />}
+                </CardContent>
+              </Card>
 
-                      {/* Channel Distribution */}
-                      <Card className="glass border-0">
+              {/* SMS by sending path */}
+              <Card className="glass border-0">
                 <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <PieChart className="w-4 h-4 text-secondary" />
-                            {t("pages.analytics.chart.channel_distribution")}
-                          </CardTitle>
-                        </CardHeader>
+                    {tx("SMS by how they were sent", "SMS kwa njia ya kutuma")}
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="p-3 pt-0">
-                  <div className="h-40">
-                            <Doughnut
-                              data={channelDistributionData}
-                              options={{
-                                ...chartOptions,
-                                plugins: {
-                                  ...chartOptions.plugins,
-                                  legend: {
-                                    position: 'bottom' as const,
-                                    labels: {
-                                      usePointStyle: true,
-                                      color: 'hsl(var(--foreground))',
-                              font: {
-                                size: 10
-                              }
-                                    },
-                                  },
-                                },
-                              }}
-                            />
-                          </div>
-                        </CardContent>
-                      </Card>
+                  {pathEntries.length > 0 ? (
+                    <div className="h-40">
+                      <Doughnut
+                        data={pathDistributionData}
+                        options={{
+                          ...chartOptions,
+                          scales: undefined,
+                          plugins: {
+                            ...chartOptions.plugins,
+                            legend: {
+                              position: 'bottom' as const,
+                              labels: {
+                                usePointStyle: true,
+                                color: 'hsl(var(--foreground))',
+                                font: {
+                                  size: 10
+                                }
+                              },
+                            },
+                          },
+                        }}
+                      />
+                    </div>
+                  ) : <NoData />}
+                </CardContent>
+              </Card>
 
-                      {/* Geographic Distribution */}
-                      <Card className="glass border-0">
+              {/* Conversation messages (all time) */}
+              <Card className="glass border-0">
                 <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
-                    <Globe className="w-4 h-4 text-primary" />
-                            {t("pages.analytics.chart.top_countries")}
-                          </CardTitle>
-                        </CardHeader>
+                    <MessageSquare className="w-4 h-4 text-primary" />
+                    {tx("Conversation messages (all time)", "Ujumbe wa mazungumzo (wakati wote)")}
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="p-3 pt-0">
-                  <div className="space-y-2">
-                            {countryData.map((country, index) => (
-                              <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{country.flag}</span>
-                                  <div>
-                            <p className="font-medium text-foreground text-sm">{country.country}</p>
-                            <p className="text-xs text-text-subtle">
-                                      {t("pages.analytics.chart.messages_count", { count: country.messages.toLocaleString(appLocale()) })}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                          <p className="font-medium text-foreground text-sm">{country.percentage}%</p>
-                          <div className="w-12 h-2 bg-gradient-surface rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-primary rounded-full"
-                                      style={{ width: `${country.percentage}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                  {data.overview ? (
+                    <div className="space-y-2">
+                      {[
+                        [tx("Sent", "Zilizotumwa"), data.overview.messages.sent, undefined],
+                        [tx("Delivered", "Zilizofika"), data.overview.messages.delivered, data.overview.messages.delivery_rate],
+                        [tx("Read", "Zilizosomwa"), data.overview.messages.read, data.overview.messages.read_rate],
+                      ].map(([label, value, share]) => (
+                        <div key={String(label)} className="flex items-center justify-between">
+                          <p className="font-medium text-foreground text-sm">{label as string}</p>
+                          <div className="text-right">
+                            <p className="font-medium text-foreground text-sm">{num(value as number)}</p>
+                            {share !== undefined && <p className="text-xs text-text-subtle">{pct(share as number)}</p>}
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      ))}
                     </div>
+                  ) : <NoData />}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         );
 
       case "campaigns":
         return (
           <div className="space-y-3">
-                      {/* Campaign Performance Chart */}
-                      <Card className="glass border-0">
+            {partialNote}
+            {/* One campaign, when the page was opened from it (?campaign=<id>) */}
+            {selectedCampaign && data.campaignDetail && (
+              <Card className="glass border-0 border-l-4 border-primary">
+                <CardHeader className="p-3">
+                  <CardTitle className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate">{data.campaignDetail.campaign_name}</span>
+                    <Badge variant="outline" className="text-xs capitalize">{data.campaignDetail.status}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div><p className="text-text-subtle">{tx("Recipients", "Wapokeaji")}</p><p className="font-medium">{num(data.campaignDetail.total_recipients)}</p></div>
+                    <div><p className="text-text-subtle">{t("dashboard.recent_campaigns.sent")}</p><p className="font-medium">{num(data.campaignDetail.sent_count)}</p></div>
+                    <div><p className="text-text-subtle">{t("dashboard.recent_campaigns.delivered")}</p><p className="font-medium">{num(data.campaignDetail.delivered_count)}</p><p className="text-success">{pct(data.campaignDetail.delivery_rate)}</p></div>
+                    <div><p className="text-text-subtle">{tx("Read", "Zilizosomwa")}</p><p className="font-medium">{num(data.campaignDetail.read_count)}</p><p className="text-primary">{pct(data.campaignDetail.read_rate)}</p></div>
+                    <div><p className="text-text-subtle">{tx("Failed", "Zilizoshindwa")}</p><p className="font-medium">{num(data.campaignDetail.failed_count)}</p></div>
+                    <div><p className="text-text-subtle">{tx("Progress", "Maendeleo")}</p><p className="font-medium">{pct(data.campaignDetail.progress_percentage)}</p></div>
+                    <div><p className="text-text-subtle">{tx("Estimated cost", "Gharama inayokadiriwa")}</p><p className="font-medium">{money(data.campaignDetail.estimated_cost)}</p></div>
+                    <div><p className="text-text-subtle">{tx("Actual cost", "Gharama halisi")}</p><p className="font-medium">{money(data.campaignDetail.actual_cost)}</p></div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {selectedCampaign && data.failed.includes("campaign") && (
+              <p className="text-xs text-text-subtle">{tx("This campaign's figures could not be loaded.", "Takwimu za kampeni hii hazikupakiwa.")}</p>
+            )}
+
+            {/* Campaign Performance Chart */}
+            <Card className="glass border-0">
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Send className="w-4 h-4 text-primary" />
-                            {t("pages.analytics.chart.campaign_performance")}
-                          </CardTitle>
-                        </CardHeader>
+                  {t("pages.analytics.chart.campaign_performance")}
+                </CardTitle>
+              </CardHeader>
               <CardContent className="p-3 pt-0">
-                <div className="h-40">
-                            <Bar data={campaignPerformanceData} options={chartOptions} />
-                          </div>
-                        </CardContent>
-                      </Card>
+                {topCampaigns.length > 0 ? (
+                  <div className="h-40">
+                    <Bar data={campaignPerformanceData} options={chartOptions} />
+                  </div>
+                ) : <NoData text={tx("No campaigns in this period.", "Hakuna kampeni katika kipindi hiki.")} />}
+              </CardContent>
+            </Card>
 
-                      {/* Top Campaigns Table */}
-                      <Card className="glass border-0">
+            {/* Top Campaigns */}
+            <Card className="glass border-0">
               <CardHeader className="p-3">
                 <CardTitle className="text-sm">{t("pages.analytics.chart.top_campaigns")}</CardTitle>
-                        </CardHeader>
+              </CardHeader>
               <CardContent className="p-3 pt-0">
                 <div className="space-y-2">
-                                {topCampaigns.map((campaign, index) => (
-                    <div key={index} className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
-                      <div className="flex items-center justify-between mb-1">
-                        <h5 className="font-medium text-sm">{campaign.name}</h5>
-                        <Badge variant="outline" className="text-xs">{campaign.revenue}</Badge>
+                  {topCampaigns.map((campaign) => (
+                    <div key={campaign.id} className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
+                      <div className="flex items-center justify-between mb-1 gap-2">
+                        <h5 className="font-medium text-sm truncate">{campaign.name}</h5>
+                        <Badge variant="outline" className="text-xs flex-shrink-0">{money(campaign.actual_cost)}</Badge>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                         <div>
                           <p className="text-text-subtle">{t("dashboard.recent_campaigns.sent")}</p>
-                          <p className="font-medium">{campaign.sent.toLocaleString(appLocale())}</p>
-                                      </div>
+                          <p className="font-medium">{num(campaign.sent_count)}</p>
+                        </div>
                         <div>
                           <p className="text-text-subtle">{t("dashboard.recent_campaigns.delivered")}</p>
-                          <p className="font-medium">{campaign.delivered.toLocaleString(appLocale())}</p>
-                          <p className="text-success">
-                                        {Math.round((campaign.delivered / campaign.sent) * 100)}%
-                          </p>
-                                      </div>
+                          <p className="font-medium">{num(campaign.delivered_count)}</p>
+                          <p className="text-success">{Math.round(rate(campaign.delivered_count, campaign.sent_count))}%</p>
+                        </div>
                         <div>
-                          <p className="text-text-subtle">{t("dashboard.recent_campaigns.opened")}</p>
-                          <p className="font-medium">{campaign.opened.toLocaleString(appLocale())}</p>
-                          <p className="text-primary">
-                            {Math.round((campaign.opened / campaign.delivered) * 100)}%
-                          </p>
-                                      </div>
+                          <p className="text-text-subtle">{tx("Read", "Zilizosomwa")}</p>
+                          <p className="font-medium">{num(campaign.read_count)}</p>
+                          <p className="text-primary">{Math.round(rate(campaign.read_count, campaign.delivered_count))}%</p>
+                        </div>
                         <div>
-                          <p className="text-text-subtle">{t("pages.analytics.chart.clicked")}</p>
-                          <p className="font-medium">{campaign.clicked.toLocaleString(appLocale())}</p>
-                          <p className="text-amber-600">
-                            {Math.round((campaign.clicked / campaign.opened) * 100)}%
-                          </p>
-                                      </div>
-                                      </div>
-                                      </div>
-                                ))}
-                          </div>
-                        </CardContent>
-                      </Card>
+                          <p className="text-text-subtle">{tx("Failed", "Zilizoshindwa")}</p>
+                          <p className="font-medium">{num(campaign.failed_count)}</p>
+                        </div>
+                      </div>
                     </div>
+                  ))}
+                  {topCampaigns.length === 0 && <NoData text={tx("No campaigns in this period.", "Hakuna kampeni katika kipindi hiki.")} />}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         );
 
-      case "audience":
+      case "audience": {
+        const busiest = daily.length > 0 ? daily.reduce((best, d) => (d.messages > best.messages ? d : best), daily[0]) : null;
+        const avgPerDay = daily.length > 0 ? daily.reduce((sum, d) => sum + d.messages, 0) / daily.length : 0;
         return (
           <div className="space-y-3">
-                      <Card className="glass border-0">
+            {partialNote}
+            <Card className="glass border-0">
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Users className="w-4 h-4 text-primary" />
                   {t("pages.analytics.audience.title")}
                 </CardTitle>
-                        </CardHeader>
+              </CardHeader>
               <CardContent className="p-3 pt-0">
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
-                      <p className="text-xl font-bold text-primary">8,940</p>
-                      <p className="text-xs text-text-subtle">{t("dashboard.metric.active_contacts")}</p>
+                {data.overview ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                        <p className="text-xl font-bold text-primary">{num(data.overview.contacts.total)}</p>
+                        <p className="text-xs text-text-subtle">{tx("Contacts", "Wasiliani")}</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                        <p className="text-xl font-bold text-success">{pct(data.overview.contacts.opt_in_rate)}</p>
+                        <p className="text-xs text-text-subtle">{tx(`Opted in (${num(data.overview.contacts.opted_in)})`, `Wamekubali (${num(data.overview.contacts.opted_in)})`)}</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                        <p className="text-xl font-bold text-foreground">{num(data.overview.conversations.total)}</p>
+                        <p className="text-xs text-text-subtle">{tx("Conversations", "Mazungumzo")}</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                        <p className="text-xl font-bold text-foreground">{num(data.overview.conversations.open)}</p>
+                        <p className="text-xs text-text-subtle">{tx("Open conversations", "Mazungumzo yaliyo wazi")}</p>
+                      </div>
                     </div>
-                    <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
-                      <p className="text-xl font-bold text-success">78.4%</p>
-                      <p className="text-xs text-text-subtle">{t("pages.analytics.audience.engagement_rate")}</p>
-                    </div>
+                    <p className="text-xs text-text-subtle">{tx("All-time figures; they do not change with the date range.", "Takwimu za wakati wote; hazibadiliki kwa kipindi.")}</p>
                   </div>
-                  <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
-                    <h4 className="font-medium text-sm mb-1">{t("pages.analytics.audience.patterns_title")}</h4>
-                    <p className="text-xs text-text-subtle">{t("pages.analytics.audience.peak_times")}</p>
-                    <p className="text-xs text-text-subtle mt-1">{t("pages.analytics.audience.most_active_day")}</p>
-                  </div>
-                </div>
-                        </CardContent>
-                      </Card>
+                ) : <NoData />}
+              </CardContent>
+            </Card>
 
-                      <Card className="glass border-0">
+            <Card className="glass border-0">
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
-                  <Globe className="w-4 h-4 text-primary" />
-                  {t("pages.analytics.audience.geo_title")}
-                </CardTitle>
-                        </CardHeader>
-              <CardContent className="p-3 pt-0">
-                <div className="space-y-2">
-                  {countryData.map((country, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">{country.flag}</span>
-                        <div>
-                          <p className="font-medium text-foreground text-sm">{country.country}</p>
-                          <p className="text-xs text-text-subtle">
-                            {t("pages.analytics.chart.contacts_count", { count: country.messages.toLocaleString(appLocale()) })}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-foreground text-sm">{country.percentage}%</p>
-                        <div className="w-12 h-2 bg-gradient-surface rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary rounded-full"
-                            style={{ width: `${country.percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-        );
-
-      case "revenue":
-        return (
-          <div className="space-y-3">
-                      <Card className="glass border-0">
-              <CardHeader className="p-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <RevenueIcon className="w-4 h-4 text-primary" />
-                  {t("pages.analytics.revenue.title")}
-                </CardTitle>
-                        </CardHeader>
-              <CardContent className="p-3 pt-0">
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
-                      <p className="text-xl font-bold text-success">Tsh 42,800</p>
-                      <p className="text-xs text-text-subtle">{t("pages.analytics.revenue.total_revenue")}</p>
-                    </div>
-                    <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
-                      <p className="text-xl font-bold text-primary">+18.7%</p>
-                      <p className="text-xs text-text-subtle">{t("pages.analytics.revenue.growth_rate")}</p>
-                    </div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
-                    <h4 className="font-medium text-sm mb-1">{t("pages.analytics.revenue.top_campaigns")}</h4>
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs">{t("pg.Analytics.0912")}</span>
-                        <span className="text-xs font-medium">Tsh 15,600</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs">{t("pg.Analytics.0913")}</span>
-                        <span className="text-xs font-medium">{t("pg.Analytics.0914")}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs">{t("pg.Analytics.0915")}</span>
-                        <span className="text-xs font-medium">{t("pg.Analytics.0916")}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="glass border-0">
-              <CardHeader className="p-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  {t("pages.analytics.revenue.roi_title")}
+                  <Calendar className="w-4 h-4 text-primary" />
+                  {t("pages.analytics.audience.patterns_title")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-3 pt-0">
-                <div className="space-y-3">
-                  <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
-                    <p className="text-xl font-bold text-success">{t("pg.Analytics.0917")}</p>
-                    <p className="text-xs text-text-subtle">{t("pages.analytics.revenue.roi")}</p>
+                {busiest ? (
+                  <div className="space-y-1">
+                    <p className="text-xs text-text-subtle">
+                      {tx(`Busiest day: ${new Date(`${busiest.date}T00:00:00`).toLocaleDateString(appLocale(), { weekday: 'long', month: 'short', day: 'numeric' })} (${num(busiest.messages)} SMS)`,
+                        `Siku yenye shughuli nyingi: ${new Date(`${busiest.date}T00:00:00`).toLocaleDateString(appLocale(), { weekday: 'long', month: 'short', day: 'numeric' })} (SMS ${num(busiest.messages)})`)}
+                    </p>
+                    <p className="text-xs text-text-subtle">
+                      {tx(`Average on days with sending: ${avgPerDay.toFixed(1)} SMS`, `Wastani kwa siku zenye utumaji: SMS ${avgPerDay.toFixed(1)}`)}
+                    </p>
                   </div>
-                  <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
-                    <h4 className="font-medium text-sm mb-1">{t("pages.analytics.revenue.cost_breakdown")}</h4>
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs">{t("pages.analytics.revenue.sms_costs")}</span>
-                        <span className="text-xs font-medium">{t("pg.Analytics.0918")}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs">{t("pages.analytics.revenue.whatsapp_costs")}</span>
-                        <span className="text-xs font-medium">{t("pg.Analytics.0919")}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs">{t("pages.analytics.revenue.platform_fees")}</span>
-                        <span className="text-xs font-medium">{t("pg.Analytics.0920")}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                        </CardContent>
-                      </Card>
-                    </div>
+                ) : <NoData />}
+              </CardContent>
+            </Card>
+          </div>
         );
+      }
+
+      case "cost": {
+        const totalCost = summary?.total_cost ?? 0;
+        return (
+          <div className="space-y-3">
+            {partialNote}
+            <Card className="glass border-0">
+              <CardHeader className="p-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <CostIcon className="w-4 h-4 text-primary" />
+                  {tx("SMS cost", "Gharama ya SMS")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                {summary ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                        <p className="text-xl font-bold text-success">{money(summary.total_cost)}</p>
+                        <p className="text-xs text-text-subtle">{tx("Total cost", "Gharama jumla")}</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                        <p className="text-xl font-bold text-primary">{money(summary.total_messages > 0 ? summary.total_cost / summary.total_messages : 0)}</p>
+                        <p className="text-xs text-text-subtle">{tx("Per SMS", "Kwa SMS")}</p>
+                      </div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
+                      <h4 className="font-medium text-sm mb-1">{tx("Cost by how SMS were sent", "Gharama kwa njia ya kutuma")}</h4>
+                      <div className="space-y-1">
+                        {[...pathEntries].sort((a, b) => b[1].cost - a[1].cost).map(([key, v]) => (
+                          <div key={key} className="flex justify-between items-center">
+                            <span className="text-xs">{pathLabel(key)} ({num(v.count)})</span>
+                            <span className="text-xs font-medium">{money(v.cost)}{totalCost > 0 ? ` (${Math.round(rate(v.cost, totalCost))}%)` : ""}</span>
+                          </div>
+                        ))}
+                        {pathEntries.length === 0 && <NoData />}
+                      </div>
+                    </div>
+                  </div>
+                ) : <NoData />}
+              </CardContent>
+            </Card>
+
+            <Card className="glass border-0">
+              <CardHeader className="p-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  {tx("Cost by day", "Gharama kwa siku")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                {daily.length > 0 ? (
+                  <div className="h-40">
+                    <Line data={dailyCostData} options={chartOptions} />
+                  </div>
+                ) : <NoData />}
+              </CardContent>
+            </Card>
+          </div>
+        );
+      }
 
       default:
         return null;
     }
   };
+
+  const exportButtons = (compact: boolean) => (
+    <>
+      <Button
+        variant="outline"
+        className="glass-subtle border-0 text-xs sm:text-sm h-7 sm:h-8"
+        size="sm"
+        onClick={handleExportCsv}
+        disabled={!data || isLoading}
+      >
+        <FileText className="w-3 h-3 mr-1 sm:mr-2" />
+        <span>{compact ? "CSV" : tx("Export CSV", "Pakua CSV")}</span>
+      </Button>
+      <Button
+        variant="outline"
+        className="glass-subtle border-0 text-xs sm:text-sm h-7 sm:h-8"
+        size="sm"
+        onClick={handleExportToPDF}
+        disabled={isExporting || !currentCategory}
+      >
+        <Download className="w-3 h-3 mr-1 sm:mr-2" />
+        <span className={compact ? undefined : "hidden sm:inline"}>
+          {isExporting ? t("pages.analytics.export.exporting") : compact ? t("pages.analytics.export.export_short") : t("pages.analytics.export.export_pdf")}
+        </span>
+        {!compact && (
+          <span className="sm:hidden">
+            {isExporting ? "..." : t("pages.analytics.export.pdf_short")}
+          </span>
+        )}
+      </Button>
+    </>
+  );
 
   return (
     <div className="flex h-screen bg-background">
@@ -747,7 +889,7 @@ const Analytics = () => {
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1 sm:gap-2 lg:gap-3">
-                  <Select value={dateRange} onValueChange={setDateRange}>
+                  <Select value={dateRange} onValueChange={(v) => setDateRange(v as RangeKey)}>
                     <SelectTrigger className="w-full sm:w-36 lg:w-40 glass-subtle border-0 text-xs sm:text-sm h-7 sm:h-8">
                       <Calendar className="w-3 h-3 mr-1 sm:mr-2" />
                       <SelectValue />
@@ -759,33 +901,7 @@ const Analytics = () => {
                       <SelectItem value="1y">{t("pages.analytics.range.1y")}</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={selectedChannel} onValueChange={setSelectedChannel}>
-                    <SelectTrigger className="w-full sm:w-36 lg:w-40 glass-subtle border-0 text-xs sm:text-sm h-7 sm:h-8">
-                      <Filter className="w-3 h-3 mr-1 sm:mr-2" />
-                      <SelectValue placeholder={t("pages.analytics.channel.all")} />
-                    </SelectTrigger>
-                    <SelectContent className="glass">
-                      <SelectItem value="all">{t("pages.analytics.channel.all")}</SelectItem>
-                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                      <SelectItem value="sms">SMS</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="outline"
-                    className="glass-subtle border-0 text-xs sm:text-sm h-7 sm:h-8"
-                    size="sm"
-                    onClick={handleExportToPDF}
-                    disabled={isExporting}
-                  >
-                    <Download className="w-3 h-3 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">
-                      {isExporting ? t("pages.analytics.export.exporting") : t("pages.analytics.export.export_pdf")}
-                    </span>
-                    <span className="sm:hidden">
-                      {isExporting ? "..." : t("pages.analytics.export.pdf_short")}
-                    </span>
-                  </Button>
+                  {!isMobile && exportButtons(false)}
                 </div>
               </div>
 
@@ -797,11 +913,7 @@ const Analytics = () => {
                       {analyticsCategories.map((category) => (
                         <Card
                           key={category.id}
-                          className={`glass border-0 cursor-pointer transition-all duration-200 ${
-                            currentCategory === category.id
-                              ? 'border-l-4 border-t-4 border-primary bg-primary/5 shadow-lg'
-                              : 'hover:shadow-lg'
-                          }`}
+                          className="glass border-0 cursor-pointer transition-all duration-200 hover:shadow-lg"
                           onClick={() => setCurrentCategory(category.id)}
                         >
                           <CardContent className="p-4">
@@ -850,16 +962,7 @@ const Analytics = () => {
                             </div>
                           </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleExportToPDF}
-                          disabled={isExporting}
-                          className="glass-subtle border-0 text-xs"
-                        >
-                          <Download className="w-3 h-3 mr-1" />
-                          {isExporting ? t("pages.analytics.export.exporting") : t("pages.analytics.export.export_short")}
-                        </Button>
+                        <div className="flex items-center gap-1">{exportButtons(true)}</div>
                       </div>
 
                       {/* Category Content */}

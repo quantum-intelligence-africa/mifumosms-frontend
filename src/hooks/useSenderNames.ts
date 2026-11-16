@@ -211,11 +211,9 @@ export function useSenderNames() {
 	const updateSenderName = async (requestId: string, data: UpdateSenderNameRequest) => {
 		try {
 			setError(null);
-			const updateData: { status?: string; admin_notes?: string } = {};
-			if (data.status) updateData.status = data.status;
-			if (data.admin_notes) updateData.admin_notes = data.admin_notes;
-
-			const response = await apiClient.updateRequest(requestId, updateData);
+			// A customer edit goes to PATCH /sender-requests/{id}/ (name, sample message, documents);
+			// only admin status/notes changes use the admin-only /update/ endpoint (decided inside the client).
+			const response = await apiClient.updateSenderNameRequest(requestId, data);
 
 			if (response.success && response.data) {
 				// Update the request in the list immediately for better UX
