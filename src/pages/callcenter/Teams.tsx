@@ -43,6 +43,8 @@ interface Draft {
   after_hours_action: AfterHoursAction;
   after_hours_message: string;
   overflow_team: string;
+  borrow_agents: boolean;
+  borrow_from_ids: string[];
   queue_enabled: boolean;
   queue_max_callers: number;
   queue_max_wait_seconds: number;
@@ -63,7 +65,7 @@ interface Draft {
 const EMPTY: Draft = {
   name: "", description: "", extension: "", routing_strategy: "round_robin",
   alwaysOpen: true, days: [0, 1, 2, 3, 4], start: "08:00", end: "17:00", timezone: "Africa/Dar_es_Salaam",
-  after_hours_action: "voicemail", after_hours_message: "", overflow_team: "",
+  after_hours_action: "voicemail", after_hours_message: "", overflow_team: "", borrow_agents: false, borrow_from_ids: [],
   queue_enabled: false, queue_max_callers: 10, queue_max_wait_seconds: 180, hold_music_url: "", waiting_message: "", callback_offer: true, queue_operator_option: false,
   queue_ai_option: false, ai_answers_first: false, ai_assistant_id: "", queue_language: "sw", callback_max_attempts: 3, callback_retry_minutes: 60,
   is_active: true, agent_ids: [],
@@ -76,7 +78,7 @@ function toDraft(team: Team): Draft {
     name: team.name, description: team.description, extension: team.extension, routing_strategy: team.routing_strategy,
     alwaysOpen: !hasHours, days: hours?.days ?? [0, 1, 2, 3, 4], start: hours?.start ?? "08:00", end: hours?.end ?? "17:00",
     timezone: team.timezone, after_hours_action: team.after_hours_action, after_hours_message: team.after_hours_message,
-    overflow_team: team.overflow_team ?? "", is_active: team.is_active, agent_ids: team.members.map((m) => m.id),
+    overflow_team: team.overflow_team ?? "", borrow_agents: !!team.borrow_agents, borrow_from_ids: team.borrow_from ?? [], is_active: team.is_active, agent_ids: team.members.map((m) => m.id),
     queue_enabled: team.queue_enabled, queue_max_callers: team.queue_max_callers, queue_max_wait_seconds: team.queue_max_wait_seconds,
     hold_music_url: team.hold_music_url, waiting_message: team.waiting_message, callback_offer: team.callback_offer, queue_operator_option: !!team.queue_operator_option,
     queue_ai_option: !!team.queue_ai_option, ai_answers_first: !!team.ai_answers_first, ai_assistant_id: team.ai_assistant_id ?? "", queue_language: team.queue_language ?? "sw",
@@ -90,7 +92,7 @@ function toInput(d: Draft): TeamInput {
     routing_strategy: d.routing_strategy,
     working_hours: d.alwaysOpen ? {} : { days: d.days, start: d.start, end: d.end },
     timezone: d.timezone.trim(), after_hours_action: d.after_hours_action, after_hours_message: d.after_hours_message.trim(),
-    overflow_team: d.overflow_team || null, is_active: d.is_active, agent_ids: d.agent_ids,
+    overflow_team: d.overflow_team || null, borrow_agents: d.borrow_agents, borrow_from_ids: d.borrow_agents ? d.borrow_from_ids : [], is_active: d.is_active, agent_ids: d.agent_ids,
     queue_enabled: d.queue_enabled, queue_max_callers: d.queue_max_callers, queue_max_wait_seconds: d.queue_max_wait_seconds,
     hold_music_url: d.hold_music_url.trim(), waiting_message: d.waiting_message.trim(), callback_offer: d.callback_offer, queue_operator_option: d.queue_operator_option,
     queue_ai_option: d.queue_ai_option, ai_answers_first: d.ai_answers_first, ai_assistant_id: d.ai_answers_first && d.ai_assistant_id ? d.ai_assistant_id : null, queue_language: d.queue_language,
@@ -483,6 +485,37 @@ export default function Teams() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">{t("cc.teams.overflow_hint")}</p>
+            </div>
+
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="t-borrow">{t("cc.teams.borrow")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("cc.teams.borrow_hint")}</p>
+                </div>
+                <Switch id="t-borrow" checked={draft.borrow_agents} onCheckedChange={(v) => setDraft({ ...draft, borrow_agents: v })} />
+              </div>
+              {draft.borrow_agents && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium">{t("cc.teams.borrow_from")}</p>
+                  {otherTeams.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">{t("cc.teams.borrow_none")}</p>
+                  ) : (
+                    <div className="grid gap-1.5 sm:grid-cols-2">
+                      {otherTeams.map((x) => (
+                        <label key={x.id} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-accent">
+                          <Checkbox
+                            checked={draft.borrow_from_ids.includes(x.id)}
+                            onCheckedChange={(v) => setDraft({ ...draft, borrow_from_ids: v ? [...draft.borrow_from_ids, x.id] : draft.borrow_from_ids.filter((id) => id !== x.id) })}
+                          />
+                          <span className="truncate">{x.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">{t("cc.teams.borrow_from_hint")}</p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">

@@ -64,6 +64,8 @@ export interface Team {
   after_hours_action: AfterHoursAction;
   after_hours_message: string;
   overflow_team: string | null;
+  borrow_agents?: boolean;
+  borrow_from?: string[];
   queue_enabled: boolean;
   queue_max_callers: number;
   queue_max_wait_seconds: number;
@@ -95,6 +97,8 @@ export interface TeamInput {
   after_hours_action?: AfterHoursAction;
   after_hours_message?: string;
   overflow_team?: string | null;
+  borrow_agents?: boolean;
+  borrow_from_ids?: string[];
   queue_enabled?: boolean;
   queue_max_callers?: number;
   queue_max_wait_seconds?: number;
