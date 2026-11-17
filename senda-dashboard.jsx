@@ -11451,8 +11451,27 @@ function SmsLogsTextifyLive() {
       .finally(() => { if (id === sumReq.current) setSumLoading(false); });
   }, [providerId, onLogout]);
 
+  const [rej, setRej] = useState(null);
+  const [rejLoading, setRejLoading] = useState(true);
+  const [rejError, setRejError] = useState(null);
+  const rejReq = useRef(0);
+  const fetchRejected = useCallback(() => {
+    const id = ++rejReq.current;
+    setRejLoading(true); setRejError(null);
+    const qs = providerId ? `?provider_id=${encodeURIComponent(providerId)}` : '';
+    adminFetch(`/api/admin/v1/sms-logs/textify/live/rejected${qs}`, {}, onLogout)
+      .then(res => {
+        if (id !== rejReq.current) return;
+        if (res.success) setRej(res.data || null);
+        else setRejError(res.error?.message || 'Could not count rejected messages.');
+      })
+      .catch(e => { if (id === rejReq.current) setRejError(e.message || 'Network error'); })
+      .finally(() => { if (id === rejReq.current) setRejLoading(false); });
+  }, [providerId, onLogout]);
+
   useEffect(() => { fetchList(); }, [fetchList]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
+  useEffect(() => { fetchRejected(); }, [fetchRejected]);
 
   const copy = (text, label) => {
     if (!text) return;
@@ -11497,7 +11516,7 @@ function SmsLogsTextifyLive() {
         <span style={{fontSize:12,color:'#64748b'}}>
           {sumLoading ? 'Loading counts…' : summary ? `As of ${textifyHm(summary.fetched_at)} (Dar es Salaam)` : ''}
         </span>
-        <button className="senda-btn senda-btn-sm" onClick={()=>{ fetchSummary(); fetchList(); }} disabled={sumLoading || loading}
+        <button className="senda-btn senda-btn-sm" onClick={()=>{ fetchSummary(); fetchList(); fetchRejected(); }} disabled={sumLoading || loading}
           style={{height:30,background:BRAND,color:'#fff',border:'none',display:'inline-flex',alignItems:'center',gap:6}}>
           <RefreshCw size={13} strokeWidth={2.2}/> Refresh
         </button>
@@ -11527,6 +11546,16 @@ function SmsLogsTextifyLive() {
             </button>
           );
         })}
+        <div className="senda-card" style={{padding:'10px 14px',flex:'1 1 150px',minWidth:150,border:'1px solid #fecdd3',background:'#fff1f2'}}
+          title="Textify cannot filter by reason, so these are counted from its failed + undelivered messages. Included in Failed/Undelivered above.">
+          <p style={{fontSize:11,color:'#be123c',margin:0,fontWeight:700}}>Operator Rejected</p>
+          <p style={{fontSize:20,fontWeight:800,color:'#be123c',margin:'2px 0 0'}}>
+            {rejLoading && !rej ? '…' : rej ? `${rej.complete ? '' : '≥ '}${(rej.rejected || 0).toLocaleString()}` : '—'}
+            {rej && rej.of > 0 && <span style={{fontSize:11,fontWeight:600,color:'#94a3b8',marginLeft:6}}>{`${((rej.rejected / (sumTotal || rej.of)) * 100).toFixed(1)}%`}</span>}
+          </p>
+          {rej && !rej.complete && <p style={{fontSize:10,color:'#9f1239',margin:'2px 0 0'}}>checked {rej.scanned.toLocaleString()} of {rej.of.toLocaleString()} · <a onClick={fetchRejected} style={{cursor:'pointer',textDecoration:'underline'}}>retry</a></p>}
+          {rejError && <p style={{fontSize:10,color:'#dc2626',margin:'2px 0 0'}}>{rejError}</p>}
+        </div>
       </div>
 
       {/* Filters */}
