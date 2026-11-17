@@ -230,6 +230,9 @@ export interface LiveSnapshot {
   ai_calls?: number;
   outgoing_active?: number;
   overdue_callbacks?: number;
+  /** The same two counts in customers (distinct numbers) instead of missed-call records. */
+  overdue_callback_numbers?: number;
+  open_missed_numbers?: number;
   new_voicemails?: number;
   recent_calls: RecentCall[];
   agents_online: number;
