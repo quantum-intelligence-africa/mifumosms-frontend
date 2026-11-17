@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/hooks/useLanguage";
-import { appLocale } from "@/utils/appLocale";
+import { appLanguage, appLocale } from "@/utils/appLocale";
 import { isCallCenterSupervisor } from "@/utils/roleUtils";
 import { aiKey } from "@/i18n/aiAgent";
 import { PageFrame } from "@/components/callcenter/PageFrame";
@@ -63,7 +63,7 @@ const moodStyle: Record<string, string> = {
 /** The readable parts of a voicemail's AI analysis (English one when the app is not in Swahili). */
 function insightOf(vm: MissedCall["voicemail"]) {
   const result = vm?.analysis?.result ?? null;
-  const body: AnalysisBody | null = result ? (appLocale().startsWith("sw") ? result.analysis : result.analysis_en ?? result.analysis) : null;
+  const body: AnalysisBody | null = result ? (appLanguage() === "sw" ? result.analysis : result.analysis_en ?? result.analysis) : null;
   const summary = body?.summary || result?.summary || "";
   const wants = body?.customer_issue || body?.call_purpose || (result?.detected_intent ? result.detected_intent.replace(/_/g, " ") : "");
   const mood = body?.sentiment || result?.sentiment || "";
