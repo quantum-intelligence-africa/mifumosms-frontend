@@ -54,7 +54,7 @@ export default function CallAnalytics() {
   return (
     <PageFrame
       title={t("an.title")}
-      width="max-w-7xl"
+      width="max-w-[1600px]"
       subtitle={t("an.subtitle", { tz: access.data.timezone })}
       actions={
         <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ["call-analytics"] })}>

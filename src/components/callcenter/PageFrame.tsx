@@ -13,7 +13,7 @@ interface PageFrameProps {
 }
 
 /** The standard SENDA page chrome (sidebar + header + title row) used by every call-center page. */
-export function PageFrame({ title, subtitle, actions, children, width = "max-w-6xl" }: PageFrameProps) {
+export function PageFrame({ title, subtitle, actions, children, width = "max-w-[1600px]" }: PageFrameProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   return (
     <div className="flex h-screen overflow-hidden bg-background">
