@@ -3958,7 +3958,8 @@ function CcTenantPicker({ onPick, onLogout }) {
 
   useEffect(() => {
     if (picked) return undefined;
-    const t = setTimeout(() => load(0, true), q ? 250 : 0);
+    if (q.trim().length < 2) { setRows([]); setTotal(0); setHasMore(false); setLoading(false); return undefined; }
+    const t = setTimeout(() => load(0, true), 250);
     return () => clearTimeout(t);
   }, [q, picked, load]);
 
@@ -3981,9 +3982,9 @@ function CcTenantPicker({ onPick, onLogout }) {
     );
   }
   return (
-    <CcField label={`Organization${total ? ` (${total.toLocaleString()})` : ''}`}>
-      <input className="senda-input" style={CC_INPUT} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name or a member's email"/>
-      <div style={{ border:'1px solid #e2e8f0', borderRadius:8, marginTop:6, maxHeight:220, overflowY:'auto', background:'#fff' }}>
+    <CcField label={`Organization${total && q.trim().length >= 2 ? ` (${total.toLocaleString()} found)` : ''}`}>
+      <input className="senda-input" style={CC_INPUT} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name, email, phone number or sender ID" autoFocus/>
+      {q.trim().length < 2 ? null : <div style={{ border:'1px solid #e2e8f0', borderRadius:8, marginTop:6, maxHeight:220, overflowY:'auto', background:'#fff' }}>
         {rows.map(t => (
           <div key={t.id} onClick={() => choose(t)}
             onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }} onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
@@ -4002,7 +4003,7 @@ function CcTenantPicker({ onPick, onLogout }) {
             Load more
           </button>
         )}
-      </div>
+      </div>}
     </CcField>
   );
 }
