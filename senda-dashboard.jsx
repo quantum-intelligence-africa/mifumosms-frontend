@@ -10967,7 +10967,7 @@ function TextifyStatusBadge({ row }) {
   );
 }
 
-function SmsLogsTextifyTab() {
+function SmsLogsSendaRecords() {
   const { onLogout, showToast } = React.useContext(AppContext);
   const [search, setSearch]     = useState('');
   const [debounced, setDebounced] = useState('');
@@ -10976,12 +10976,17 @@ function SmsLogsTextifyTab() {
   const [pickerKey, setPickerKey] = useState(0);
   const [senderF, setSenderF]   = useState('');
   const [debSender, setDebSender] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo]     = useState('');
+  const [dateFrom, setDateFrom] = useState(() => textifyDay(6));
+  const [dateTo, setDateTo]     = useState(() => textifyDay(0));
   const [page, setPage]         = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [data, setData]         = useState({ results:[], count:0, page:1, page_size:50, summary:{ total:0, by_status:{} } });
+  const [data, setData]         = useState({ results:[], count:0, page:1, page_size:50, summary:{ total:0, by_status:{} }, window:null, truncated:false });
   const [loading, setLoading]   = useState(true);
+  const [slow, setSlow]         = useState(false);
+  const [elapsed, setElapsed]   = useState(0);
+  const abortRef = useRef(null);
+  const aliveRef = useRef(true);
+  useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; if (abortRef.current) abortRef.current.abort(); }; }, []);
   const [error, setError]       = useState(null);
   const [detail, setDetail]     = useState(null);
   const [auto, setAuto]         = useState(false);
@@ -11013,20 +11018,46 @@ function SmsLogsTextifyTab() {
 
   const fetchData = useCallback((silent) => {
     const id = ++reqId.current;
-    if (!silent) { setLoading(true); setError(null); }
-    adminFetch(`/api/admin/v1/sms-logs/textify?${buildQs(true).toString()}`, {}, onLogout)
+    if (abortRef.current) abortRef.current.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, 45000);
+    if (!silent) { setLoading(true); setError(null); setSlow(false); setElapsed(0); }
+    adminFetch(`/api/admin/v1/sms-logs/textify?${buildQs(true).toString()}`, { signal: ctrl.signal }, onLogout)
       .then(res => {
         if (id !== reqId.current) return;
         if (res.success) {
           const d = res.data || {};
           setData({ results: d.results || [], count: d.count || 0, page: d.page || page, page_size: d.page_size || pageSize,
-                    summary: d.summary || { total: d.count || 0, by_status: {} } });
+                    summary: d.summary || { total: d.count || 0, by_status: {} }, window: d.window || null, truncated: !!d.truncated });
           setError(null);
         } else if (!silent) setError(res.error?.message || 'Failed to load Textify SMS logs.');
       })
-      .catch(e => { if (id === reqId.current && !silent) setError(e.message || 'Network error'); })
-      .finally(() => { if (id === reqId.current && !silent) setLoading(false); });
+      .catch(e => {
+        if (!aliveRef.current || id !== reqId.current) return;
+        if (e && e.name === 'AbortError') {
+          if (timedOut && !silent) setError('The server took too long. Narrow the date range or pick one organization.');
+          return;
+        }
+        if (!silent) setError(e.message || 'Network error');
+      })
+      .finally(() => {
+        clearTimeout(timer);
+        if (aliveRef.current && id === reqId.current && !silent) { setLoading(false); setSlow(false); }
+      });
   }, [buildQs, onLogout, page, pageSize]);
+
+  // After 3 s of loading show a hint with the elapsed time.
+  useEffect(() => {
+    if (!loading) return undefined;
+    const started = Date.now();
+    const t = setInterval(() => {
+      const s = Math.floor((Date.now() - started) / 1000);
+      setElapsed(s); if (s >= 3) setSlow(true);
+    }, 1000);
+    return () => clearInterval(t);
+  }, [loading]);
 
   useEffect(() => { fetchData(false); }, [fetchData]);
 
@@ -11039,7 +11070,7 @@ function SmsLogsTextifyTab() {
 
   const clearFilters = () => {
     setSearch(''); setDebounced(''); setStatusF(''); setTenantId(''); setPickerKey(k => k + 1);
-    setSenderF(''); setDebSender(''); setDateFrom(''); setDateTo(''); setPage(1);
+    setSenderF(''); setDebSender(''); setDateFrom(textifyDay(6)); setDateTo(textifyDay(0)); setPage(1);
   };
   const quickRange = (daysBack, single) => {
     setDateFrom(textifyDay(daysBack));
@@ -11112,7 +11143,7 @@ function SmsLogsTextifyTab() {
   const by = (data.summary && data.summary.by_status) || {};
   const sumTotal = (data.summary && data.summary.total) || 0;
   const pct = (n) => (sumTotal > 0 ? `${((n / sumTotal) * 100).toFixed(1)}%` : '0%');
-  const hasFilters = !!(debounced || statusF || tenantId || debSender || dateFrom || dateTo);
+  const hasFilters = !!(debounced || statusF || tenantId || debSender || dateFrom !== textifyDay(6) || dateTo !== textifyDay(0));
   const lbl = { fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 };
   const inp = { height:38, fontSize:13 };
   const quickBtn = { height:28, fontSize:11, padding:'0 10px' };
@@ -11216,7 +11247,22 @@ function SmsLogsTextifyTab() {
         </div>
       </div>
 
-      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={()=>fetchData(false)}/> : (
+      {!loading && !error && data.window && data.window.defaulted && (
+        <div style={{fontSize:12,color:'#475569',background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:8,padding:'8px 12px',marginBottom:12}}>
+          Showing the last 7 days. Pick dates to see more.
+        </div>
+      )}
+      {!loading && !error && data.truncated && (
+        <div style={{fontSize:12,fontWeight:600,color:'#92400e',background:'#fef3c7',border:'1px solid #fcd34d',borderRadius:8,padding:'8px 12px',marginBottom:12}}>
+          Very large result: showing the newest rows only. Narrow the filters.
+        </div>
+      )}
+      {loading ? (
+        <div>
+          <LoadingState/>
+          {slow && <div style={{textAlign:'center',fontSize:12,color:'#64748b',marginTop:-8}}>Loading… {elapsed}s. Large date ranges can take a while.</div>}
+        </div>
+      ) : error ? <ErrorState message={error} onRetry={()=>fetchData(false)}/> : (
         <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
           <div style={{overflow:'auto',maxHeight:'70vh'}}>
             <table className="senda-table" style={{minWidth:1000,fontSize:13}}>
@@ -11311,6 +11357,317 @@ function SmsLogsTextifyTab() {
             </div>
           </div>
         </div>, document.body)}
+    </div>
+  );
+}
+
+// Textify's own raw status words (live view cards).
+const TEXTIFY_LIVE_STATUSES = [
+  { key:'delivered',         label:'Delivered',         color:'#16a34a', bg:'#dcfce7' },
+  { key:'sent',              label:'Sent',              color:'#2563eb', bg:'#dbeafe' },
+  { key:'sending',           label:'Sending',           color:'#0891b2', bg:'#cffafe' },
+  { key:'processing',        label:'Processing',        color:'#7c3aed', bg:'#ede9fe' },
+  { key:'processing_status', label:'Processing status', color:'#7c3aed', bg:'#ede9fe' },
+  { key:'scheduled',         label:'Scheduled',         color:'#64748b', bg:'#f1f5f9' },
+  { key:'undelivered',       label:'Undelivered',       color:'#ea580c', bg:'#ffedd5' },
+  { key:'failed',            label:'Failed',            color:'#dc2626', bg:'#fee2e2' },
+];
+
+function textifyHm(iso) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || isNaN(d)) return '—';
+  return new Intl.DateTimeFormat('en-GB', { timeZone:TEXTIFY_TZ, hour:'2-digit', minute:'2-digit', hour12:false }).format(d);
+}
+
+function SmsLogsTextifyLive() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [search, setSearch]       = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [statusF, setStatusF]     = useState('');
+  const [providerId, setProviderId] = useState('');
+  const [page, setPage]           = useState(1);
+  const [limit, setLimit]         = useState(50);
+  const [data, setData]           = useState({ results:[], total:0, total_pages:1, providers:[] });
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const [summary, setSummary]     = useState(null);
+  const [sumLoading, setSumLoading] = useState(true);
+  const [sumError, setSumError]   = useState(null);
+  const [detail, setDetail]       = useState(null);
+  const listAbort = useRef(null);
+  const sumAbort = useRef(null);
+  const listReq = useRef(0);
+  const sumReq = useRef(0);
+
+  useEffect(() => () => {
+    if (listAbort.current) listAbort.current.abort();
+    if (sumAbort.current) sumAbort.current.abort();
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const fetchList = useCallback(() => {
+    const id = ++listReq.current;
+    if (listAbort.current) listAbort.current.abort();
+    const ctrl = new AbortController();
+    listAbort.current = ctrl;
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams();
+    if (providerId) qs.set('provider_id', providerId);
+    if (statusF) qs.set('status', statusF);
+    if (debounced.trim()) qs.set('search', debounced.trim());
+    qs.set('page', String(page)); qs.set('limit', String(limit));
+    adminFetch(`/api/admin/v1/sms-logs/textify/live?${qs.toString()}`, { signal: ctrl.signal }, onLogout)
+      .then(res => {
+        if (id !== listReq.current) return;
+        if (res.success) {
+          const d = res.data || {};
+          setData({ results: d.results || [], total: d.total || 0, total_pages: d.total_pages || 1, providers: d.providers || [] });
+          if (d.page && d.page !== page) setPage(d.page);
+        } else setError(res.error?.message || 'Failed to load Textify live messages.');
+      })
+      .catch(e => { if (id === listReq.current && !(e && e.name === 'AbortError')) setError(e.message || 'Network error'); })
+      .finally(() => { if (id === listReq.current) setLoading(false); });
+  }, [providerId, statusF, debounced, page, limit, onLogout]);
+
+  const fetchSummary = useCallback(() => {
+    const id = ++sumReq.current;
+    if (sumAbort.current) sumAbort.current.abort();
+    const ctrl = new AbortController();
+    sumAbort.current = ctrl;
+    setSumLoading(true); setSumError(null);
+    const qs = providerId ? `?provider_id=${encodeURIComponent(providerId)}` : '';
+    adminFetch(`/api/admin/v1/sms-logs/textify/live/summary${qs}`, { signal: ctrl.signal }, onLogout)
+      .then(res => {
+        if (id !== sumReq.current) return;
+        if (res.success) setSummary(res.data || null);
+        else setSumError(res.error?.message || 'Failed to load Textify summary.');
+      })
+      .catch(e => { if (id === sumReq.current && !(e && e.name === 'AbortError')) setSumError(e.message || 'Network error'); })
+      .finally(() => { if (id === sumReq.current) setSumLoading(false); });
+  }, [providerId, onLogout]);
+
+  useEffect(() => { fetchList(); }, [fetchList]);
+  useEffect(() => { fetchSummary(); }, [fetchSummary]);
+
+  const copy = (text, label) => {
+    if (!text) return;
+    try { navigator.clipboard.writeText(String(text)); showToast?.(`${label || 'Copied'} copied`, 'success'); }
+    catch { showToast?.('Could not copy', 'error'); }
+  };
+  const toggleStatus = (key) => { setStatusF(s => (s === key ? '' : key)); setPage(1); };
+  const clearFilters = () => { setSearch(''); setDebounced(''); setStatusF(''); setPage(1); };
+
+  const rows = data.results;
+  const total = data.total || 0;
+  const pages = Math.max(1, data.total_pages || Math.ceil(total / limit));
+  const startIdx = total === 0 ? 0 : (page - 1) * limit + 1;
+  const endIdx = Math.min(total, startIdx + rows.length - 1);
+  const by = (summary && summary.by_status) || {};
+  const sumTotal = (summary && summary.total) || 0;
+  const errFor = (key) => {
+    const e = ((summary && summary.errors) || []).find(x => x.status === key);
+    return e ? e.error : '';
+  };
+  const lbl = { fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 };
+  const inp = { height:38, fontSize:13 };
+  const hasFilters = !!(debounced || statusF);
+
+  const detailRows = detail ? [
+    ['Sender name', detail.sender_name || '—'],
+    ['Receiver', detail.receiver || '—', 'mono', detail.receiver],
+    ['Contact', detail.contact_name || '—'],
+    ['Characters', detail.characters ?? '—'],
+    ['SMS count', detail.sms_count ?? '—'],
+    ['Created', textifyFullTime(detail.created_at)],
+    ['Scheduled for', detail.is_scheduled ? textifyFullTime(detail.scheduled_date) : '—'],
+    ['Textify status', detail.textify_status || '—', 'mono'],
+    ['Reason', detail.reason || '—'],
+    ['Textify message ID', detail.textify_message_id || '—', 'mono', detail.textify_message_id],
+  ] : [];
+
+  return (
+    <div>
+      {/* Raw Textify status cards */}
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,flexWrap:'wrap'}}>
+        <span style={{fontSize:12,color:'#64748b'}}>
+          {sumLoading ? 'Loading counts…' : summary ? `As of ${textifyHm(summary.fetched_at)} (Dar es Salaam)` : ''}
+        </span>
+        <button className="senda-btn senda-btn-sm" onClick={()=>{ fetchSummary(); fetchList(); }} disabled={sumLoading || loading}
+          style={{height:30,background:BRAND,color:'#fff',border:'none',display:'inline-flex',alignItems:'center',gap:6}}>
+          <RefreshCw size={13} strokeWidth={2.2}/> Refresh
+        </button>
+        {sumError && <span style={{fontSize:12,color:'#dc2626'}}>{sumError}</span>}
+      </div>
+      <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap'}}>
+        <div className="senda-card" style={{padding:'10px 14px',flex:'1 1 120px',minWidth:120}}>
+          <p style={{fontSize:11,color:'#94a3b8',margin:0,fontWeight:600}}>Total</p>
+          <p style={{fontSize:20,fontWeight:800,color:'#0f172a',margin:'2px 0 0'}}>{sumLoading && !summary ? '…' : sumTotal.toLocaleString()}</p>
+        </div>
+        {TEXTIFY_LIVE_STATUSES.map(s => {
+          const n = by[s.key];
+          const isNull = n == null;
+          const active = statusF === s.key;
+          const err = isNull ? errFor(s.key) : '';
+          return (
+            <button key={s.key} type="button" onClick={()=>toggleStatus(s.key)} className="senda-card"
+              title={isNull ? (err || 'Count unavailable') : (active ? 'Click to clear this filter' : `Show only ${s.label}`)}
+              style={{padding:'10px 14px',flex:'1 1 120px',minWidth:120,textAlign:'left',cursor:'pointer',
+                border: active ? `2px solid ${s.color}` : '1px solid #eef2f7',
+                background: active ? s.bg : '#fff', opacity: statusF && !active ? .6 : 1}}>
+              <p style={{fontSize:11,color:s.color,margin:0,fontWeight:700}}>{s.label}</p>
+              <p style={{fontSize:20,fontWeight:800,color:s.color,margin:'2px 0 0'}}>
+                {isNull ? (sumLoading ? '…' : '—') : n.toLocaleString()}
+                {!isNull && <span style={{fontSize:11,fontWeight:600,color:'#94a3b8',marginLeft:6}}>{sumTotal > 0 ? `${((n / sumTotal) * 100).toFixed(1)}%` : '0%'}</span>}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Filters */}
+      <div className="senda-card" style={{padding:16, marginBottom:16}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:10,alignItems:'end'}}>
+          <div>
+            <label style={lbl}>Search</label>
+            <input className="senda-input" placeholder="Number, text, sender" value={search} onChange={e=>setSearch(e.target.value)} style={inp}/>
+          </div>
+          {data.providers.length > 1 && (
+            <div>
+              <label style={lbl}>Provider</label>
+              <select className="senda-input" value={providerId} onChange={e=>{ setProviderId(e.target.value); setPage(1); }} style={inp}>
+                <option value="">Default provider</option>
+                {data.providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+          )}
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={clearFilters} style={{height:36}}>Clear filters</button>
+            {statusF && <span style={{fontSize:12,color:'#475569'}}>Status: <b>{statusF}</b></span>}
+          </div>
+        </div>
+      </div>
+
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchList}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflow:'auto',maxHeight:'70vh'}}>
+            <table className="senda-table" style={{minWidth:900,fontSize:13}}>
+              <thead>
+                <tr>
+                  {['#','Sender name','Receiver','SMS text','Chars','SMS','Status','Created'].map(h => (
+                    <th key={h} style={{position:'sticky',top:0,zIndex:2,background:'#f8fafc',whiteSpace:'nowrap'}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={r.id} onClick={()=>setDetail(r)}
+                    onMouseEnter={e=>{ e.currentTarget.style.background = '#eff6ff'; }}
+                    onMouseLeave={e=>{ e.currentTarget.style.background = i % 2 ? '#f8fafc' : '#fff'; }}
+                    style={{cursor:'pointer',background: i % 2 ? '#f8fafc' : '#fff'}}>
+                    <td style={{color:'#94a3b8',fontSize:12}}>{startIdx + i}</td>
+                    <td style={{fontWeight:600,color:'#0f172a',whiteSpace:'nowrap'}}>{r.sender_name || '—'}</td>
+                    <td style={{fontFamily:'monospace',whiteSpace:'nowrap'}}>
+                      <span title="Click to copy" onClick={e=>{ e.stopPropagation(); copy(r.receiver, 'Number'); }} style={{cursor:'copy'}}>{r.receiver || '—'}</span>
+                    </td>
+                    <td style={{color:'#475569',maxWidth:320}}>
+                      <span style={{display:'inline-flex',alignItems:'center',gap:6}}>
+                        <span>{(r.message || '').length > 60 ? `${r.message.slice(0, 60)}…` : (r.message || '—')}</span>
+                        <Eye size={13} color="#94a3b8" style={{flexShrink:0}}/>
+                      </span>
+                    </td>
+                    <td style={{textAlign:'right'}}>{r.characters ?? '—'}</td>
+                    <td style={{textAlign:'right'}}>{r.sms_count ?? '—'}</td>
+                    <td style={{minWidth:130}}>
+                      <TextifyStatusBadge row={r}/>
+                      {r.reason && <div style={{fontSize:11,color:'#94a3b8',marginTop:3,maxWidth:200}}>{r.reason}</div>}
+                    </td>
+                    <td style={{whiteSpace:'nowrap',color:'#64748b'}} title={textifyFullTime(r.created_at)}>{textifyShortTime(r.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {rows.length === 0 && (
+              <div style={{padding:'40px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>
+                <div style={{marginBottom:10}}>No messages found in Textify{hasFilters ? ' for these filters' : ''}.</div>
+                {hasFilters && <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={clearFilters}>Clear filters</button>}
+              </div>
+            )}
+          </div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid #f1f5f9',flexWrap:'wrap',gap:8}}>
+            <span style={{fontSize:12,color:'#64748b'}}>Showing {startIdx.toLocaleString()}-{endIdx.toLocaleString()} of {total.toLocaleString()}</span>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              <select className="senda-input" value={limit} onChange={e=>{ setLimit(Number(e.target.value)); setPage(1); }} style={{height:30,fontSize:12,width:90}}>
+                {[25,50,100,200].map(n => <option key={n} value={n}>{n} / page</option>)}
+              </select>
+              <span style={{fontSize:12,color:'#94a3b8'}}>Page {page} of {pages}</span>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))} style={{opacity:page<=1?.4:1}}>← Prev</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page>=pages} onClick={()=>setPage(p=>p+1)} style={{opacity:page>=pages?.4:1}}>Next →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detail && createPortal(
+        <div onClick={()=>setDetail(null)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',justifyContent:'flex-end',zIndex:1000}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'min(560px,100%)',height:'100%',background:'#fff',display:'flex',flexDirection:'column'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:'1px solid #eef2f7'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>SMS detail (live)</h3>
+                <TextifyStatusBadge row={detail}/>
+              </div>
+              <button className="senda-btn senda-btn-sm" onClick={()=>setDetail(null)} style={{height:32,border:'1.5px solid #e2e8f0',background:'#fff'}}><X size={16}/></button>
+            </div>
+            <div style={{flex:1,overflowY:'auto',padding:'18px 20px'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'.05em'}}>Message</div>
+                <button type="button" onClick={()=>copy(detail.message, 'Message')} style={{border:'none',background:'none',color:BRAND,cursor:'pointer',fontSize:11,fontWeight:700,padding:0}}>Copy</button>
+              </div>
+              <div style={{fontSize:13,color:'#0f172a',lineHeight:1.6,whiteSpace:'pre-wrap',wordBreak:'break-word',background:'#f8fafc',border:'1px solid #eef2f7',borderRadius:10,padding:'12px 14px',marginBottom:16}}>{detail.message || '—'}</div>
+              <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:'8px 16px',fontSize:13}}>
+                {detailRows.map(([k, v, mono, copyVal]) => (
+                  <React.Fragment key={k}>
+                    <span style={{color:'#94a3b8'}}>{k}</span>
+                    <span style={{color:'#0f172a',fontFamily:mono ? 'monospace' : undefined,wordBreak:'break-all',display:'inline-flex',gap:8,alignItems:'center'}}>
+                      {v}
+                      {copyVal ? <button type="button" onClick={()=>copy(copyVal, k)} style={{border:'none',background:'none',color:BRAND,cursor:'pointer',fontSize:11,fontWeight:700,padding:0}}>Copy</button> : null}
+                    </span>
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>, document.body)}
+    </div>
+  );
+}
+
+function SmsLogsTextifyTab() {
+  const [view, setView] = useState('senda');
+  const [liveSeen, setLiveSeen] = useState(false);
+  const tabBtn = (key, label) => (
+    <button key={key} type="button" onClick={()=>{ setView(key); if (key === 'live') setLiveSeen(true); }}
+      style={{padding:'9px 18px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',background:'none',
+        color: view === key ? BRAND : '#64748b',
+        borderBottom: view === key ? `3px solid ${BRAND}` : '3px solid transparent',marginBottom:-1}}>{label}</button>
+  );
+  return (
+    <div className="senda-fade-in">
+      <div style={{display:'flex',gap:4,borderBottom:'1px solid #e2e8f0'}}>
+        {tabBtn('senda', 'SENDA records')}
+        {tabBtn('live', 'Textify live')}
+      </div>
+      <p style={{fontSize:12,color:'#94a3b8',margin:'8px 0 14px'}}>
+        {view === 'senda'
+          ? "SENDA records: messages saved in SENDA's own database, with organization and status history."
+          : "Textify live: read straight from Textify's own list, the same numbers as Textify's portal, including messages sent outside SENDA."}
+      </p>
+      {/* Both stay mounted so each tab keeps its own filters. */}
+      <div style={{display: view === 'senda' ? 'block' : 'none'}}><SmsLogsSendaRecords/></div>
+      {liveSeen && <div style={{display: view === 'live' ? 'block' : 'none'}}><SmsLogsTextifyLive/></div>}
     </div>
   );
 }
