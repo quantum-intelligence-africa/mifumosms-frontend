@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, Bot, Loader2, PhoneMissed, RefreshCw, Search, Voicemail } from "lucide-react";
+import { AlertCircle, Bot, Loader2, PhoneMissed, RefreshCw, Search, Sparkles, Voicemail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,7 +18,8 @@ import { aiKey } from "@/i18n/aiAgent";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { SummaryLines } from "@/components/callcenter/AiHandoffCard";
 import { aiAgentApi, type Ticket, type TicketStatus } from "@/services/aiAgentApi";
-import { callCenterApi, describeError, type CCAgent, type MissedCall, type MissedCallStatus } from "@/services/callCenterApi";
+import { callCenterApi, describeError, type AnalysisBody, type CCAgent, type MissedCall, type MissedCallStatus } from "@/services/callCenterApi";
+import { voiceApi } from "@/services/voiceApi";
 
 const STATUSES: TicketStatus[] = ["open", "assigned", "pending_customer", "resolved", "closed"];
 const MISSED_STATUSES: MissedCallStatus[] = ["new", "assigned", "called_back", "scheduled", "contacted", "unreachable", "resolved", "unresolved"];
@@ -52,6 +53,24 @@ const statusStyle: Record<TicketStatus, string> = {
   closed: "bg-muted text-muted-foreground",
 };
 
+const moodStyle: Record<string, string> = {
+  positive: "bg-green-100 text-green-900",
+  neutral: "bg-muted text-muted-foreground",
+  negative: "bg-red-100 text-red-900",
+  unknown: "bg-muted text-muted-foreground",
+};
+
+/** The readable parts of a voicemail's AI analysis (English one when the app is not in Swahili). */
+function insightOf(vm: MissedCall["voicemail"]) {
+  const result = vm?.analysis?.result ?? null;
+  const body: AnalysisBody | null = result ? (appLocale().startsWith("sw") ? result.analysis : result.analysis_en ?? result.analysis) : null;
+  const summary = body?.summary || result?.summary || "";
+  const wants = body?.customer_issue || body?.call_purpose || (result?.detected_intent ? result.detected_intent.replace(/_/g, " ") : "");
+  const mood = body?.sentiment || result?.sentiment || "";
+  const next = body?.action_items?.[0]?.task || (body?.follow_up_required?.required ? body.follow_up_required.reason || "" : "");
+  return { summary, wants, mood, next, transcript: result?.transcript || "", has: !!(summary || wants) };
+}
+
 export default function Tickets() {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -69,6 +88,8 @@ export default function Tickets() {
   const [detail, setDetail] = useState<Ticket | null>(null);
   const [missedOpen, setMissedOpen] = useState<MissedCall | null>(null);
   const [busy, setBusy] = useState(false);
+  const [analysing, setAnalysing] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -142,6 +163,36 @@ export default function Tickets() {
     }
   };
 
+  const analyse = async (callIds: string[]) => {
+    if (callIds.length === 0) return;
+    setAnalysing(true);
+    const res = await voiceApi.post<{ queued: number }>("/audio/analyze-calls/", { call_ids: callIds.slice(0, 100) });
+    setAnalysing(false);
+    if (res.success) {
+      toast({ title: t("ai.tk.a_started", { n: res.data?.queued ?? callIds.length }) });
+      void load();
+    } else {
+      toast({ title: res.status === 403 ? t("ai.tk.a_off") : t("ai.tk.a_failed"), description: res.status === 403 ? undefined : describeError(res), variant: "destructive" });
+    }
+  };
+  const needsAnalysis = (m: MissedCall) => !!m.voicemail && (!m.voicemail.analysis || m.voicemail.analysis.status === "failed");
+  const unanalysed = missed.filter(needsAnalysis);
+
+  // Keep an open voicemail box current when the list reloads (the analysis finishing, a status change).
+  useEffect(() => {
+    if (!missedOpen) return;
+    const fresh = missed.find((m) => m.id === missedOpen.id);
+    if (fresh && fresh !== missedOpen) setMissedOpen(fresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missed]);
+  // While an analysis is running, look again every few seconds so the result appears by itself.
+  const analysisRunning = missed.some((m) => m.voicemail?.analysis && (m.voicemail.analysis.status === "pending" || m.voicemail.analysis.status === "processing"));
+  useEffect(() => {
+    if (!analysisRunning) return undefined;
+    const handle = window.setInterval(() => void load(), 6000);
+    return () => window.clearInterval(handle);
+  }, [analysisRunning, load]);
+
   const rows: Row[] = [
     ...tickets.map((tk): Row => ({ kind: "ticket", key: `t${tk.id}`, when: tk.created_at, ticket: tk, closed: TICKET_CLOSED.includes(tk.status) })),
     ...missed.map((m): Row => ({ kind: "missed", key: `m${m.id}`, when: m.call_started_at || m.created_at, missed: m, closed: MISSED_CLOSED.includes(m.status) })),
@@ -161,7 +212,17 @@ export default function Tickets() {
     <PageFrame
       title={t("ai.tk.title")}
       subtitle={t("ai.tk.subtitle")}
-      actions={<Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />{t("sms.common.refresh")}</Button>}
+      actions={
+        <>
+          {unanalysed.length > 0 && (
+            <Button size="sm" disabled={analysing} onClick={() => void analyse(unanalysed.map((m) => m.call))}>
+              {analysing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
+              {t("ai.tk.a_run_all", { n: unanalysed.length })}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />{t("sms.common.refresh")}</Button>
+        </>
+      }
     >
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1">
@@ -222,6 +283,10 @@ export default function Tickets() {
                           </span>
                           {(r.missed.group?.count ?? 0) > 1 && <span className="ml-1.5 text-xs text-muted-foreground">×{r.missed.group!.count}</span>}
                           {r.missed.is_overdue && <span className="ml-1.5 text-xs font-medium text-red-700">!</span>}
+                          {r.missed.voicemail && (() => {
+                            const ins = insightOf(r.missed.voicemail);
+                            return ins.has ? <span className="block max-w-md truncate text-xs text-muted-foreground">{ins.summary || ins.wants}</span> : null;
+                          })()}
                         </td>
                         <td className="hidden px-3 py-2 md:table-cell">{r.missed.team_name || "—"}</td>
                         <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${missedStyle[r.missed.status]}`}>{t(`cc.missed.status_${r.missed.status}` as never)}</span></td>
@@ -269,6 +334,47 @@ export default function Tickets() {
                   </Select>
                 )}
                 {!supervisor && missedOpen.assigned_to_name && <p className="text-xs text-muted-foreground">{t("ai.tk.assigned_to", { name: missedOpen.assigned_to_name })}</p>}
+                {missedOpen.voicemail && (
+                  <div className="space-y-2 rounded-lg border border-border p-3">
+                    <audio controls preload="none" src={missedOpen.voicemail.storage_path} className="h-9 w-full" />
+                    {(() => {
+                      const job = missedOpen.voicemail.analysis;
+                      const ins = insightOf(missedOpen.voicemail);
+                      if (job && (job.status === "pending" || job.status === "processing")) {
+                        return <p className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />{t("ai.tk.a_working")}</p>;
+                      }
+                      if (!ins.has) {
+                        return (
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-muted-foreground">{job?.status === "failed" ? t("ai.tk.a_failed") : t("ai.tk.a_none")}</p>
+                            <Button size="sm" disabled={analysing} onClick={() => void analyse([missedOpen.call])}>
+                              <Sparkles className="mr-1.5 h-3.5 w-3.5" />{t("ai.tk.a_run")}
+                            </Button>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("ai.tk.a_title")}</p>
+                          {ins.summary && <div><p className="text-xs text-muted-foreground">{t("ai.tk.a_summary")}</p><p>{ins.summary}</p></div>}
+                          {ins.wants && <div><p className="text-xs text-muted-foreground">{t("ai.tk.a_wants")}</p><p>{ins.wants}</p></div>}
+                          {ins.next && <div><p className="text-xs text-muted-foreground">{t("ai.tk.a_next")}</p><p className="font-medium">{ins.next}</p></div>}
+                          {ins.mood && (
+                            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${moodStyle[ins.mood] ?? moodStyle.unknown}`}>
+                              {t("ai.tk.a_mood")}: {t(aiKey(`ai.tk.mood.${moodStyle[ins.mood] ? ins.mood : "unknown"}`))}
+                            </span>
+                          )}
+                          {ins.transcript && (
+                            <div>
+                              <button type="button" className="text-xs font-medium text-primary underline" onClick={() => setShowTranscript((v) => !v)}>{t("ai.tk.a_transcript")}</button>
+                              {showTranscript && <p className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap rounded bg-muted/50 p-2 text-muted-foreground">{ins.transcript}</p>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
                 <Link to="/call-center/missed" className="text-sm text-primary underline-offset-2 hover:underline">{t("ai.tk.open_missed")}</Link>
               </div>
             </>
