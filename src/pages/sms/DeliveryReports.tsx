@@ -108,12 +108,11 @@ const DeliveryReports = () => {
   };
 
   const getStatusVariant = (status: string) => {
+    // Customers only see two outcomes: sent or failed (detailed statuses are for admins).
     switch (status.toLowerCase()) {
-      case "delivered":
-        return "default";
-      case "sent":
-        return "secondary";
       case "failed":
+      case "undelivered":
+      case "rejected":
         return "destructive";
       default:
         return "secondary";
@@ -122,14 +121,12 @@ const DeliveryReports = () => {
 
   const getStatusLabel = (status: string) => {
     switch (status.toLowerCase()) {
-      case "delivered":
-        return t("status.delivered");
-      case "sent":
-        return t("status.sent");
       case "failed":
+      case "undelivered":
+      case "rejected":
         return t("status.failed");
       default:
-        return status;
+        return t("status.sent");
     }
   };
 
@@ -256,7 +253,6 @@ const DeliveryReports = () => {
                         <SelectContent className="glass">
                           <SelectItem value="all">{t("sms.delivery_reports.all_statuses")}</SelectItem>
                           <SelectItem value="sent">{t("status.sent")}</SelectItem>
-                          <SelectItem value="delivered">{t("status.delivered")}</SelectItem>
                           <SelectItem value="failed">{t("status.failed")}</SelectItem>
                         </SelectContent>
                       </Select>
