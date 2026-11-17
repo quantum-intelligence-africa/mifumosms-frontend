@@ -3649,6 +3649,7 @@ function CallCenterPlansTab() {
         <div style={{ display:'flex', gap:8 }}>
           {tabBtn('plans', 'Plans')}
           {tabBtn('requests', 'Requests', pendingCount ? ` (${pendingCount})` : '')}
+          {tabBtn('notices', 'Plan expiry notices')}
         </div>
         <div style={{ display:'flex', gap:8 }}>
           <button className="senda-btn" onClick={() => setTrialOpen(true)} style={{ height:34, padding:'0 14px', fontSize:13, fontWeight:700, borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer' }}>
@@ -3709,6 +3710,8 @@ function CallCenterPlansTab() {
           </div>
         </>
       )}
+
+      {view === 'notices' && <CcExpiryNotices onLogout={onLogout}/>}
 
       {view === 'requests' && (
         <div className="senda-card" style={{ padding: isMobile ? 12 : 18 }}>
@@ -4075,6 +4078,456 @@ function CcAssignDialog({ plans, onClose, onConfirm, onLogout }) {
       <CcField label="Months paid for"><input className="senda-input" style={CC_INPUT} type="number" min="1" max="36" value={months} onChange={e => setMonths(e.target.value)}/></CcField>
       <CcField label="Payment reference"><input className="senda-input" style={CC_INPUT} value={ref} maxLength={120} onChange={e => setRef(e.target.value)}/></CcField>
     </CcModal>
+  );
+}
+
+// ── Plan expiry notices (Call Center Plans > "Plan expiry notices") ─────────────
+const EXN_BASE = '/call-center/expiry-notices';
+const EXN_SMS_MAX = 320;
+const EXN_BTN = { height:34, padding:'0 14px', fontSize:13, fontWeight:700, borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer' };
+
+// "7, 1" -> { list:[7,1], error:'' }
+function exnParseDays(text) {
+  const parts = String(text || '').split(/[\s,;]+/).filter(Boolean);
+  const list = [];
+  for (const p of parts) {
+    if (!/^\d+$/.test(p)) return { list: [], error: `"${p}" is not a whole number.` };
+    const n = Number(p);
+    if (n < 1 || n > 60) return { list: [], error: `${n} is outside 1-60.` };
+    if (list.includes(n)) return { list: [], error: `${n} is listed twice.` };
+    list.push(n);
+  }
+  if (list.length > 8) return { list, error: 'Use at most 8 values.' };
+  list.sort((a, b) => b - a);
+  return { list, error: '' };
+}
+const exnLines = (text) => String(text || '').split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+const exnDate = (d) => d ? new Date(d).toLocaleDateString() : '—';
+const exnStatusBadge = (s) => {
+  const m = { sent:['#dcfce7','#166534'], failed:['#fee2e2','#991b1b'], skipped:['#f1f5f9','#475569'] }[s] || ['#f1f5f9','#475569'];
+  return <span style={{ background:m[0], color:m[1], fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:99 }}>{s || '—'}</span>;
+};
+
+function ExnSwitch({ label, checked, onChange, disabled, hint }) {
+  return (
+    <label style={{ display:'flex', gap:8, alignItems:'flex-start', fontSize:13, color: disabled ? '#94a3b8' : '#0f172a', cursor: disabled ? 'default' : 'pointer' }}>
+      <input type="checkbox" style={{ marginTop:3 }} checked={!!checked} disabled={disabled} onChange={e => onChange(e.target.checked)}/>
+      <span>{label}{hint && <span style={{ display:'block', fontSize:11, color:'#94a3b8' }}>{hint}</span>}</span>
+    </label>
+  );
+}
+
+function ExnDaysField({ label, text, setText, hint }) {
+  const { list, error } = exnParseDays(text);
+  return (
+    <CcField label={label} hint={hint}>
+      <input className="senda-input" style={{ ...CC_INPUT, borderColor: error ? RED : undefined }} value={text} onChange={e => setText(e.target.value)} placeholder="e.g. 7, 1"/>
+      <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6, minHeight:22 }}>
+        {error
+          ? <span style={{ fontSize:12, color:RED }}>{error}</span>
+          : list.length === 0
+            ? <span style={{ fontSize:12, color:'#94a3b8' }}>No warnings before the end date.</span>
+            : list.map(n => <span key={n} style={{ background:'#eff6ff', color:'#1d4ed8', fontSize:12, fontWeight:700, padding:'2px 10px', borderRadius:99 }}>{n} day{n === 1 ? '' : 's'} before</span>)}
+      </div>
+    </CcField>
+  );
+}
+
+function ExnErrorBox({ message, onRetry }) {
+  return (
+    <div style={{ padding:14, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, color:'#991b1b', fontSize:13, display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+      <span>{message}</span>
+      {onRetry && <button className="senda-btn" onClick={onRetry} style={EXN_BTN}>Retry</button>}
+    </div>
+  );
+}
+
+function ExnSmsBox({ label, value, onChange, placeholders }) {
+  const sample = { '{organization}':'Acme Ltd', '{plan}':'Business', '{date}':'25 Nov 2026', '{days}':'3' };
+  const preview = String(value || '').replace(/\{(organization|plan|date|days)\}/g, m => sample[m]);
+  const over = (value || '').length > EXN_SMS_MAX;
+  return (
+    <CcField label={label} hint={`Placeholders: ${placeholders.join('  ')}`}>
+      <textarea className="senda-input" rows={3} style={{ height:'auto', padding:8, fontSize:13, borderColor: over ? RED : undefined }} value={value || ''} onChange={e => onChange(e.target.value)}/>
+      <div style={{ fontSize:11, color: over ? RED : '#94a3b8', textAlign:'right' }}>{(value || '').length} / {EXN_SMS_MAX}</div>
+      <div style={{ fontSize:12, background:'#f8fafc', border:'1px dashed #cbd5e1', borderRadius:8, padding:'6px 10px', color:'#334155' }}>
+        <span style={{ fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase' }}>Preview </span>{preview || '—'}
+      </div>
+    </CcField>
+  );
+}
+
+// Part 1: platform-wide settings
+function ExnSettingsCard({ onLogout, setToast }) {
+  const [s, setS] = useState(null);
+  const [paidTxt, setPaidTxt] = useState('');
+  const [trialTxt, setTrialTxt] = useState('');
+  const [loadErr, setLoadErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [saveErr, setSaveErr] = useState(null);
+
+  const load = useCallback(() => {
+    setLoadErr(null);
+    return adminFetch(`${EXN_BASE}/settings`, {}, onLogout)
+      .then(res => {
+        if (!res.success) { setLoadErr(res.error?.message || 'Could not load the settings.'); return; }
+        const d = res.data || {};
+        setS(d); setPaidTxt((d.paid_days || []).join(', ')); setTrialTxt((d.trial_days || []).join(', '));
+      })
+      .catch(e => setLoadErr(e.message || 'Could not load the settings.'));
+  }, [onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  if (loadErr) return <div className="senda-card" style={{ padding:18 }}><ExnErrorBox message={loadErr} onRetry={load}/></div>;
+  if (!s) return <div className="senda-card" style={{ padding:18 }}><LoadingState label="Loading settings..."/></div>;
+
+  const set = (k, v) => setS(prev => ({ ...prev, [k]: v }));
+  const paid = exnParseDays(paidTxt), trial = exnParseDays(trialTxt);
+  const smsBad = (s.sms_text_expiring || '').length > EXN_SMS_MAX || (s.sms_text_ended || '').length > EXN_SMS_MAX;
+  const invalid = !!paid.error || !!trial.error || smsBad;
+  const placeholders = s.placeholders || ['{organization}', '{plan}', '{date}', '{days}'];
+
+  const save = async () => {
+    setBusy(true); setSaveErr(null);
+    const body = {
+      enabled: !!s.enabled, paid_days: paid.list, trial_days: trial.list,
+      notify_ended: !!s.notify_ended, notify_payment_failed: !!s.notify_payment_failed,
+      email_enabled: !!s.email_enabled, sms_enabled: !!s.sms_enabled, whatsapp_enabled: !!s.whatsapp_enabled,
+      sms_text_expiring: s.sms_text_expiring || '', sms_text_ended: s.sms_text_ended || '',
+      whatsapp_template_name: s.whatsapp_template_name || '', whatsapp_template_language: s.whatsapp_template_language || '',
+    };
+    try {
+      const res = await adminFetch(`${EXN_BASE}/settings`, { method:'PUT', body: JSON.stringify(body) }, onLogout);
+      if (res.success) {
+        setToast({ type:'success', message:'Expiry notice settings saved.' });
+        if (res.data) { setS(res.data); setPaidTxt((res.data.paid_days || []).join(', ')); setTrialTxt((res.data.trial_days || []).join(', ')); }
+      } else { setSaveErr(res.error?.message || 'Could not save.'); }
+    } catch (e) { setSaveErr(e.message || 'Could not save.'); }
+    setBusy(false);
+  };
+
+  return (
+    <div className="senda-card" style={{ padding:18, display:'flex', flexDirection:'column', gap:14 }}>
+      <div>
+        <div style={{ fontSize:16, fontWeight:800, color:'#0f172a' }}>1. When to warn</div>
+        <div style={{ fontSize:12, color:'#64748b' }}>Platform-wide rules. The normal plan emails to account users keep working; extra contacts per organization are set in part 2.</div>
+      </div>
+      <ExnSwitch label={<strong>Send plan expiry notices</strong>} checked={s.enabled} onChange={v => set('enabled', v)} hint="Master switch. Off means nobody gets a notice from this feature."/>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:14 }}>
+        <ExnDaysField label="Paid plans: warn this many days before" text={paidTxt} setText={setPaidTxt} hint="Whole numbers 1-60, up to 8, e.g. 7, 1"/>
+        <ExnDaysField label="Free trials: warn this many days before" text={trialTxt} setText={setTrialTxt} hint="Whole numbers 1-60, up to 8, e.g. 3, 1"/>
+      </div>
+      <div style={{ display:'flex', gap:22, flexWrap:'wrap' }}>
+        <ExnSwitch label="Tell them when the plan has ended" checked={s.notify_ended} onChange={v => set('notify_ended', v)}/>
+        <ExnSwitch label="Tell them when a payment fails" checked={s.notify_payment_failed} onChange={v => set('notify_payment_failed', v)}/>
+      </div>
+      <div>
+        <div style={{ fontSize:12, fontWeight:800, color:'#0f172a', marginBottom:6 }}>Channels</div>
+        <div style={{ display:'flex', gap:22, flexWrap:'wrap' }}>
+          <ExnSwitch label="Email" checked={s.email_enabled} onChange={v => set('email_enabled', v)}/>
+          <ExnSwitch label="SMS" checked={s.sms_enabled} onChange={v => set('sms_enabled', v)}/>
+          <ExnSwitch label="WhatsApp" checked={s.whatsapp_enabled} onChange={v => set('whatsapp_enabled', v)}/>
+        </div>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(300px, 1fr))', gap:14 }}>
+        <ExnSmsBox label="SMS text: plan ending soon" value={s.sms_text_expiring} onChange={v => set('sms_text_expiring', v)} placeholders={placeholders}/>
+        <ExnSmsBox label="SMS text: plan ended" value={s.sms_text_ended} onChange={v => set('sms_text_ended', v)} placeholders={placeholders}/>
+      </div>
+      <div>
+        <div style={{ fontSize:12, fontWeight:800, color:'#0f172a', marginBottom:6 }}>WhatsApp template</div>
+        <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:10 }}>
+          <CcField label="Template name"><input className="senda-input" style={CC_INPUT} value={s.whatsapp_template_name || ''} onChange={e => set('whatsapp_template_name', e.target.value)}/></CcField>
+          <CcField label="Language"><input className="senda-input" style={CC_INPUT} value={s.whatsapp_template_language || ''} onChange={e => set('whatsapp_template_language', e.target.value)} placeholder="en"/></CcField>
+        </div>
+        <div style={{ fontSize:12, padding:'8px 10px', borderRadius:8, background: s.whatsapp_ready ? '#f0fdf4' : '#fffbeb', color: s.whatsapp_ready ? '#166534' : '#92400e' }}>
+          {s.whatsapp_ready
+            ? 'WhatsApp is ready: an approved template is configured.'
+            : 'WhatsApp is not ready yet, so WhatsApp notices will be skipped.'}
+          {' '}WhatsApp needs an approved template with 4 body variables in this order: organization, plan, end date, days left.
+        </div>
+      </div>
+      {saveErr && <ExnErrorBox message={saveErr}/>}
+      <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+        <button className="senda-btn senda-btn-primary" disabled={busy || invalid} onClick={save} style={{ height:36, padding:'0 18px' }}>{busy ? 'Saving…' : 'Save settings'}</button>
+        {invalid && <span style={{ fontSize:12, color:RED }}>Fix the highlighted fields first.</span>}
+      </div>
+    </div>
+  );
+}
+
+// Part 2: per-organization recipients + test
+function ExnTenantForm({ tenantId, onLogout, setToast, onSaved }) {
+  const [d, setD] = useState(null);
+  const [f, setF] = useState(null);
+  const [loadErr, setLoadErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [saveErr, setSaveErr] = useState(null);
+  const [testEvent, setTestEvent] = useState('expiring');
+  const [testing, setTesting] = useState(false);
+  const [testRes, setTestRes] = useState(null);
+  const [testErr, setTestErr] = useState(null);
+
+  const load = useCallback(() => {
+    setLoadErr(null); setD(null); setTestRes(null);
+    return adminFetch(`${EXN_BASE}/tenant/${tenantId}`, {}, onLogout)
+      .then(res => {
+        if (!res.success) { setLoadErr(res.error?.message || 'Could not load this organization.'); return; }
+        const x = res.data || {};
+        setD(x);
+        setF({
+          use_extra: !!x.use_extra, include_account_users: !!x.include_account_users,
+          emails: (x.emails || []).join('\n'), phones: (x.phones || []).join('\n'),
+          email_enabled: !!x.email_enabled, sms_enabled: !!x.sms_enabled, whatsapp_enabled: !!x.whatsapp_enabled,
+          override: x.paid_days_override != null || x.trial_days_override != null,
+          paid: (x.paid_days_override || []).join(', '), trial: (x.trial_days_override || []).join(', '),
+        });
+      })
+      .catch(e => setLoadErr(e.message || 'Could not load this organization.'));
+  }, [tenantId, onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  if (loadErr) return <ExnErrorBox message={loadErr} onRetry={load}/>;
+  if (!d || !f) return <LoadingState label="Loading organization..."/>;
+
+  const set = (k, v) => setF(prev => ({ ...prev, [k]: v }));
+  const paid = exnParseDays(f.paid), trial = exnParseDays(f.trial);
+  const invalid = f.override && (!!paid.error || !!trial.error);
+  const plan = d.current_plan;
+
+  const save = async () => {
+    setBusy(true); setSaveErr(null);
+    const body = {
+      use_extra: f.use_extra, include_account_users: f.include_account_users,
+      emails: exnLines(f.emails), phones: exnLines(f.phones),
+      email_enabled: f.email_enabled, sms_enabled: f.sms_enabled, whatsapp_enabled: f.whatsapp_enabled,
+      paid_days_override: f.override ? paid.list : null,
+      trial_days_override: f.override ? trial.list : null,
+    };
+    try {
+      const res = await adminFetch(`${EXN_BASE}/tenant/${tenantId}`, { method:'PUT', body: JSON.stringify(body) }, onLogout);
+      if (res.success) { setToast({ type:'success', message:`Saved notice contacts for ${d.tenant_name}.` }); if (onSaved) onSaved(); await load(); }
+      else setSaveErr(res.error?.message || 'Could not save.');
+    } catch (e) { setSaveErr(e.message || 'Could not save.'); }
+    setBusy(false);
+  };
+
+  const sendTest = async () => {
+    const emails = exnLines(f.emails), phones = exnLines(f.phones);
+    if (!window.confirm(`Send a test "${testEvent === 'ended' ? 'plan ended' : 'ending soon'}" notice to ${emails.length} email(s) and ${phones.length} phone number(s) typed below? Real messages will be sent.`)) return;
+    setTesting(true); setTestErr(null); setTestRes(null);
+    const channels = [f.email_enabled && 'email', f.sms_enabled && 'sms', f.whatsapp_enabled && 'whatsapp'].filter(Boolean);
+    try {
+      const res = await adminFetch(`${EXN_BASE}/test`, { method:'POST', body: JSON.stringify({ tenant_id: tenantId, event: testEvent, emails, phones, channels }) }, onLogout);
+      if (res.success) setTestRes(res.data?.results || []);
+      else setTestErr(res.error?.message || 'The test did not run.');
+    } catch (e) { setTestErr(e.message || 'The test did not run.'); }
+    setTesting(false);
+  };
+
+  const testEmails = exnLines(f.emails), testPhones = exnLines(f.phones);
+  const chNames = [f.email_enabled && 'Email', f.sms_enabled && 'SMS', f.whatsapp_enabled && 'WhatsApp'].filter(Boolean);
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ background:'#f8fafc', borderRadius:8, padding:'10px 12px', fontSize:13 }}>
+        <strong>{d.tenant_name}</strong>
+        <div style={{ color:'#64748b', fontSize:12 }}>
+          {plan ? <>Current plan: <strong>{plan.name}</strong>{plan.is_trial ? ' (free trial)' : ''}, ends {exnDate(plan.period_end)}{plan.days_left != null ? ` (${plan.days_left} day${plan.days_left === 1 ? '' : 's'} left)` : ''}</> : 'No active plan.'}
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize:12, fontWeight:800, color:'#0f172a', marginBottom:4 }}>Account users who already get the normal email</div>
+        {(d.account_users || []).length === 0
+          ? <div style={{ fontSize:12, color:'#94a3b8' }}>No account users found.</div>
+          : <div style={{ fontSize:12, color:'#475569', display:'flex', flexDirection:'column', gap:2 }}>{d.account_users.map((u, i) => <span key={i}>{u.name || '—'} · {u.email}</span>)}</div>}
+        <div style={{ marginTop:8 }}>
+          <ExnSwitch label="Also email the account owners/admins" checked={f.include_account_users} onChange={v => set('include_account_users', v)}/>
+        </div>
+      </div>
+      <ExnSwitch label={<strong>Also notify the extra contacts below</strong>} checked={f.use_extra} onChange={v => set('use_extra', v)}/>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:14 }}>
+        <CcField label="Extra emails" hint="One per line.">
+          <textarea className="senda-input" rows={4} style={{ height:'auto', padding:8, fontSize:13 }} value={f.emails} onChange={e => set('emails', e.target.value)}/>
+        </CcField>
+        <CcField label="Extra phone numbers" hint="One per line. International format, e.g. +255712345678. Tanzania numbers like 0712345678 are accepted.">
+          <textarea className="senda-input" rows={4} style={{ height:'auto', padding:8, fontSize:13 }} value={f.phones} onChange={e => set('phones', e.target.value)}/>
+        </CcField>
+      </div>
+      <div>
+        <div style={{ fontSize:12, fontWeight:800, color:'#0f172a', marginBottom:6 }}>Channels for this organization</div>
+        <div style={{ display:'flex', gap:22, flexWrap:'wrap' }}>
+          <ExnSwitch label="Email" checked={f.email_enabled} onChange={v => set('email_enabled', v)}/>
+          <ExnSwitch label="SMS" checked={f.sms_enabled} onChange={v => set('sms_enabled', v)}/>
+          <ExnSwitch label="WhatsApp" checked={f.whatsapp_enabled} onChange={v => set('whatsapp_enabled', v)}/>
+        </div>
+      </div>
+      <ExnSwitch label="Use different days for this organization" checked={f.override} onChange={v => set('override', v)}/>
+      {f.override && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:14 }}>
+          <ExnDaysField label="Paid plan: days before the end" text={f.paid} setText={v => set('paid', v)} hint="1-60, up to 8"/>
+          <ExnDaysField label="Trial: days before the end" text={f.trial} setText={v => set('trial', v)} hint="1-60, up to 8"/>
+        </div>
+      )}
+      {saveErr && <ExnErrorBox message={saveErr}/>}
+      <div><button className="senda-btn senda-btn-primary" disabled={busy || invalid} onClick={save} style={{ height:36, padding:'0 18px' }}>{busy ? 'Saving…' : 'Save for this organization'}</button></div>
+
+      <div style={{ borderTop:'1px solid #e2e8f0', paddingTop:14, display:'flex', flexDirection:'column', gap:10 }}>
+        <div style={{ fontSize:14, fontWeight:800, color:'#0f172a' }}>Send a test</div>
+        <div style={{ display:'flex', gap:14, flexWrap:'wrap', fontSize:13 }}>
+          <label><input type="radio" name="exn-test-event" checked={testEvent === 'expiring'} onChange={() => setTestEvent('expiring')}/> Ending soon</label>
+          <label><input type="radio" name="exn-test-event" checked={testEvent === 'ended'} onChange={() => setTestEvent('ended')}/> Plan ended</label>
+        </div>
+        <div style={{ fontSize:12, color:'#475569', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:8, padding:'8px 10px' }}>
+          This will go only to what is typed in the boxes above (not saved ones, not the account users): {testEmails.length ? testEmails.join(', ') : 'no emails'}; {testPhones.length ? testPhones.join(', ') : 'no phone numbers'}. Channels: {chNames.length ? chNames.join(', ') : 'none switched on'}.
+        </div>
+        <div><button className="senda-btn" disabled={testing || chNames.length === 0 || (testEmails.length + testPhones.length) === 0} onClick={sendTest} style={EXN_BTN}>{testing ? 'Sending…' : 'Send test'}</button></div>
+        {testErr && <ExnErrorBox message={testErr}/>}
+        {testRes && (testRes.length === 0
+          ? <div style={{ fontSize:12, color:'#94a3b8' }}>Nothing was sent: no matching recipients.</div>
+          : <div className="senda-table-wrap"><table className="senda-table">
+              <thead><tr><th>Channel</th><th>Recipient</th><th>Result</th><th>Error</th></tr></thead>
+              <tbody>{testRes.map((r, i) => <tr key={i}><td style={{ textTransform:'capitalize' }}>{r.channel}</td><td>{r.recipient || '—'}</td><td>{exnStatusBadge(r.status)}</td><td style={{ fontSize:12, color:RED }}>{r.error || ''}</td></tr>)}</tbody>
+            </table></div>)}
+      </div>
+    </div>
+  );
+}
+
+// Part 3: upcoming expiries
+function ExnUpcoming({ onLogout, onOpen, refreshKey }) {
+  const [days, setDays] = useState(30);
+  const [rows, setRows] = useState(null);
+  const [err, setErr] = useState(null);
+  const load = useCallback(() => {
+    setErr(null); setRows(null);
+    return adminFetch(`${EXN_BASE}/upcoming?days=${days}`, {}, onLogout)
+      .then(res => { if (res.success) setRows(res.data || []); else setErr(res.error?.message || 'Could not load upcoming expiries.'); })
+      .catch(e => setErr(e.message || 'Could not load upcoming expiries.'));
+  }, [days, onLogout]);
+  useEffect(() => { load(); }, [load, refreshKey]);
+
+  return (
+    <div className="senda-card" style={{ padding:18 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:12 }}>
+        <div style={{ fontSize:16, fontWeight:800, color:'#0f172a' }}>3. Coming up</div>
+        <div style={{ display:'flex', gap:6 }}>
+          {[14, 30, 60].map(n => (
+            <button key={n} onClick={() => setDays(n)} style={{ height:28, padding:'0 12px', fontSize:12, fontWeight:700, borderRadius:99, border:'none', cursor:'pointer', background: days === n ? '#0f172a' : '#f1f5f9', color: days === n ? '#fff' : '#475569' }}>{n} days</button>
+          ))}
+        </div>
+      </div>
+      {err ? <ExnErrorBox message={err} onRetry={load}/>
+        : rows === null ? <LoadingState label="Loading..."/>
+        : rows.length === 0 ? <div style={{ padding:24, textAlign:'center', color:'#94a3b8', fontSize:13 }}>No plans end in the next {days} days.</div>
+        : (
+          <div className="senda-table-wrap"><table className="senda-table">
+            <thead><tr><th>Organization</th><th>Plan</th><th>Ends on</th><th>Days left</th><th>Notices already sent</th><th>Extra contacts</th></tr></thead>
+            <tbody>
+              {rows.map(r => {
+                const soon = r.days_left != null && r.days_left <= 7;
+                return (
+                  <tr key={r.tenant_id} onClick={() => onOpen(r.tenant_id)} style={{ cursor:'pointer', background: soon ? '#fff7ed' : undefined }}>
+                    <td style={{ fontWeight:700 }}>{r.tenant_name}</td>
+                    <td>{r.plan}{r.is_trial && <span style={{ marginLeft:6, background:'#ede9fe', color:'#6d28d9', fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:99 }}>TRIAL</span>}</td>
+                    <td>{exnDate(r.period_end)}</td>
+                    <td style={{ fontWeight:700, color: soon ? '#c2410c' : undefined }}>{r.days_left}</td>
+                    <td style={{ fontSize:12 }}>{(r.notices_sent || []).length ? r.notices_sent.map(n => `${n}d`).join(', ') : 'none yet'}</td>
+                    <td style={{ fontSize:12 }}>{r.extra_emails || 0} email, {r.extra_phones || 0} phone</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table></div>
+        )}
+    </div>
+  );
+}
+
+// Part 4: sent notices log
+function ExnLog({ onLogout, refreshKey }) {
+  const [tenantId, setTenantId] = useState('');
+  const [rows, setRows] = useState(null);
+  const [err, setErr] = useState(null);
+  const [pickerKey, setPickerKey] = useState(0);
+  const load = useCallback(() => {
+    setErr(null); setRows(null);
+    return adminFetch(`${EXN_BASE}/log?tenant_id=${encodeURIComponent(tenantId)}&limit=100`, {}, onLogout)
+      .then(res => { if (res.success) setRows(res.data || []); else setErr(res.error?.message || 'Could not load the log.'); })
+      .catch(e => setErr(e.message || 'Could not load the log.'));
+  }, [tenantId, onLogout]);
+  useEffect(() => { load(); }, [load, refreshKey]);
+
+  return (
+    <div className="senda-card" style={{ padding:18 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:8 }}>
+        <div style={{ fontSize:16, fontWeight:800, color:'#0f172a' }}>4. Sent notices</div>
+        <div style={{ display:'flex', gap:8 }}>
+          {tenantId && <button className="senda-btn" style={EXN_BTN} onClick={() => { setTenantId(''); setPickerKey(k => k + 1); }}>Show all organizations</button>}
+          <button className="senda-btn" style={EXN_BTN} onClick={load}>Refresh</button>
+        </div>
+      </div>
+      <div style={{ maxWidth:420 }}><CcTenantPicker key={pickerKey} onPick={setTenantId} onLogout={onLogout}/></div>
+      <div style={{ fontSize:11, color:'#94a3b8', marginBottom:10 }}>Pick an organization to filter; otherwise the latest 100 notices across all organizations are shown.</div>
+      {err ? <ExnErrorBox message={err} onRetry={load}/>
+        : rows === null ? <LoadingState label="Loading..."/>
+        : rows.length === 0 ? <div style={{ padding:24, textAlign:'center', color:'#94a3b8', fontSize:13 }}>No notices have been sent yet.</div>
+        : (
+          <div className="senda-table-wrap"><table className="senda-table">
+            <thead><tr><th>Time</th><th>Organization</th><th>Event</th><th>Channel</th><th>Recipient</th><th>Status</th><th>Error</th></tr></thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.id}>
+                  <td style={{ fontSize:12, whiteSpace:'nowrap' }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                  <td style={{ fontWeight:700 }}>{r.tenant_name}{r.is_test && <span style={{ marginLeft:6, background:'#f1f5f9', color:'#475569', fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:99 }}>TEST</span>}</td>
+                  <td style={{ fontSize:12 }}>{r.event}</td>
+                  <td style={{ textTransform:'capitalize' }}>{r.channel}</td>
+                  <td style={{ fontSize:12 }}>{r.recipient}</td>
+                  <td>{exnStatusBadge(r.status)}</td>
+                  <td style={{ fontSize:12, color:RED }}>{r.error || ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        )}
+    </div>
+  );
+}
+
+function CcExpiryNotices({ onLogout }) {
+  const [toast, setToast] = useState(null);
+  const [sel, setSel] = useState(null);       // { id, viaPicker }
+  const [refreshKey, setRefreshKey] = useState(0);
+  const formRef = React.useRef(null);
+
+  const openFromTable = (id) => {
+    setSel({ id, viaPicker:false });
+    setTimeout(() => { if (formRef.current) formRef.current.scrollIntoView({ behavior:'smooth', block:'start' }); }, 50);
+  };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)}/>}
+      <ExnSettingsCard onLogout={onLogout} setToast={setToast}/>
+
+      <div ref={formRef} className="senda-card" style={{ padding:18, display:'flex', flexDirection:'column', gap:12 }}>
+        <div>
+          <div style={{ fontSize:16, fontWeight:800, color:'#0f172a' }}>2. Who gets it</div>
+          <div style={{ fontSize:12, color:'#64748b' }}>Choose an organization to add extra contacts, change its channels or days, and send a test.</div>
+        </div>
+        {(!sel || sel.viaPicker) && (
+          <CcTenantPicker onPick={(id) => setSel(id ? { id, viaPicker:true } : null)} onLogout={onLogout}/>
+        )}
+        {sel && !sel.viaPicker && (
+          <div><button className="senda-btn" style={EXN_BTN} onClick={() => setSel(null)}>Choose a different organization</button></div>
+        )}
+        {sel
+          ? <ExnTenantForm key={sel.id} tenantId={sel.id} onLogout={onLogout} setToast={setToast} onSaved={() => setRefreshKey(k => k + 1)}/>
+          : <div style={{ padding:16, textAlign:'center', color:'#94a3b8', fontSize:13 }}>No organization chosen yet. Search above, or click a row under “Coming up”.</div>}
+      </div>
+
+      <ExnUpcoming onLogout={onLogout} onOpen={openFromTable} refreshKey={refreshKey}/>
+      <ExnLog onLogout={onLogout} refreshKey={refreshKey}/>
+    </div>
   );
 }
 
