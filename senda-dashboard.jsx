@@ -10920,6 +10920,401 @@ function SystemSmsLogTab() {
   );
 }
 
+// ─── SMS Logs - Textify ─────────────────────────────────────────────────────
+// Backed by /api/admin/v1/sms-logs/textify (+ /export, /<id>/refresh,
+// /refresh-pending). Mirrors Textify's own portal table.
+const TEXTIFY_STATUSES = [
+  { key:'delivered',         label:'Delivered',         color:'#16a34a', bg:'#dcfce7' },
+  { key:'operator_rejected', label:'Operator Rejected', color:'#be123c', bg:'#ffe4e6' },
+  { key:'failed',            label:'Failed',            color:'#dc2626', bg:'#fee2e2' },
+  { key:'undelivered',       label:'Undelivered',       color:'#ea580c', bg:'#ffedd5' },
+  { key:'sent',              label:'Sent',              color:'#2563eb', bg:'#dbeafe' },
+  { key:'pending',           label:'Pending',           color:'#64748b', bg:'#f1f5f9' },
+  { key:'queued',            label:'Queued',            color:'#64748b', bg:'#f1f5f9' },
+  { key:'scheduled',         label:'Scheduled',         color:'#64748b', bg:'#f1f5f9' },
+];
+const TEXTIFY_STATUS_MAP = Object.fromEntries(TEXTIFY_STATUSES.map(s => [s.key, s]));
+const TEXTIFY_TZ = 'Africa/Dar_es_Salaam';
+
+function textifyShortTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone:TEXTIFY_TZ, day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:false }).formatToParts(d);
+  const g = t => (p.find(x => x.type === t) || {}).value || '';
+  return `${g('day')} ${g('month')} ${g('hour')}:${g('minute')}`;
+}
+function textifyFullTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  return new Intl.DateTimeFormat('en-GB', { timeZone:TEXTIFY_TZ, dateStyle:'medium', timeStyle:'medium', hour12:false }).format(d) + ' EAT';
+}
+function textifyDay(offsetDays) {
+  const d = new Date(Date.now() - offsetDays * 86400000);
+  return new Intl.DateTimeFormat('en-CA', { timeZone:TEXTIFY_TZ }).format(d); // YYYY-MM-DD
+}
+
+function TextifyStatusBadge({ row }) {
+  const s = TEXTIFY_STATUS_MAP[row.status] || { label: row.status_label || row.status || '—', color:'#64748b', bg:'#f1f5f9' };
+  const rejected = row.status === 'operator_rejected';
+  return (
+    <span style={{
+      display:'inline-block', fontSize:rejected ? 12 : 11, fontWeight:rejected ? 800 : 700, padding:rejected ? '3px 10px' : '2px 9px',
+      borderRadius:999, background:s.bg, color:s.color, whiteSpace:'nowrap',
+      border:rejected ? `1.5px solid ${s.color}` : '1px solid transparent',
+    }}>{row.status_label || s.label}</span>
+  );
+}
+
+function SmsLogsTextifyTab() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [search, setSearch]     = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [statusF, setStatusF]   = useState('');
+  const [tenantId, setTenantId] = useState('');
+  const [pickerKey, setPickerKey] = useState(0);
+  const [senderF, setSenderF]   = useState('');
+  const [debSender, setDebSender] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo]     = useState('');
+  const [page, setPage]         = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [data, setData]         = useState({ results:[], count:0, page:1, page_size:50, summary:{ total:0, by_status:{} } });
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
+  const [detail, setDetail]     = useState(null);
+  const [auto, setAuto]         = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [rechecking, setRechecking] = useState(false);
+  const [refreshingRow, setRefreshingRow] = useState(false);
+  const reqId = useRef(0);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+  useEffect(() => {
+    const t = setTimeout(() => { setDebSender(senderF); setPage(1); }, 350);
+    return () => clearTimeout(t);
+  }, [senderF]);
+
+  const buildQs = useCallback((withPaging) => {
+    const qs = new URLSearchParams();
+    if (debounced.trim()) qs.set('search', debounced.trim());
+    if (statusF)          qs.set('status', statusF);
+    if (tenantId)         qs.set('tenant_id', tenantId);
+    if (debSender.trim()) qs.set('sender', debSender.trim());
+    if (dateFrom)         qs.set('date_from', dateFrom);
+    if (dateTo)           qs.set('date_to', dateTo);
+    if (withPaging) { qs.set('page', String(page)); qs.set('page_size', String(pageSize)); }
+    return qs;
+  }, [debounced, statusF, tenantId, debSender, dateFrom, dateTo, page, pageSize]);
+
+  const fetchData = useCallback((silent) => {
+    const id = ++reqId.current;
+    if (!silent) { setLoading(true); setError(null); }
+    adminFetch(`/api/admin/v1/sms-logs/textify?${buildQs(true).toString()}`, {}, onLogout)
+      .then(res => {
+        if (id !== reqId.current) return;
+        if (res.success) {
+          const d = res.data || {};
+          setData({ results: d.results || [], count: d.count || 0, page: d.page || page, page_size: d.page_size || pageSize,
+                    summary: d.summary || { total: d.count || 0, by_status: {} } });
+          setError(null);
+        } else if (!silent) setError(res.error?.message || 'Failed to load Textify SMS logs.');
+      })
+      .catch(e => { if (id === reqId.current && !silent) setError(e.message || 'Network error'); })
+      .finally(() => { if (id === reqId.current && !silent) setLoading(false); });
+  }, [buildQs, onLogout, page, pageSize]);
+
+  useEffect(() => { fetchData(false); }, [fetchData]);
+
+  // Auto-refresh keeps the current page and filters (silent: no spinner).
+  useEffect(() => {
+    if (!auto) return undefined;
+    const t = setInterval(() => fetchData(true), 30000);
+    return () => clearInterval(t);
+  }, [auto, fetchData]);
+
+  const clearFilters = () => {
+    setSearch(''); setDebounced(''); setStatusF(''); setTenantId(''); setPickerKey(k => k + 1);
+    setSenderF(''); setDebSender(''); setDateFrom(''); setDateTo(''); setPage(1);
+  };
+  const quickRange = (daysBack, single) => {
+    setDateFrom(textifyDay(daysBack));
+    setDateTo(single ? textifyDay(daysBack) : textifyDay(0));
+    setPage(1);
+  };
+  const toggleStatus = (key) => { setStatusF(s => (s === key ? '' : key)); setPage(1); };
+
+  const copy = (text, label) => {
+    if (!text) return;
+    try { navigator.clipboard.writeText(String(text)); showToast?.(`${label || 'Copied'} copied`, 'success'); }
+    catch { showToast?.('Could not copy', 'error'); }
+  };
+
+  const doExport = async () => {
+    setExporting(true);
+    try {
+      const token = getToken();
+      const res = await fetch(`${BASE_URL}/api/admin/v1/sms-logs/textify/export?${buildQs(false).toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url; a.download = `textify_sms_logs_${textifyDay(0)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      showToast?.('Export downloaded', 'success');
+    } catch (e) { showToast?.(e.message || 'Export failed', 'error'); }
+    finally { setExporting(false); }
+  };
+
+  const rows = data.results;
+  const pendingRows = rows.filter(r => ['pending', 'sent', 'queued'].includes(r.status));
+  const recheckPending = async () => {
+    if (!pendingRows.length) { showToast?.('No pending or sent rows on this page', 'info'); return; }
+    if (!window.confirm(`Re-check ${pendingRows.length} pending/sent message(s) on this page with Textify?`)) return;
+    setRechecking(true);
+    try {
+      const res = await adminFetch('/api/admin/v1/sms-logs/textify/refresh-pending',
+        { method:'POST', body: JSON.stringify({ ids: pendingRows.map(r => r.id) }) }, onLogout);
+      if (res.success) {
+        const d = res.data || {};
+        showToast?.(`Checked ${d.requested ?? 0}: ${d.refreshed ?? 0} updated, ${d.skipped ?? 0} skipped (no Textify id or already final), ${d.failed ?? 0} could not be checked`, (d.failed ?? 0) > 0 ? 'info' : 'success');
+        fetchData(true);
+      } else showToast?.(res.error?.message || 'Re-check failed', 'error');
+    } catch { showToast?.('Network error during re-check', 'error'); }
+    finally { setRechecking(false); }
+  };
+
+  const refreshRow = async (row) => {
+    setRefreshingRow(true);
+    try {
+      const res = await adminFetch(`/api/admin/v1/sms-logs/textify/${encodeURIComponent(row.id)}/refresh`, { method:'POST' }, onLogout);
+      if (res.success && res.data) {
+        setData(d => ({ ...d, results: d.results.map(r => (r.id === row.id ? { ...r, ...res.data } : r)) }));
+        setDetail(prev => (prev && prev.id === row.id ? { ...prev, ...res.data } : prev));
+        showToast?.('Status refreshed from Textify', 'success');
+        fetchData(true); // keep summary counts in step
+      } else showToast?.(res.error?.message || 'Refresh failed', 'error');
+    } catch { showToast?.('Network error refreshing status', 'error'); }
+    finally { setRefreshingRow(false); }
+  };
+
+  const total = data.count || 0;
+  const curPage = data.page || page;
+  const pages = Math.max(1, Math.ceil(total / (data.page_size || pageSize)));
+  const startIdx = total === 0 ? 0 : (curPage - 1) * (data.page_size || pageSize) + 1;
+  const endIdx = Math.min(total, startIdx + rows.length - 1);
+  const by = (data.summary && data.summary.by_status) || {};
+  const sumTotal = (data.summary && data.summary.total) || 0;
+  const pct = (n) => (sumTotal > 0 ? `${((n / sumTotal) * 100).toFixed(1)}%` : '0%');
+  const hasFilters = !!(debounced || statusF || tenantId || debSender || dateFrom || dateTo);
+  const lbl = { fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 };
+  const inp = { height:38, fontSize:13 };
+  const quickBtn = { height:28, fontSize:11, padding:'0 10px' };
+
+  const detailRows = detail ? [
+    ['Organization', detail.tenant_name || '—'],
+    ['Sender name', detail.sender_name || '—'],
+    ['Receiver', detail.receiver || '—', 'mono', detail.receiver],
+    ['Characters', detail.characters ?? '—'],
+    ['SMS count', detail.sms_count ?? '—'],
+    ['Created', textifyFullTime(detail.created_at)],
+    ['Sent', textifyFullTime(detail.sent_at)],
+    ['Delivered', textifyFullTime(detail.delivered_at)],
+    ['Textify status', detail.textify_status || '—', 'mono'],
+    ['Reason', detail.reason || '—'],
+    ['Provider message ID', detail.provider_message_id || '—', 'mono', detail.provider_message_id],
+    ['Cost', detail.cost_amount != null && detail.cost_amount !== '' ? `${Number(detail.cost_amount).toLocaleString()} ${detail.cost_currency || ''}`.trim() : '—'],
+  ] : [];
+
+  return (
+    <div className="senda-fade-in">
+      {/* Status summary chips */}
+      <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap'}}>
+        <div className="senda-card" style={{padding:'10px 14px',flex:'1 1 120px',minWidth:120}}>
+          <p style={{fontSize:11,color:'#94a3b8',margin:0,fontWeight:600}}>Total{hasFilters ? ' (filtered)' : ''}</p>
+          <p style={{fontSize:20,fontWeight:800,color:'#0f172a',margin:'2px 0 0'}}>{sumTotal.toLocaleString()}</p>
+        </div>
+        {TEXTIFY_STATUSES.map(s => {
+          const n = by[s.key] || 0;
+          const active = statusF === s.key;
+          return (
+            <button key={s.key} type="button" onClick={() => toggleStatus(s.key)} title={active ? 'Click to clear this filter' : `Show only ${s.label}`}
+              className="senda-card"
+              style={{padding:'10px 14px',flex:'1 1 120px',minWidth:120,textAlign:'left',cursor:'pointer',
+                border: active ? `2px solid ${s.color}` : '1px solid #eef2f7',
+                background: active ? s.bg : '#fff', opacity: statusF && !active ? .6 : 1}}>
+              <p style={{fontSize:11,color:s.color,margin:0,fontWeight:700}}>{s.label}</p>
+              <p style={{fontSize:20,fontWeight:800,color:s.color,margin:'2px 0 0'}}>
+                {n.toLocaleString()} <span style={{fontSize:11,fontWeight:600,color:'#94a3b8'}}>{pct(n)}</span>
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Filters */}
+      <div className="senda-card" style={{padding:16, marginBottom:16}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10}}>
+          <div>
+            <label style={lbl}>Search</label>
+            <input className="senda-input" placeholder="Number, text, sender, provider ID, organization"
+              value={search} onChange={e=>setSearch(e.target.value)} style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Status</label>
+            <select className="senda-input" value={statusF} onChange={e=>{ setStatusF(e.target.value); setPage(1); }} style={inp}>
+              <option value="">All statuses</option>
+              {TEXTIFY_STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Sender name</label>
+            <input className="senda-input" placeholder="e.g. SENDA" value={senderF} onChange={e=>setSenderF(e.target.value)} style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>From</label>
+            <input type="date" className="senda-input" value={dateFrom} onChange={e=>{ setDateFrom(e.target.value); setPage(1); }} style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>To</label>
+            <input type="date" className="senda-input" value={dateTo} onChange={e=>{ setDateTo(e.target.value); setPage(1); }} style={inp}/>
+          </div>
+        </div>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:10,alignItems:'center'}}>
+          <span style={{fontSize:11,fontWeight:700,color:'#475569',marginRight:4}}>Quick range:</span>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" style={quickBtn} onClick={()=>quickRange(0,true)}>Today</button>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" style={quickBtn} onClick={()=>quickRange(1,true)}>Yesterday</button>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" style={quickBtn} onClick={()=>quickRange(6,false)}>Last 7 days</button>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" style={quickBtn} onClick={()=>quickRange(29,false)}>Last 30 days</button>
+        </div>
+        <div style={{maxWidth:460,marginTop:10}}>
+          <CcTenantPicker key={pickerKey} onPick={(id)=>{ setTenantId(id || ''); setPage(1); }} onLogout={onLogout}/>
+        </div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12,alignItems:'center'}}>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={clearFilters} style={{height:36}}>Clear filters</button>
+          <button className="senda-btn senda-btn-sm" onClick={()=>fetchData(false)}
+            style={{height:36,background:BRAND,color:'#fff',border:'none',display:'inline-flex',alignItems:'center',gap:6}}>
+            <RefreshCw size={14} strokeWidth={2.2}/> Refresh
+          </button>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={doExport} disabled={exporting}
+            style={{height:36,display:'inline-flex',alignItems:'center',gap:6}}>
+            <Download size={14}/> {exporting ? 'Exporting…' : 'Export CSV'}
+          </button>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={recheckPending} disabled={rechecking}
+            style={{height:36,display:'inline-flex',alignItems:'center',gap:6}}>
+            <RotateCcw size={14}/> {rechecking ? 'Checking…' : `Re-check pending${pendingRows.length ? ` (${pendingRows.length})` : ''}`}
+          </button>
+          <label style={{display:'inline-flex',alignItems:'center',gap:6,fontSize:12,color:'#475569',cursor:'pointer',marginLeft:'auto'}}>
+            <input type="checkbox" checked={auto} onChange={e=>setAuto(e.target.checked)}/> Auto-refresh (30 s)
+          </label>
+        </div>
+      </div>
+
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={()=>fetchData(false)}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflow:'auto',maxHeight:'70vh'}}>
+            <table className="senda-table" style={{minWidth:1000,fontSize:13}}>
+              <thead>
+                <tr>
+                  {['#','Sender name','Receiver','SMS text','Chars','SMS','Status','Time','Organization'].map(h => (
+                    <th key={h} style={{position:'sticky',top:0,zIndex:2,background:'#f8fafc',whiteSpace:'nowrap'}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={r.id} onClick={()=>setDetail(r)}
+                    onMouseEnter={e=>{ e.currentTarget.style.background = '#eff6ff'; }}
+                    onMouseLeave={e=>{ e.currentTarget.style.background = i % 2 ? '#f8fafc' : '#fff'; }}
+                    style={{cursor:'pointer',background: i % 2 ? '#f8fafc' : '#fff'}}>
+                    <td style={{color:'#94a3b8',fontSize:12}}>{startIdx + i}</td>
+                    <td style={{fontWeight:600,color:'#0f172a',whiteSpace:'nowrap'}}>{r.sender_name || '—'}</td>
+                    <td style={{fontFamily:'monospace',whiteSpace:'nowrap'}}>
+                      <span title="Click to copy" onClick={e=>{ e.stopPropagation(); copy(r.receiver, 'Number'); }} style={{cursor:'copy'}}>{r.receiver || '—'}</span>
+                    </td>
+                    <td style={{color:'#475569',maxWidth:320}}>
+                      <span style={{display:'inline-flex',alignItems:'center',gap:6}}>
+                        <span>{(r.message || '').length > 60 ? `${r.message.slice(0, 60)}…` : (r.message || '—')}</span>
+                        <Eye size={13} color="#94a3b8" style={{flexShrink:0}}/>
+                      </span>
+                    </td>
+                    <td style={{textAlign:'right'}}>{r.characters ?? '—'}</td>
+                    <td style={{textAlign:'right'}}>{r.sms_count ?? '—'}</td>
+                    <td style={{minWidth:130}}>
+                      <TextifyStatusBadge row={r}/>
+                      {r.reason && <div style={{fontSize:11,color:'#94a3b8',marginTop:3,maxWidth:200}}>{r.reason}</div>}
+                    </td>
+                    <td style={{whiteSpace:'nowrap',color:'#64748b'}} title={textifyFullTime(r.sent_at || r.created_at)}>{textifyShortTime(r.sent_at || r.created_at)}</td>
+                    <td style={{color:'#64748b'}}>{r.tenant_name || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {rows.length === 0 && (
+              <div style={{padding:'40px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>
+                <div style={{marginBottom:10}}>No Textify SMS logs match.</div>
+                {hasFilters && <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={clearFilters}>Clear filters</button>}
+              </div>
+            )}
+          </div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid #f1f5f9',flexWrap:'wrap',gap:8}}>
+            <span style={{fontSize:12,color:'#64748b'}}>Showing {startIdx.toLocaleString()}-{endIdx.toLocaleString()} of {total.toLocaleString()}</span>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              <select className="senda-input" value={pageSize} onChange={e=>{ setPageSize(Number(e.target.value)); setPage(1); }} style={{height:30,fontSize:12,width:90}}>
+                {[25,50,100,200].map(n => <option key={n} value={n}>{n} / page</option>)}
+              </select>
+              <span style={{fontSize:12,color:'#94a3b8'}}>Page {curPage} of {pages}</span>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={curPage<=1} onClick={()=>setPage(p=>Math.max(1,p-1))} style={{opacity:curPage<=1?.4:1}}>← Prev</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={curPage>=pages} onClick={()=>setPage(p=>p+1)} style={{opacity:curPage>=pages?.4:1}}>Next →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail drawer */}
+      {detail && createPortal(
+        <div onClick={()=>setDetail(null)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',justifyContent:'flex-end',zIndex:1000}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'min(560px,100%)',height:'100%',background:'#fff',display:'flex',flexDirection:'column'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:'1px solid #eef2f7'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>SMS detail</h3>
+                <TextifyStatusBadge row={detail}/>
+              </div>
+              <button className="senda-btn senda-btn-sm" onClick={()=>setDetail(null)} style={{height:32,border:'1.5px solid #e2e8f0',background:'#fff'}}><X size={16}/></button>
+            </div>
+            <div style={{flex:1,overflowY:'auto',padding:'18px 20px'}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:6}}>Message</div>
+              <div style={{fontSize:13,color:'#0f172a',lineHeight:1.6,whiteSpace:'pre-wrap',wordBreak:'break-word',background:'#f8fafc',border:'1px solid #eef2f7',borderRadius:10,padding:'12px 14px',marginBottom:16}}>{detail.message || '—'}</div>
+              <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:'8px 16px',fontSize:13}}>
+                {detailRows.map(([k, v, mono, copyVal]) => (
+                  <React.Fragment key={k}>
+                    <span style={{color:'#94a3b8'}}>{k}</span>
+                    <span style={{color:'#0f172a',fontFamily:mono ? 'monospace' : undefined,wordBreak:'break-all',display:'inline-flex',gap:8,alignItems:'center'}}>
+                      {v}
+                      {copyVal ? <button type="button" onClick={()=>copy(copyVal, k)} style={{border:'none',background:'none',color:BRAND,cursor:'pointer',fontSize:11,fontWeight:700,padding:0}}>Copy</button> : null}
+                    </span>
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+            <div style={{padding:'14px 20px',borderTop:'1px solid #eef2f7'}}>
+              <button className="senda-btn" onClick={()=>refreshRow(detail)} disabled={refreshingRow}
+                style={{width:'100%',height:38,background:BRAND,color:'#fff',border:'none',display:'inline-flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                <RefreshCw size={14} strokeWidth={2.2}/> {refreshingRow ? 'Refreshing…' : 'Refresh status from Textify'}
+              </button>
+            </div>
+          </div>
+        </div>, document.body)}
+    </div>
+  );
+}
+
 // ─── SMS Intelligence ───────────────────────────────────────────────────────
 // "Hivi ndivyo wateja wako wanavyotumia SENDA." — one admin page answering:
 // what they send, why, who sends most, what repeats, what segments exist, and
@@ -21921,6 +22316,7 @@ const NAV_GROUPS = [
     { id:'whatsapp',      Icon:Send,         label:'WhatsApp'         },
     { id:'notifications', Icon:Bell,         label:'Push Notifications' },
     { id:'systemsms',     Icon:Mail,         label:'System SMS Log'   },
+    { id:'smslogstextify', Icon:ListChecks,  label:'SMS Logs - Textify' },
     { id:'smsbysender',   Icon:MessageSquare, label:'SMS by Sender'   },
     { id:'apiaccounts',   Icon:Key,          label:'API Keys & Sends' },
   ]},
@@ -26236,6 +26632,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     emailreports: <EmailReportsTab/>,
     notifications:<PushNotificationsTab/>,
     systemsms:    <SystemSmsLogTab/>,
+    smslogstextify: <SmsLogsTextifyTab/>,
     smsbysender:  <SmsBySenderPage/>,
     apiaccounts:  <ApiAccountsTab/>,
     settings:     <SettingsTab/>,
