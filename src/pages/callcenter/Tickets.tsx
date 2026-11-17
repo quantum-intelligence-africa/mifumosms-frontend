@@ -74,12 +74,12 @@ export default function Tickets() {
     setLoading(true);
     setError(null);
     const q = query.trim();
-    const wantsMissed = filter !== "tickets" && (!q || /\d/.test(q)); // the missed-call search is by number only
+    const wantsMissed = (!q || /\d/.test(q)); // the missed-call search is by number only
     const wantsTickets = filter !== "missed";
     const [tk, ms] = await Promise.all([
       wantsTickets ? aiAgentApi.tickets.list({ q: q || undefined }) : Promise.resolve(null),
       wantsMissed
-        ? callCenterApi.missed.list({ page_size: 200, q: q || undefined, ...(filter === "closed" || filter === "all" ? {} : { status: "attention", group: "caller" }) })
+        ? callCenterApi.missed.list({ page_size: 200, q: q || undefined, ...(filter === "closed" || filter === "all" || filter === "tickets" ? {} : { status: "attention", group: "caller" }) })
         : Promise.resolve(null),
     ]);
     setTickets(tk && tk.success && tk.data ? tk.data.results : []);
@@ -146,7 +146,15 @@ export default function Tickets() {
     ...tickets.map((tk): Row => ({ kind: "ticket", key: `t${tk.id}`, when: tk.created_at, ticket: tk, closed: TICKET_CLOSED.includes(tk.status) })),
     ...missed.map((m): Row => ({ kind: "missed", key: `m${m.id}`, when: m.call_started_at || m.created_at, missed: m, closed: MISSED_CLOSED.includes(m.status) })),
   ]
-    .filter((r) => (filter === "open" ? !r.closed : filter === "closed" ? r.closed : true))
+    .filter((r) => {
+      // A call that left a voicemail is a message to answer, so it lives with the tickets; plain missed calls stay under "Missed calls".
+      const isTicketLike = r.kind === "ticket" || !!r.missed.voicemail;
+      if (filter === "open") return !r.closed;
+      if (filter === "closed") return r.closed;
+      if (filter === "tickets") return isTicketLike;
+      if (filter === "missed") return !isTicketLike;
+      return true;
+    })
     .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime());
 
   return (
