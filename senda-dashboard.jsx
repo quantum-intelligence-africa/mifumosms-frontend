@@ -11555,6 +11555,15 @@ function SmsLogsTextifyLive() {
           </p>
           {rej && !rej.complete && <p style={{fontSize:10,color:'#9f1239',margin:'2px 0 0'}}>checked {rej.scanned.toLocaleString()} of {rej.of.toLocaleString()} · <a onClick={fetchRejected} style={{cursor:'pointer',textDecoration:'underline'}}>retry</a></p>}
           {rejError && <p style={{fontSize:10,color:'#dc2626',margin:'2px 0 0'}}>{rejError}</p>}
+          {rej && rej.error && <p style={{fontSize:10,color:'#dc2626',margin:'2px 0 0'}}>{rej.error}</p>}
+          {rej && (rej.reasons || []).length > 0 && (
+            <details style={{marginTop:4}}>
+              <summary style={{fontSize:10,color:'#9f1239',cursor:'pointer'}}>What Textify reports (status | reason)</summary>
+              <div style={{fontSize:11,color:'#475569',marginTop:4}}>
+                {rej.reasons.map(r => <div key={r.label}><b>{r.count.toLocaleString()}</b> · {r.label}</div>)}
+              </div>
+            </details>
+          )}
         </div>
       </div>
 
