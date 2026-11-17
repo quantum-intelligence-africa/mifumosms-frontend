@@ -382,7 +382,7 @@ const PertinaIntegrationContent = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden app-shell-main px-3 sm:px-5 pt-3 sm:pt-4 pb-6 text-sm text-foreground">
-          <div className="max-w-4xl mx-auto w-full space-y-3.5">
+          <div className="max-w-[1600px] mx-auto w-full space-y-3.5">
             <header>
               <h1 className="font-heading text-[20px] sm:text-2xl font-bold leading-tight tracking-tight">
                 {language === "sw" ? "Rejea ya Ujumuishaji wa Mshirika" : "Partner Integration Reference"}

@@ -236,7 +236,7 @@ export default function IvrFlowList() {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 lg:p-4">
-          <div className="mx-auto max-w-5xl space-y-3.5">
+          <div className="mx-auto max-w-[1600px] space-y-3.5">
             <header className="flex items-center justify-between gap-3">
               <div>
                 <h1 className="text-xl font-bold tracking-tight text-foreground">{t("cc.flows.title")}</h1>

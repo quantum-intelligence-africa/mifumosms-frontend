@@ -143,7 +143,7 @@ export default function Recordings() {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className={cn("flex-1 overflow-y-auto overflow-x-hidden p-3 lg:p-4", player.track && "pb-28")}>
-          <div className="mx-auto max-w-6xl space-y-3.5">
+          <div className="mx-auto max-w-[1600px] space-y-3.5">
             <header className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h1 className="text-xl font-bold tracking-tight text-foreground">{t("nav.recordings")}</h1>

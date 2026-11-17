@@ -30,7 +30,7 @@ const Index = () => {
 
         {/* Dashboard Content */}
         <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-4 xl:p-6">
-          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
+          <div className="max-w-[1600px] mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
             {/* Welcome Section */}
             <div className="mb-4 sm:mb-5 lg:mb-6 xl:mb-8">
               <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">

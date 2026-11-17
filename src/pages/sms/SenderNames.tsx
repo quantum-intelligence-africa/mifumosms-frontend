@@ -1138,7 +1138,7 @@ const SenderNames = () => {
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
-            <div className="max-w-7xl mx-auto space-y-2.5 sm:space-y-3 lg:space-y-3.5 xl:space-y-4">
+            <div className="max-w-[1600px] mx-auto space-y-2.5 sm:space-y-3 lg:space-y-3.5 xl:space-y-4">
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-4">
                 <div>
@@ -1208,7 +1208,7 @@ const SenderNames = () => {
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
-            <div className="max-w-7xl mx-auto space-y-2.5 sm:space-y-3 lg:space-y-3.5 xl:space-y-4">
+            <div className="max-w-[1600px] mx-auto space-y-2.5 sm:space-y-3 lg:space-y-3.5 xl:space-y-4">
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-4">
                 <div>

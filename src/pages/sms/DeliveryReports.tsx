@@ -159,7 +159,7 @@ const DeliveryReports = () => {
 
         <div className="flex-1 overflow-y-auto">
           <div className="p-2 sm:p-3 lg:p-4 xl:p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-[1600px] mx-auto">
               {/* Header */}
               <div className="mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
                 <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">

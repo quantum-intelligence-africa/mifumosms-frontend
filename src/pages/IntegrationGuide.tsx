@@ -114,7 +114,7 @@ const IntegrationGuide = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-premium px-3 sm:px-5 pt-3 sm:pt-4 pb-6">
-          <div className="max-w-7xl mx-auto w-full space-y-3 sm:space-y-3.5">
+          <div className="max-w-[1600px] mx-auto w-full space-y-3 sm:space-y-3.5">
             <Card className="glass border border-border-subtle overflow-hidden">
               <CardContent className="p-0">
                 <div className="p-3 sm:p-4 lg:p-5 bg-gradient-to-br from-primary/10 via-background to-violet-500/10">

@@ -718,7 +718,7 @@ const PurchaseSMS = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden app-shell-main">
-          <div className="max-w-3xl lg:max-w-6xl mx-auto w-full px-3 sm:px-5 lg:px-6 pt-3 sm:pt-4 pb-6 space-y-3.5">
+          <div className="max-w-3xl lg:max-w-[1600px] mx-auto w-full px-3 sm:px-5 lg:px-6 pt-3 sm:pt-4 pb-6 space-y-3.5">
             {/* Header — iOS large title */}
             <header>
               <h1 className="font-heading text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">

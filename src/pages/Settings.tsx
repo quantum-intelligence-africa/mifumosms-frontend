@@ -3033,7 +3033,7 @@ const Settings = () => {
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="p-2.5 sm:p-3 lg:p-3 xl:p-4 w-full max-w-full">
-            <div className="max-w-7xl mx-auto flex flex-col">
+            <div className="max-w-[1600px] mx-auto flex flex-col">
               {/* Header — desktop only; mobile uses the per-page context */}
               <div className="hidden md:block mb-2.5 sm:mb-3 lg:mb-4 xl:mb-5">
                 <h1 className="font-heading text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-foreground">

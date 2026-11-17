@@ -233,7 +233,7 @@ const PertinaInsights = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-3 sm:px-5 pt-3 sm:pt-4 pb-6 text-sm">
-          <div className="max-w-4xl mx-auto w-full space-y-3.5">
+          <div className="max-w-[1600px] mx-auto w-full space-y-3.5">
             <div className="rounded-3xl border border-border bg-gradient-to-br from-primary/20 to-primary/5 p-4 shadow-xl shadow-primary/20 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-primary">

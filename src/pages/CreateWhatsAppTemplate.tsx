@@ -322,7 +322,7 @@ export default function CreateWhatsAppTemplate() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="max-w-6xl mx-auto w-full px-3 sm:px-5 pt-3 sm:pt-4 pb-24">
+          <div className="max-w-[1600px] mx-auto w-full px-3 sm:px-5 pt-3 sm:pt-4 pb-24">
             {/* Page header — close (×) lives inside the form card now, not here */}
             <header className="flex items-center gap-3 mb-3 sm:mb-5">
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#25D366]/15 flex items-center justify-center flex-shrink-0">

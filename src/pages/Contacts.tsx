@@ -1479,7 +1479,7 @@ if (isLoading) {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <div className="flex-1 overflow-hidden">
           <div className="h-full p-3 lg:p-6">
-            <div className="max-w-7xl mx-auto h-full flex flex-col">
+            <div className="max-w-[1600px] mx-auto h-full flex flex-col">
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
@@ -1503,7 +1503,7 @@ if (error) {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <div className="flex-1 overflow-hidden">
           <div className="h-full p-3 lg:p-6">
-            <div className="max-w-7xl mx-auto h-full flex flex-col">
+            <div className="max-w-[1600px] mx-auto h-full flex flex-col">
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <XCircle className="w-8 h-8 text-destructive mx-auto mb-4" />
@@ -1532,7 +1532,7 @@ return (
 
 <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-premium app-shell-main">
 <div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-4 lg:h-full">
-<div className={`max-w-3xl lg:max-w-7xl mx-auto w-full ${isMobile ? "" : "lg:h-full"} flex flex-col`}>
+<div className={`max-w-3xl lg:max-w-[1600px] mx-auto w-full ${isMobile ? "" : "lg:h-full"} flex flex-col`}>
 {/* iOS large-title header */}
 <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-5 gap-3">
 <div>

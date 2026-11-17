@@ -662,7 +662,7 @@ const Campaigns = () => {
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar p-3 lg:p-6">
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="max-w-[1600px] mx-auto space-y-6">
               {/* Loading skeletons */}
               <div className="flex items-center justify-between">
                 <Skeleton className="h-8 w-64" />
@@ -694,7 +694,7 @@ const Campaigns = () => {
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar p-3 lg:p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-[1600px] mx-auto">
               <Card>
                 <CardContent className="p-12 text-center">
                   <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />

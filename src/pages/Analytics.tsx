@@ -877,7 +877,7 @@ const Analytics = () => {
 
         <div className="flex-1 overflow-y-auto">
           <div className="p-2 sm:p-3 lg:p-4 xl:p-6">
-            <div className="max-w-7xl mx-auto flex flex-col">
+            <div className="max-w-[1600px] mx-auto flex flex-col">
               {/* Header */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 sm:mb-4 lg:mb-5 xl:mb-6 gap-2 sm:gap-3 lg:gap-4">
                 <div>
