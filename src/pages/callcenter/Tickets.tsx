@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, Bot, Loader2, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, Bot, Loader2, PhoneMissed, RefreshCw, Search, Voicemail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,10 +18,31 @@ import { aiKey } from "@/i18n/aiAgent";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { SummaryLines } from "@/components/callcenter/AiHandoffCard";
 import { aiAgentApi, type Ticket, type TicketStatus } from "@/services/aiAgentApi";
-import { callCenterApi, describeError, type CCAgent } from "@/services/callCenterApi";
+import { callCenterApi, describeError, type CCAgent, type MissedCall, type MissedCallStatus } from "@/services/callCenterApi";
 
 const STATUSES: TicketStatus[] = ["open", "assigned", "pending_customer", "resolved", "closed"];
-const ALL = "all";
+const MISSED_STATUSES: MissedCallStatus[] = ["new", "assigned", "called_back", "scheduled", "contacted", "unreachable", "resolved", "unresolved"];
+const MISSED_CLOSED: MissedCallStatus[] = ["resolved", "unresolved"];
+const TICKET_CLOSED: TicketStatus[] = ["resolved", "closed"];
+
+type Filter = "open" | "missed" | "tickets" | "closed" | "all";
+const FILTERS: Filter[] = ["open", "missed", "tickets", "closed", "all"];
+
+const missedStyle: Record<MissedCallStatus, string> = {
+  new: "bg-amber-100 text-amber-900",
+  assigned: "bg-sky-100 text-sky-900",
+  called_back: "bg-violet-100 text-violet-900",
+  scheduled: "bg-violet-100 text-violet-900",
+  contacted: "bg-green-100 text-green-900",
+  unreachable: "bg-muted text-muted-foreground",
+  resolved: "bg-green-100 text-green-900",
+  unresolved: "bg-muted text-muted-foreground",
+};
+
+/** One line of the list: a ticket or a missed call. */
+type Row =
+  | { kind: "ticket"; key: string; when: string; ticket: Ticket; closed: boolean }
+  | { kind: "missed"; key: string; when: string; missed: MissedCall; closed: boolean };
 
 const statusStyle: Record<TicketStatus, string> = {
   open: "bg-amber-100 text-amber-900",
@@ -38,23 +59,34 @@ export default function Tickets() {
   const supervisor = isCallCenterSupervisor(user);
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [missed, setMissed] = useState<MissedCall[]>([]);
   const [agents, setAgents] = useState<CCAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string>(ALL);
+  const [filter, setFilter] = useState<Filter>("open");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Ticket | null>(null);
+  const [missedOpen, setMissedOpen] = useState<MissedCall | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await aiAgentApi.tickets.list({ status: status === ALL ? undefined : status, q: query.trim() || undefined });
-    if (res.success && res.data) setTickets(res.data.results);
-    else setError(t("ai.tk.load_failed"));
+    const q = query.trim();
+    const wantsMissed = filter !== "tickets" && (!q || /\d/.test(q)); // the missed-call search is by number only
+    const wantsTickets = filter !== "missed";
+    const [tk, ms] = await Promise.all([
+      wantsTickets ? aiAgentApi.tickets.list({ q: q || undefined }) : Promise.resolve(null),
+      wantsMissed
+        ? callCenterApi.missed.list({ page_size: 200, q: q || undefined, ...(filter === "closed" || filter === "all" ? {} : { status: "attention", group: "caller" }) })
+        : Promise.resolve(null),
+    ]);
+    setTickets(tk && tk.success && tk.data ? tk.data.results : []);
+    setMissed(ms && ms.success && ms.data ? ms.data.results : []);
+    if ((tk && !tk.success) || (ms && !ms.success)) setError(t("ai.tk.load_failed"));
     setLoading(false);
-  }, [status, query, t]);
+  }, [filter, query, t]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => void load(), 250);
@@ -96,6 +128,27 @@ export default function Tickets() {
 
   const when = (iso: string) => new Date(iso).toLocaleString(appLocale(), { dateStyle: "short", timeStyle: "short" });
 
+  const updateMissed = async (body: Parameters<typeof callCenterApi.missed.update>[1]) => {
+    if (!missedOpen) return;
+    setBusy(true);
+    const res = await callCenterApi.missed.update(missedOpen.id, body);
+    setBusy(false);
+    if (res.success && res.data) {
+      toast({ title: t("ai.tk.updated") });
+      setMissedOpen(res.data);
+      void load();
+    } else {
+      toast({ title: t("ai.tk.update_failed"), description: describeError(res), variant: "destructive" });
+    }
+  };
+
+  const rows: Row[] = [
+    ...tickets.map((tk): Row => ({ kind: "ticket", key: `t${tk.id}`, when: tk.created_at, ticket: tk, closed: TICKET_CLOSED.includes(tk.status) })),
+    ...missed.map((m): Row => ({ kind: "missed", key: `m${m.id}`, when: m.call_started_at || m.created_at, missed: m, closed: MISSED_CLOSED.includes(m.status) })),
+  ]
+    .filter((r) => (filter === "open" ? !r.closed : filter === "closed" ? r.closed : true))
+    .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime());
+
   return (
     <PageFrame
       title={t("ai.tk.title")}
@@ -103,17 +156,17 @@ export default function Tickets() {
       actions={<Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />{t("sms.common.refresh")}</Button>}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[14rem] flex-1">
+        <div className="flex flex-wrap gap-1">
+          {FILTERS.map((f) => (
+            <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)}>
+              {t(aiKey(f === "all" ? "ai.tk.all" : `ai.tk.f_${f}`))}
+            </Button>
+          ))}
+        </div>
+        <div className="relative min-w-[12rem] flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-8" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("ai.tk.search")} aria-label={t("ai.tk.search")} />
         </div>
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>{t("ai.tk.all")}</SelectItem>
-            {STATUSES.map((s) => <SelectItem key={s} value={s}>{t(aiKey(`ai.tk.status.${s}`))}</SelectItem>)}
-          </SelectContent>
-        </Select>
       </div>
 
       {error && (
@@ -124,41 +177,96 @@ export default function Tickets() {
         <CardContent className="p-0">
           {loading ? (
             <div className="space-y-2 p-4"><Skeleton className="h-10" /><Skeleton className="h-10" /><Skeleton className="h-10" /></div>
-          ) : tickets.length === 0 ? (
+          ) : rows.length === 0 ? (
             <p className="p-8 text-center text-sm text-muted-foreground">{t("ai.tk.empty")}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-2">{t("ai.tk.col_ref")}</th>
-                    <th className="px-4 py-2">{t("ai.tk.col_request")}</th>
-                    <th className="px-4 py-2">{t("ai.tk.col_caller")}</th>
-                    <th className="hidden px-4 py-2 md:table-cell">{t("ai.tk.col_dept")}</th>
-                    <th className="px-4 py-2">{t("ai.tk.col_status")}</th>
-                    <th className="hidden px-4 py-2 md:table-cell">{t("ai.tk.col_when")}</th>
+                    <th className="px-3 py-2">{t("ai.tk.col_who")}</th>
+                    <th className="px-3 py-2">{t("ai.tk.col_what")}</th>
+                    <th className="hidden px-3 py-2 md:table-cell">{t("ai.tk.col_dept")}</th>
+                    <th className="px-3 py-2">{t("ai.tk.col_status")}</th>
+                    <th className="hidden px-3 py-2 md:table-cell">{t("ai.tk.col_when")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tickets.map((tk) => (
-                    <tr key={tk.id} className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/40" onClick={() => void openTicket(tk.id)}>
-                      <td className="px-4 py-2.5 font-mono text-xs">{tk.reference}</td>
-                      <td className="px-4 py-2.5">
-                        <span className="font-medium">{tk.title}</span>
-                        <span className="block text-xs text-muted-foreground">{t(aiKey(`ai.tk.type.${tk.request_type}`))}{tk.priority === "high" ? ` · ${t("ai.tk.priority.high")}` : ""}</span>
-                      </td>
-                      <td className="px-4 py-2.5">{tk.contact_name || tk.contact_phone || "—"}</td>
-                      <td className="hidden px-4 py-2.5 md:table-cell">{tk.department ? t(aiKey(`ai.dept.${tk.department}`)) : "—"}</td>
-                      <td className="px-4 py-2.5"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyle[tk.status]}`}>{t(aiKey(`ai.tk.status.${tk.status}`))}</span></td>
-                      <td className="hidden px-4 py-2.5 text-muted-foreground md:table-cell">{when(tk.created_at)}</td>
-                    </tr>
-                  ))}
+                  {rows.map((r) =>
+                    r.kind === "ticket" ? (
+                      <tr key={r.key} className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/40" onClick={() => void openTicket(r.ticket.id)}>
+                        <td className="px-3 py-2">{r.ticket.contact_name || r.ticket.contact_phone || "—"}</td>
+                        <td className="px-3 py-2">
+                          <span className="font-medium">{r.ticket.title}</span>
+                          <span className="block font-mono text-[11px] text-muted-foreground">{r.ticket.reference}{r.ticket.priority === "high" ? ` · ${t("ai.tk.priority.high")}` : ""}</span>
+                        </td>
+                        <td className="hidden px-3 py-2 md:table-cell">{r.ticket.department ? t(aiKey(`ai.dept.${r.ticket.department}`)) : "—"}</td>
+                        <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyle[r.ticket.status]}`}>{t(aiKey(`ai.tk.status.${r.ticket.status}`))}</span></td>
+                        <td className="hidden px-3 py-2 text-muted-foreground md:table-cell">{when(r.when)}</td>
+                      </tr>
+                    ) : (
+                      <tr key={r.key} className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/40" onClick={() => setMissedOpen(r.missed)}>
+                        <td className="px-3 py-2 font-mono text-xs">{r.missed.caller_number || "—"}</td>
+                        <td className="px-3 py-2">
+                          <span className="inline-flex items-center gap-1.5 font-medium">
+                            {r.missed.voicemail ? <Voicemail className="h-3.5 w-3.5 text-primary" /> : <PhoneMissed className="h-3.5 w-3.5 text-red-600" />}
+                            {t(aiKey(r.missed.voicemail ? "ai.tk.kind_voicemail" : "ai.tk.kind_missed"))}
+                          </span>
+                          {(r.missed.group?.count ?? 0) > 1 && <span className="ml-1.5 text-xs text-muted-foreground">×{r.missed.group!.count}</span>}
+                          {r.missed.is_overdue && <span className="ml-1.5 text-xs font-medium text-red-700">!</span>}
+                        </td>
+                        <td className="hidden px-3 py-2 md:table-cell">{r.missed.team_name || "—"}</td>
+                        <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${missedStyle[r.missed.status]}`}>{t(`cc.missed.status_${r.missed.status}` as never)}</span></td>
+                        <td className="hidden px-3 py-2 text-muted-foreground md:table-cell">{when(r.when)}</td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
               </table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!missedOpen} onOpenChange={(v) => !v && setMissedOpen(null)}>
+        <DialogContent className="sm:max-w-md">
+          {missedOpen && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono">{missedOpen.caller_number}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${missedStyle[missedOpen.status]}`}>{t(`cc.missed.status_${missedOpen.status}` as never)}</span>
+                </DialogTitle>
+                <DialogDescription>
+                  {t(aiKey(missedOpen.voicemail ? "ai.tk.kind_voicemail" : "ai.tk.kind_missed"))} · {when(missedOpen.call_started_at || missedOpen.created_at)}
+                  {missedOpen.team_name ? ` · ${missedOpen.team_name}` : ""}
+                  {missedOpen.waited_seconds ? ` · ${t("ai.tk.waited", { s: missedOpen.waited_seconds })}` : ""}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <Label>{t("ai.tk.col_status")}</Label>
+                  <Select value={missedOpen.status} onValueChange={(v) => void updateMissed({ status: v as MissedCallStatus })} disabled={busy}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{MISSED_STATUSES.map((s) => <SelectItem key={s} value={s}>{t(`cc.missed.status_${s}` as never)}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                {supervisor && (
+                  <Select value={missedOpen.assigned_to ?? "none"} onValueChange={(v) => void updateMissed({ assigned_to: v === "none" ? null : v })} disabled={busy}>
+                    <SelectTrigger><SelectValue placeholder={t("ai.tk.unassigned")} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("ai.tk.unassigned")}</SelectItem>
+                      {agents.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+                {!supervisor && missedOpen.assigned_to_name && <p className="text-xs text-muted-foreground">{t("ai.tk.assigned_to", { name: missedOpen.assigned_to_name })}</p>}
+                <Link to="/call-center/missed" className="text-sm text-primary underline-offset-2 hover:underline">{t("ai.tk.open_missed")}</Link>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!openId} onOpenChange={(v) => !v && setOpenId(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
