@@ -110,7 +110,7 @@ interface NavSection {
 export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ history: false });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   // A narrow icon rail on desktop (remembered), and a quick filter over every menu entry.
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(COLLAPSE_KEY) === "1"; } catch { return false; }
@@ -303,7 +303,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
     const Icon = item.icon;
     const key = item.id ?? item.name;
     const anyActive = item.children!.some(isChildActive);
-    const open = openGroups[key] ?? anyActive;
+    const open = openGroups[key] ?? true;
     if (collapsed) {
       // In the rail a group is one icon: opening it widens the menu first.
       return (
@@ -455,14 +455,26 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               {results.length === 0 ? <p className="px-3 py-2 text-xs text-muted-foreground">{t("ai.tk.empty")}</p> : results.map((item) => leaf(item))}
             </div>
           ) : (
-            navSections.map((sec, i) => (
-              <div key={sec.id} className={i === 0 ? "" : collapsed ? "mt-2 border-t border-border/60 pt-2" : "mt-4"}>
-                {!collapsed && sec.id !== "overview" && (
-                  <p className="px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{sec.label}</p>
-                )}
-                <div className="space-y-0.5">{sec.items.map((item) => (item.children?.length ? group(item) : leaf(item)))}</div>
-              </div>
-            ))
+            navSections.map((sec, i) => {
+              const body = <div className="space-y-0.5">{sec.items.map((item) => (item.children?.length ? group(item) : leaf(item)))}</div>;
+              // The rail shows every entry; the full menu gives each category a dropdown that starts open, so nothing is hidden.
+              if (collapsed || sec.id === "overview") {
+                return <div key={sec.id} className={i === 0 ? "" : collapsed ? "mt-2 border-t border-border/60 pt-2" : "mt-3"}>{body}</div>;
+              }
+              const key = `section:${sec.id}`;
+              const open = openGroups[key] ?? true;
+              return (
+                <Collapsible key={sec.id} open={open} onOpenChange={(v) => setOpenGroups((prev) => ({ ...prev, [key]: v }))} className="mt-3">
+                  <CollapsibleTrigger asChild>
+                    <button className="mb-1 flex w-full items-center justify-between rounded-md px-3 py-1 text-left text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground hover:text-foreground">
+                      {sec.label}
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "" : "-rotate-90"}`} strokeWidth={2} />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>{body}</CollapsibleContent>
+                </Collapsible>
+              );
+            })
           )}
         </nav>
 
