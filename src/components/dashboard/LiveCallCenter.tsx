@@ -61,7 +61,6 @@ export default function LiveCallCenter() {
   if (idle) {
     return (
       <div className="space-y-2.5">
-        {isCallCenterAdmin(user) && <SetupCard />}
         <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5">
           <div className="min-w-0">
             <p className="text-sm font-semibold">{t("cc.board.title")}</p>
@@ -78,7 +77,6 @@ export default function LiveCallCenter() {
 
   return (
     <div className="space-y-2.5">
-      {isCallCenterAdmin(user) && <SetupCard />}
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm">{t("cc.board.title")}</CardTitle>
