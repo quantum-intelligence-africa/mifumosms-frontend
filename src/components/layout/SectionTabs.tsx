@@ -1,5 +1,7 @@
 // The row of tabs across the top of a Call Center & IVR page (see callCenterSections.ts).
+import { PhoneOutgoing } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useDialer } from "@/contexts/DialerContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ccKey } from "@/i18n/callCenter";
@@ -12,16 +14,17 @@ export function SectionTabs() {
   const { t } = useLanguage();
   const { pathname } = useLocation();
   const missed = useMissedSummary();
+  const { openDialer } = useDialer();
 
   const section = sectionForPath(getCallCenterSections(user), pathname);
-  if (!section || section.tabs.length < 2) return null; // a single page needs no tabs
+  if (!section) return null;
   // Exactly one tab is current: the most specific match (so /voice/calls/answered lights "Answered calls", not also "All calls").
   const currentHref = section.tabs.filter((tab) => pathMatches(pathname, tab.href)).sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   return (
-    <nav aria-label={t(ccKey(section.labelKey))} className="shrink-0 border-b border-border-subtle bg-background px-2 sm:px-3 lg:px-6">
-      <div className="flex gap-1 overflow-x-auto py-1.5 pr-12 [scrollbar-width:none] md:pr-0">
-        {section.tabs.map((tab) => {
+    <nav aria-label={t(ccKey(section.labelKey))} className="flex shrink-0 items-center gap-2 border-b border-border-subtle bg-background px-2 sm:px-3 lg:px-6">
+      <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto py-1.5 pr-2 [scrollbar-width:none]">
+        {section.tabs.length > 1 && section.tabs.map((tab) => {
           const active = tab.href === currentHref;
           return (
             <Link
@@ -45,6 +48,15 @@ export function SectionTabs() {
           );
         })}
       </div>
+      {/* One tap from any call page: the dialer lives at the app root, so this opens it over whatever is showing. */}
+      <button
+        type="button"
+        onClick={() => openDialer()}
+        className="my-1.5 flex shrink-0 items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-green-700"
+      >
+        <PhoneOutgoing className="h-3.5 w-3.5" strokeWidth={2.2} />
+        {t("pg.AppSidebar.0963")}
+      </button>
     </nav>
   );
 }
