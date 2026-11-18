@@ -6,7 +6,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useFeatures } from "@/hooks/useFeatures";
 import type { Membership } from "@/lib/api";
-import { canUseCallCenter, hasSmsAccess } from "@/utils/roleUtils";
+import { canUseCallCenter, getCallCenterRole, hasSmsAccess } from "@/utils/roleUtils";
 
 export interface Services {
   inbox: boolean;
@@ -27,7 +27,9 @@ export function useServices(): Services {
   const callCenter = canUseCallCenter(user);
   // Messaging is on by default for everyone and stays in the menu; it disappears only when SENDA staff turn SMS off for this organization (or this person)
   // in the admin dashboard. A missing answer never hides it.
-  const sms = hasSmsAccess(user) && features.sms !== false;
+  // Agents and supervisors work in the call center only: SMS is a service the organization's owner buys, so it is never offered to them.
+  const staffRole = callCenter && ["agent", "supervisor"].includes(getCallCenterRole(user) ?? "");
+  const sms = hasSmsAccess(user) && features.sms !== false && !staffRole;
   return {
     inbox, callCenter, sms, inboxOnly: inbox && !callCenter && !sms,
     currentOrganization: active.find((m) => m.is_current) ?? active[0] ?? null,
