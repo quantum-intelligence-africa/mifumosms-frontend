@@ -350,6 +350,9 @@ export const aiAgentApi = {
       return voiceApi.get<{ results: Ticket[] }>(`${BASE}/tickets/${s ? `?${s}` : ""}`);
     },
     get: (id: string) => voiceApi.get<Ticket>(`${BASE}/tickets/${id}/`),
+    /** A person opens a ticket (the AI assistant is not the only one who can). Optionally for a call, optionally assigned. */
+    create: (body: { title: string; description?: string; contact_name?: string; contact_phone?: string; contact_email?: string; priority?: string; request_type?: string; call_id?: string; assigned_to?: string }) =>
+      voiceApi.post<Ticket>(`${BASE}/tickets/`, body),
     update: (id: string, body: { status?: TicketStatus; priority?: string; assigned_to?: string | null }) => voiceApi.patch<Ticket>(`${BASE}/tickets/${id}/`, body),
   },
   retryEmail: (id: string) => voiceApi.post<{ status: string }>(`${BASE}/notifications/${id}/retry/`),

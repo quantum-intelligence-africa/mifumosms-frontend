@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, Bot, Loader2, PhoneMissed, RefreshCw, Search, Sparkles, Voicemail } from "lucide-react";
+import { AlertCircle, Bot, Loader2, PhoneMissed, Plus, RefreshCw, Search, Sparkles, Voicemail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -26,8 +27,8 @@ const MISSED_STATUSES: MissedCallStatus[] = ["new", "assigned", "called_back", "
 const MISSED_CLOSED: MissedCallStatus[] = ["resolved", "unresolved"];
 const TICKET_CLOSED: TicketStatus[] = ["resolved", "closed"];
 
-type Filter = "open" | "missed" | "tickets" | "closed" | "all";
-const FILTERS: Filter[] = ["open", "missed", "tickets", "closed", "all"];
+type Filter = "open" | "voicemails" | "missed" | "tickets" | "closed" | "all";
+const FILTERS: Filter[] = ["open", "voicemails", "missed", "tickets", "closed", "all"];
 
 const missedStyle: Record<MissedCallStatus, string> = {
   new: "bg-amber-100 text-amber-900",
@@ -90,17 +91,21 @@ export default function Tickets() {
   const [busy, setBusy] = useState(false);
   const [analysing, setAnalysing] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  // "New ticket": opened from the header, or from a call (then it carries the call and the customer's number).
+  const [creating, setCreating] = useState<{ phone: string; callId?: string } | null>(null);
+  const [form, setForm] = useState({ title: "", description: "", name: "", phone: "", priority: "normal", assign: "none" });
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     const q = query.trim();
     const wantsMissed = (!q || /\d/.test(q)); // the missed-call search is by number only
-    const wantsTickets = filter !== "missed";
+    const wantsTickets = filter !== "missed" && filter !== "voicemails";
     const [tk, ms] = await Promise.all([
       wantsTickets ? aiAgentApi.tickets.list({ q: q || undefined }) : Promise.resolve(null),
       wantsMissed
-        ? callCenterApi.missed.list({ page_size: 60, q: q || undefined, ...(filter === "closed" || filter === "all" || filter === "tickets" ? {} : { status: "attention", group: "caller" }) })
+        ? callCenterApi.missed.list({ page_size: 60, q: q || undefined, ...(filter === "voicemails" ? { voicemail: "true" } : filter === "closed" || filter === "all" || filter === "tickets" ? {} : { status: "attention", group: "caller" }) })
         : Promise.resolve(null),
     ]);
     setTickets(tk && tk.success && tk.data ? tk.data.results : []);
@@ -193,6 +198,25 @@ export default function Tickets() {
     return () => window.clearInterval(handle);
   }, [analysisRunning, load]);
 
+  const startCreate = (phone = "", callId?: string) => {
+    setForm({ title: "", description: "", name: "", phone, priority: "normal", assign: "none" });
+    setCreating({ phone, callId });
+  };
+  const createTicket = async () => {
+    if (!creating || !form.title.trim()) return;
+    setSaving(true);
+    const res = await aiAgentApi.tickets.create({
+      title: form.title.trim(), description: form.description.trim() || undefined, contact_name: form.name.trim() || undefined, contact_phone: form.phone.trim() || undefined,
+      priority: form.priority, call_id: creating.callId, assigned_to: form.assign !== "none" ? form.assign : undefined,
+    });
+    setSaving(false);
+    if (!res.success || !res.data) { toast({ title: t("ai.tk.nf_failed"), description: describeError(res), variant: "destructive" }); return; }
+    toast({ title: t("ai.tk.nf_created", { ref: res.data.reference }) });
+    setCreating(null);
+    setFilter("tickets");
+    void load();
+  };
+
   const rows: Row[] = [
     ...tickets.map((tk): Row => ({ kind: "ticket", key: `t${tk.id}`, when: tk.created_at, ticket: tk, closed: TICKET_CLOSED.includes(tk.status) })),
     ...missed.map((m): Row => ({ kind: "missed", key: `m${m.id}`, when: m.call_started_at || m.created_at, missed: m, closed: MISSED_CLOSED.includes(m.status) })),
@@ -202,6 +226,7 @@ export default function Tickets() {
       const isTicketLike = r.kind === "ticket" || !!r.missed.voicemail;
       if (filter === "open") return !r.closed;
       if (filter === "closed") return r.closed;
+      if (filter === "voicemails") return r.kind === "missed" && !!r.missed.voicemail;
       if (filter === "tickets") return isTicketLike;
       if (filter === "missed") return !isTicketLike;
       return true;
@@ -220,6 +245,7 @@ export default function Tickets() {
               {t("ai.tk.a_run_all", { n: unanalysed.length })}
             </Button>
           )}
+          <Button size="sm" onClick={() => startCreate()}><Plus className="mr-1.5 h-3.5 w-3.5" />{t("ai.tk.new")}</Button>
           <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />{t("sms.common.refresh")}</Button>
         </>
       }
@@ -237,6 +263,12 @@ export default function Tickets() {
           <Input className="pl-8" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("ai.tk.search")} aria-label={t("ai.tk.search")} />
         </div>
       </div>
+      {filter === "voicemails" && (
+        <div className="rounded-lg border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-sm">
+          <p className="flex items-center gap-1.5 font-medium text-orange-700 dark:text-orange-300"><Voicemail className="h-4 w-4" />{t("ai.tk.vm_title")}</p>
+          <p className="text-xs text-muted-foreground">{t("ai.tk.vm_hint")}</p>
+        </div>
+      )}
 
       {error && (
         <p className="flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-800"><AlertCircle className="h-4 w-4" /> {error}</p>
@@ -375,6 +407,9 @@ export default function Tickets() {
                     })()}
                   </div>
                 )}
+                <Button size="sm" variant="outline" onClick={() => { const m = missedOpen; setMissedOpen(null); startCreate(m.caller_number, m.call); }}>
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />{t("ai.tk.create_ticket")}
+                </Button>
                 <Link to="/call-center/missed" className="text-sm text-primary underline-offset-2 hover:underline">{t("ai.tk.open_missed")}</Link>
               </div>
             </>
@@ -400,6 +435,7 @@ export default function Tickets() {
                   <Badge variant="secondary">{t(aiKey(`ai.tk.type.${detail.request_type}`))}</Badge>
                   {detail.department && <Badge variant="outline">{t(aiKey(`ai.dept.${detail.department}`))}</Badge>}
                   {detail.created_by_ai && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Bot className="h-3.5 w-3.5" />{t("ai.tk.by_ai")}</span>}
+                  {!detail.created_by_ai && <span className="text-xs text-muted-foreground">{t("ai.tk.by_person")}</span>}
                 </div>
 
                 <section>
@@ -482,6 +518,46 @@ export default function Tickets() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!creating} onOpenChange={(v) => !v && setCreating(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("ai.tk.nf_title")}</DialogTitle>
+            {creating?.callId && <DialogDescription>{t("ai.tk.nf_from_call", { number: creating.phone })}</DialogDescription>}
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div><Label>{t("ai.tk.nf_what")}</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={200} autoFocus /></div>
+            <div><Label>{t("ai.tk.nf_details")}</Label><Textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label>{t("ai.tk.nf_name")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+              <div><Label>{t("ai.tk.nf_phone")}</Label><Input className="font-mono" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>{t("ai.tk.priority")}</Label>
+                <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{(["low", "normal", "high"] as const).map((p) => <SelectItem key={p} value={p}>{t(aiKey(`ai.tk.priority.${p}`))}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              {supervisor && (
+                <div>
+                  <Label>{t("ai.tk.nf_assign")}</Label>
+                  <Select value={form.assign} onValueChange={(v) => setForm({ ...form, assign: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("ai.tk.unassigned")}</SelectItem>
+                      {agents.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <Button className="w-full" disabled={saving || !form.title.trim()} onClick={() => void createTicket()}>
+              {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Plus className="mr-1.5 h-4 w-4" />}{t("ai.tk.nf_save")}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </PageFrame>
