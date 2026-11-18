@@ -15497,7 +15497,7 @@ function useAnalysisAlertCount() {
   useEffect(() => {
     let alive = true;
     const load = () => voiceAdminFetch('/audio/admin/alerts/')
-      .then(res => { if (alive && res && typeof res.open_count === 'number') setCount(res.open_count); })
+      .then(res => { if (alive && res && res.success && typeof res.data?.open_count === 'number') setCount(res.data.open_count); })
       .catch(() => {});
     load();
     const timer = setInterval(load, 60000);
@@ -15516,7 +15516,10 @@ function AnalysisAlertsTab() {
 
   const load = useCallback(() => {
     voiceAdminFetch(`/audio/admin/alerts/?status=${showAll ? 'all' : 'open'}`, {}, onLogout)
-      .then(res => { if (res && Array.isArray(res.results)) { setData(res); setError(null); } else setError('Could not load alerts.'); })
+      .then(res => {
+        if (res && res.success && res.data && Array.isArray(res.data.results)) { setData(res.data); setError(null); }
+        else setError(typeof res?.error === 'string' && res.error ? res.error : 'Could not load alerts.');
+      })
       .catch(() => setError('Could not load alerts.'));
   }, [showAll, onLogout]);
   useEffect(() => { load(); }, [load]);
