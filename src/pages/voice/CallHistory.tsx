@@ -190,7 +190,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
   const [details, setDetails] = useState<Record<string, CallDetail>>({});
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [range, setRange] = useState<Range>("all");
+  const [range, setRange] = useState<Range>("30"); // a month by default: the whole history is a lot to group and page on every visit
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [agents, setAgents] = useState<AgentSummary[]>([]);
@@ -630,7 +630,11 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                               <TableCell className="whitespace-nowrap">
                                 {!call.agent && call.missed_for ? (
                                   <div className="max-w-[14rem]" title={[...call.missed_for.agents, call.missed_for.team].filter(Boolean).join(", ")}>
-                                    <p className="text-[11px] font-medium uppercase tracking-wide text-destructive">{t("cc.calls.missed_at")}</p>
+                                    {call.group && call.group.answered > 0 ? (
+                                      <p className="text-[11px] font-medium uppercase tracking-wide text-green-600">{t("cc.calls.answered_later")}</p>
+                                    ) : (
+                                      <p className="text-[11px] font-medium uppercase tracking-wide text-destructive">{t("cc.calls.missed_at")}</p>
+                                    )}
                                     <p className="truncate text-sm text-foreground">{call.missed_for.agents.length ? call.missed_for.agents.join(", ") : call.missed_for.team}</p>
                                     {call.missed_for.agents.length > 0 && call.missed_for.team && !call.missed_for.agents.includes(call.missed_for.team) && (
                                       <p className="truncate text-xs text-muted-foreground">{call.missed_for.team}</p>
@@ -652,6 +656,10 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                                   </p>
                                 ) : call.analysis?.status === "pending" || call.analysis?.status === "processing" ? (
                                   <span className="text-xs text-muted-foreground">{t("voice.calls.outcome_in_progress")}</span>
+                                ) : call.outcome_detail === "voicemail_left" || call.outcome_detail === "callback_requested" ? (
+                                  <Badge variant="outline" className={cn("whitespace-normal text-left", call.followup_status === "resolved" ? "border-green-600/40 text-green-700" : "border-orange-500/50 text-orange-600")}>
+                                    {call.followup_status === "resolved" ? t("cc.calls.voicemail_done") : t("cc.calls.voicemail_waiting")}
+                                  </Badge>
                                 ) : (
                                   <span className="text-sm text-muted-foreground">—</span>
                                 )}
