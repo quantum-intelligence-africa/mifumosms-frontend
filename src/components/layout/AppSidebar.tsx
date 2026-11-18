@@ -31,6 +31,10 @@ import {
   Headphones,
   PhoneMissed,
   Megaphone,
+  ChevronsLeft,
+  ChevronsRight,
+  Search,
+  FileText,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { useBranding } from "@/contexts/BrandingContext";
@@ -95,29 +99,29 @@ interface AppSidebarProps {
   onClose?: () => void;
 }
 
-// Whether the sidebar is showing the Voice/IVR menu (which hides Messaging, AI Copilots and Voice Copilots). Settings and
-// Notifications belong to no area, so they keep whichever one the user came from instead of flipping the menu: before, opening
-// Settings from a call-center page suddenly brought AI Copilots and Voice Copilots into the menu.
-const AREA_KEY = "senda_nav_area";
-function inVoiceArea(pathname: string): boolean {
-  const voice = pathname.startsWith("/voice") || pathname.startsWith("/call-center");
-  const neutral = pathname.startsWith("/settings") || pathname.startsWith("/notifications");
-  try {
-    if (!neutral) sessionStorage.setItem(AREA_KEY, voice ? "voice" : "other");
-    else return sessionStorage.getItem(AREA_KEY) === "voice";
-  } catch {
-    /* storage blocked: fall back to the path alone */
-  }
-  return voice;
+const COLLAPSE_KEY = "senda_sidebar_collapsed";
+
+interface NavSection {
+  id: string;
+  label: string;
+  items: NavItem[];
 }
 
 export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    messaging: true,
-    "voice-ivr": inVoiceArea(location.pathname),
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ history: false });
+  // A narrow icon rail on desktop (remembered), and a quick filter over every menu entry.
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(COLLAPSE_KEY) === "1"; } catch { return false; }
   });
+  const [query, setQuery] = useState("");
+  const toggleCollapsed = () => {
+    setCollapsed((v) => {
+      try { localStorage.setItem(COLLAPSE_KEY, v ? "0" : "1"); } catch { /* not remembered */ }
+      return !v;
+    });
+  };
   // Live counts for the Outbox (failed), Sent and Scheduled badges: one cached query shared by every page.
   const { outboxCount, sentCount, scheduledCount } = useMessageBadgeCounts();
   const { user, logout, isLoading } = useAuth();
@@ -148,31 +152,22 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
     if (isMobile && onClose) onClose();
   };
 
-  // While working inside Voice/IVR, hide the unrelated top-level sections
-  // (Messaging, AI Copilots) and "Voice Copilots" so the sidebar stays
-  // focused — Dashboard and Voice/IVR itself always stay visible.
-  const inVoiceSection = inVoiceArea(location.pathname);
-
-  // Call-center-only agents get a deliberately small menu: their workspace, their
-  // calls, and settings — not the rest of SENDA (spec §9: don't overload the agent).
+  // Call-center-only agents get a deliberately small menu: their workspace, their calls, and settings.
   const agentOnly = getCallCenterRole(user) === "agent";
   const callCenterOnly = hasIvrAccess(user) && !services.sms;
   // Only the shared inbox: a small menu (the inbox, its settings, team invitations) with nothing from the other services.
   const inboxOnly = services.inboxOnly;
 
-  // Call center and Voice/IVR are one product: a single menu group. The call-center pages come
-  // first (what people do day to day), then the IVR tools. Each half appears only for people
-  // who may use it, so an agent sees just their own pages.
-  // One group, a handful of entries. The pages behind "Calls", "Manage" and "Set up" are reached
-  // through tabs across the top of each page (see callCenterSections.ts), which keeps this short.
+  // Call center and Voice/IVR are one product. The pages behind "Calls", "Manage" and "Set up" are reached through tabs across the top
+  // of each page (see callCenterSections.ts), which keeps this short. Each entry appears only for people who may use it.
   const sections = getCallCenterSections(user);
-  const sectionItems: NavItem[] = sections.map((s) => ({
-    name: t(ccKey(s.labelKey)),
-    href: s.tabs[0].href,
-    icon: s.icon,
-    matchPaths: s.tabs.map((tab) => tab.href),
+  const sectionItems: NavItem[] = sections.map((sec) => ({
+    name: t(ccKey(sec.labelKey)),
+    href: sec.tabs[0].href,
+    icon: sec.icon,
+    matchPaths: sec.tabs.map((tab) => tab.href),
     // One "Calls" entry: missed calls are inside it, so the waiting count shows here.
-    ...(s.id === "calls" ? { badge: missedSummary?.needs_attention ?? 0 } : {}),
+    ...(sec.id === "calls" ? { badge: missedSummary?.needs_attention ?? 0 } : {}),
   }));
   const callCenterItems: NavItem[] = canUseCallCenter(user)
     ? [
@@ -180,68 +175,164 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
         ...(cc.isAgent || !isCallCenterSupervisor(user) ? [{ name: t("cc.nav.workspace"), href: "/call-center", icon: Phone }] : []),
       ]
     : [];
-  const ivrItems: NavItem[] = [];
-  const groupChildren: NavItem[] = [...callCenterItems, ...sectionItems];
+  const callingItems: NavItem[] = [...callCenterItems, ...sectionItems];
 
   const isChildActive = (child: NavItem) =>
     child.matchPaths ? child.matchPaths.some((p) => pathMatches(location.pathname, p)) : location.pathname === child.href;
 
-  const callCenterGroup: NavItem[] =
-    groupChildren.length === 0
-      ? []
-      : [
-          {
-            name: t("cc.nav.section_combined"),
-            id: "voice-ivr",
-            href: callCenterItems.length ? "/call-center" : sections[0]?.tabs[0].href ?? "/voice",
-            icon: Headphones,
-            comingSoon: isComingSoon("voice_ivr"),
-            children: groupChildren,
-          },
-        ];
-
-  const navigation: NavItem[] = [
-    ...(agentOnly || inboxOnly ? [] : [{ name: t("nav.dashboard"), href: "/dashboard", icon: Home }]),
-    // Team Inbox is its own entry (not tucked inside Messaging, which some accounts do not have). It exists only for organizations SENDA has switched it on for,
-    // and sits above the other services so someone with the inbox and the call center sees both at once.
-    ...(services.inbox ? [{ name: "Team Inbox", href: "/conversations", icon: MessageSquareText }] : []),
-    ...callCenterGroup,
-    ...(inVoiceSection || !services.sms
-      ? []
-      : [
-          {
-            name: t("nav.messaging"),
-            id: "messaging",
-            href: "#",
-            icon: MessageSquare,
-            children: [
+  const showAll = !agentOnly && !inboxOnly;
+  const navSections: NavSection[] = [
+    { id: "overview", label: t("nav.group.overview"), items: showAll ? [{ name: t("nav.dashboard"), href: "/dashboard", icon: Home }] : [] },
+    {
+      id: "communication",
+      label: t("nav.group.communication"),
+      items: [
+        // Team Inbox exists only for organizations SENDA has switched it on for.
+        ...(services.inbox ? [{ name: "Team Inbox", href: "/conversations", icon: MessageSquareText }] : []),
+        ...(services.sms
+          ? [
               { name: t("nav.send_sms"), href: "/messaging/send", icon: Send },
-              { name: "Scheduled", href: "/messaging/scheduled", icon: CalendarClock, badge: scheduledCount },
-              { name: "Outbox", href: "/messaging/outbox", icon: Inbox, badge: outboxCount },
-              { name: "Sent", href: "/messaging/sent", icon: CheckCircle2, badge: sentCount },
               { name: "WhatsApp", href: "/whatsapp", icon: WhatsAppIcon, comingSoon: isComingSoon("whatsapp") },
               { name: "WhatsApp Campaigns", href: "/whatsapp/campaigns", icon: Megaphone, comingSoon: isComingSoon("whatsapp") },
               { name: t("nav.campaigns"), href: "/messaging/campaigns", icon: BarChart3 },
-              { name: t("nav.contacts"), href: "/messaging/contacts", icon: Users },
+              { name: t("nav.templates"), href: "/templates", icon: FileText },
+              {
+                name: t("nav.messages_history"),
+                id: "history",
+                href: "#",
+                icon: History,
+                children: [
+                  { name: "Scheduled", href: "/messaging/scheduled", icon: CalendarClock, badge: scheduledCount },
+                  { name: "Outbox", href: "/messaging/outbox", icon: Inbox, badge: outboxCount },
+                  { name: "Sent", href: "/messaging/sent", icon: CheckCircle2, badge: sentCount },
+                ],
+              },
+            ]
+          : []),
+      ],
+    },
+    { id: "calling", label: t("nav.group.calling"), items: callingItems },
+    // Contacts are shared by SMS and the call center alike.
+    { id: "customers", label: t("nav.group.customers"), items: showAll ? [{ name: t("nav.contacts"), href: services.sms ? "/messaging/contacts" : "/contacts", icon: Users }] : [] },
+    {
+      id: "automation",
+      label: t("nav.group.automation"),
+      items: [
+        // A call-center-only account never sees the AI / voice copilot entries; they are not part of what it signed up for.
+        ...(agentOnly || callCenterOnly || inboxOnly ? [] : [{ name: t("nav.ai_copilots"), href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
+        ...(hasIvrAccess(user) && !callCenterOnly && !inboxOnly ? [{ name: t("nav.voice_copilots"), href: "/voice-copilots", icon: Mic }] : []),
+      ],
+    },
+    {
+      id: "analytics",
+      label: t("nav.group.analytics"),
+      items: [
+        ...(services.sms && showAll ? [{ name: t("nav.analytics"), href: "/analytics", icon: BarChart3 }] : []),
+        ...(isPartina()
+          ? [
+              { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },
+              { name: t("nav.partner_reference"), href: "/partner-integration", icon: Server },
+            ]
+          : []),
+      ],
+    },
+    {
+      id: "account",
+      label: t("nav.group.account"),
+      items: [
+        ...(services.sms && showAll
+          ? [
               { name: t("nav.sender_names"), href: "/messaging/sender-names", icon: Tag },
               { name: t("nav.purchase_sms"), href: "/messaging/purchase", icon: CreditCard },
               { name: t("nav.purchase_history"), href: "/messaging/history", icon: History },
-            ],
-          },
-        ]),
-    // A call-center-only account (call center on, SMS off: the people who signed up through the call center link) never sees the AI / voice
-    // copilot entries; they are not part of what it signed up for.
-    ...(inVoiceSection || agentOnly || callCenterOnly || inboxOnly ? [] : [{ name: t("nav.ai_copilots"), href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
-    ...(hasIvrAccess(user) && !inVoiceSection && !callCenterOnly && !inboxOnly ? [{ name: t("nav.voice_copilots"), href: "/voice-copilots", icon: Mic }] : []),
-    ...(isPartina()
-      ? [
-          { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },
-          { name: t("nav.partner_reference"), href: "/partner-integration", icon: Server },
-        ]
-      : []),
-    ...(agentOnly || inboxOnly ? [] : [{ name: t("nav.integration_guide"), href: "/integration-guide", icon: BookOpen }]),
-    { name: t("nav.settings"), href: "/settings", icon: Settings },
-  ];
+            ]
+          : []),
+        ...(showAll ? [{ name: t("nav.integration_guide"), href: "/integration-guide", icon: BookOpen }] : []),
+        { name: t("nav.settings"), href: "/settings", icon: Settings },
+      ],
+    },
+  ].filter((sec) => sec.items.length > 0);
+
+  // The quick filter: every leaf entry whose name matches.
+  const needle = query.trim().toLowerCase();
+  const flat: NavItem[] = navSections.flatMap((sec) => sec.items.flatMap((it) => (it.children?.length ? it.children : [it])));
+  const results = needle ? flat.filter((it) => it.name.toLowerCase().includes(needle)) : [];
+
+  const comingSoonBadge = (
+    <span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5 leading-none flex-shrink-0">
+      {t("pg.AppSidebar.0964")}
+    </span>
+  );
+
+  const countBadge = (n?: number) =>
+    typeof n === "number" && n > 0 ? (
+      <span className="ml-auto text-[10px] font-semibold text-red-500 leading-none tabular-nums">{n > 10 ? "10+" : n}</span>
+    ) : null;
+
+  const leaf = (item: NavItem, nested = false) => {
+    const Icon = item.icon;
+    const active = isChildActive(item);
+    const button = (
+      <button
+        key={item.name}
+        onClick={() => handleNavigation(item.href)}
+        aria-current={active ? "page" : undefined}
+        className={[
+          "w-full flex items-center rounded-md text-left tracking-tight transition-colors duration-100",
+          collapsed ? "justify-center h-9" : nested ? "gap-2.5 px-2.5 h-8 text-[12.5px]" : "gap-3 px-3 h-9 text-[13px]",
+          active ? "bg-primary/10 text-primary font-semibold" : "text-foreground/70 hover:text-foreground hover:bg-accent/60 font-medium",
+        ].join(" ")}
+      >
+        <Icon className={nested ? "w-3.5 h-3.5 flex-shrink-0" : "w-4 h-4 flex-shrink-0"} strokeWidth={1.8} />
+        {!collapsed && <span className="truncate">{item.name}</span>}
+        {!collapsed && item.comingSoon && comingSoonBadge}
+        {!collapsed && countBadge(item.badge)}
+        {collapsed && typeof item.badge === "number" && item.badge > 0 && <span className="absolute ml-4 -mt-4 h-1.5 w-1.5 rounded-full bg-red-500" />}
+      </button>
+    );
+    if (!collapsed) return button;
+    return (
+      <Tooltip key={item.name}>
+        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipContent side="right" className="text-xs font-medium">{item.name}</TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  const group = (item: NavItem) => {
+    const Icon = item.icon;
+    const key = item.id ?? item.name;
+    const anyActive = item.children!.some(isChildActive);
+    const open = openGroups[key] ?? anyActive;
+    if (collapsed) {
+      // In the rail a group is one icon: opening it widens the menu first.
+      return (
+        <Tooltip key={key}>
+          <TooltipTrigger asChild>
+            <button onClick={() => { toggleCollapsed(); setOpenGroups((p) => ({ ...p, [key]: true })); }} className={["w-full flex items-center justify-center h-9 rounded-md", anyActive ? "bg-primary/10 text-primary" : "text-foreground/70 hover:bg-accent/60"].join(" ")}>
+              <Icon className="w-4 h-4" strokeWidth={1.8} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="text-xs font-medium">{item.name}</TooltipContent>
+        </Tooltip>
+      );
+    }
+    return (
+      <Collapsible key={key} open={open} onOpenChange={(v) => setOpenGroups((prev) => ({ ...prev, [key]: v }))}>
+        <CollapsibleTrigger asChild>
+          <button className={["w-full flex items-center gap-3 px-3 h-9 rounded-md text-left text-[13px] font-medium tracking-tight transition-colors", anyActive ? "text-foreground font-semibold" : "text-foreground/70 hover:text-foreground hover:bg-accent/60"].join(" ")}>
+            <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
+            <span className="flex-1 truncate">{item.name}</span>
+            {item.children!.some((c) => (c.badge ?? 0) > 0) && !open && <span className="h-1.5 w-1.5 rounded-full bg-red-500" />}
+            <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${open ? "" : "-rotate-90"}`} strokeWidth={2} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="ml-5 mt-0.5 mb-1 pl-2 space-y-0.5">{item.children!.map((child) => leaf(child, true))}</div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
 
   const getInitials = (name: string) =>
     name
@@ -269,8 +360,9 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       {/* Sidebar shell */}
       <aside
         className={[
-          "flex flex-col h-screen bg-[hsl(var(--background))] border-r border-border/50 select-none",
-          isMobile ? "w-[80vw] max-w-[280px]" : "w-[208px]",
+          "flex flex-col h-screen bg-card border-r border-border select-none",
+          isMobile ? "w-[80vw] max-w-[280px]" : collapsed ? "w-[60px]" : "w-[208px]",
+          "transition-[width] duration-150",
           isMobile
             ? `fixed left-0 top-0 z-[110] shadow-2xl transition-transform duration-300 ease-smooth-out ${
                 isOpen ? "translate-x-0" : "-translate-x-full"
@@ -287,18 +379,22 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
         }
       >
         {/* ── Logo ─────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-4 pt-5 pb-4">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <BrandLogo className="h-14 w-auto -my-3 -mr-7" />
-            <span className="min-w-0 line-clamp-2 break-words text-[16px] font-bold text-foreground dark:text-foreground tracking-tight leading-tight">
-              {brand.branded && brand.display_name ? brand.display_name : t("app.name")}
-            </span>
-          </div>
+        <div className={["flex items-center pt-5 pb-4", collapsed ? "justify-center px-2" : "justify-between px-4"].join(" ")}>
+          {collapsed ? (
+            <BrandLogo className="h-10 w-auto" />
+          ) : (
+            <div className="flex min-w-0 items-center gap-2.5">
+              <BrandLogo className="h-14 w-auto -my-3 -mr-7" />
+              <span className="min-w-0 line-clamp-2 break-words text-[16px] font-bold text-foreground tracking-tight leading-tight">
+                {brand.branded && brand.display_name ? brand.display_name : t("app.name")}
+              </span>
+            </div>
+          )}
 
           {isMobile && onClose && (
             <button
               onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/70 dark:text-foreground/60 hover:text-foreground dark:hover:text-foreground hover:bg-accent dark:hover:bg-accent/50 transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/70 hover:text-foreground hover:bg-accent transition-colors"
             >
               <X className="w-4 h-4" strokeWidth={2} />
             </button>
@@ -306,28 +402,29 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
         </div>
 
         {/* ── Which organization this is, and a switch when there are several ── */}
-        <div className="px-3 pb-3"><OrganizationSwitcher /></div>
+        {!collapsed && <div className="px-3 pb-3"><OrganizationSwitcher /></div>}
 
         {/* ── Global CTAs: buy credits, place a call ─────── */}
-        <div className="px-3 pb-3 space-y-2">
+        <div className={["pb-3 space-y-2", collapsed ? "px-2" : "px-3"].join(" ")}>
           {services.sms && (
             <button
               onClick={() => handleNavigation("/messaging/purchase")}
-              className="w-full flex items-center justify-center gap-2 h-9 rounded-lg bg-primary text-primary-foreground text-[13px] font-semibold tracking-tight hover:opacity-90 active:scale-[0.98] transition-all duration-100"
+              aria-label={t("pg.AppSidebar.0962")}
+              className="w-full flex items-center justify-center gap-2 h-9 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold tracking-tight hover:opacity-90 transition-opacity"
             >
               <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-              {t("pg.AppSidebar.0962")}
+              {!collapsed && t("pg.AppSidebar.0962")}
             </button>
           )}
-          {/* The dialer lives at the app root (DialerProvider), so this opens
-              it over whatever page is showing — no navigation needed. */}
+          {/* The dialer lives at the app root (DialerProvider), so this opens it over whatever page is showing. */}
           {hasIvrAccess(user) && (
             <button
               onClick={() => openDialer()}
-              className="w-full flex items-center justify-center gap-2 h-9 rounded-lg border border-primary/40 bg-primary/10 text-primary text-[13px] font-semibold tracking-tight hover:bg-primary/15 active:scale-[0.98] transition-all duration-100"
+              aria-label={t("pg.AppSidebar.0963")}
+              className="w-full flex items-center justify-center gap-2 h-9 rounded-md border border-border bg-background text-foreground text-[13px] font-semibold tracking-tight hover:bg-accent/60 transition-colors"
             >
               <PhoneOutgoing className="w-3.5 h-3.5" strokeWidth={2.2} />
-              {t("pg.AppSidebar.0963")}
+              {!collapsed && t("pg.AppSidebar.0963")}
             </button>
           )}
         </div>
@@ -335,139 +432,74 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
         {/* ── Divider ──────────────────────────────────── */}
         <div className="mx-3 h-px bg-border/50 mb-2" />
 
+        {/* ── Search ───────────────────────────────────── */}
+        {!collapsed && (
+          <div className="px-3 pb-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("nav.search")}
+                aria-label={t("nav.search")}
+                className="h-7 w-full rounded-md border border-border bg-background pl-7 pr-2 text-[12px] outline-none placeholder:text-muted-foreground focus:border-primary/50"
+              />
+            </div>
+          </div>
+        )}
+
         {/* ── Navigation ───────────────────────────────── */}
-        <nav className="flex-1 overflow-y-auto px-2 py-1.5 space-y-0.5 scrollbar-none">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.href;
-            const hasChildren = !!item.children?.length;
-
-            if (hasChildren) {
-              const anyChildActive =
-                isActive || item.children!.some(isChildActive);
-              const groupKey = item.id ?? item.name;
-              const groupOpen = openGroups[groupKey] ?? true;
-
-              return (
-                <Collapsible
-                  key={groupKey}
-                  open={groupOpen}
-                  onOpenChange={(v) => setOpenGroups((prev) => ({ ...prev, [groupKey]: v }))}
-                >
-                  <CollapsibleTrigger asChild>
-                    <button
-                      onClick={() => item.href !== "#" && handleNavigation(item.href)}
-                      className={[
-                        "w-full flex items-center gap-3 px-3 h-9 rounded-lg text-left",
-                        "text-[13px] font-medium tracking-tight",
-                        "transition-colors duration-100",
-                        anyChildActive
-                          ? "text-foreground dark:text-foreground font-semibold bg-primary/10 dark:bg-primary/15"
-                          : "text-foreground/70 dark:text-foreground/60 hover:text-foreground dark:hover:text-foreground hover:bg-accent/60 dark:hover:bg-accent/30",
-                      ].join(" ")}
-                    >
-                      <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                      <span className="flex-1 truncate">{item.name}</span>
-                      {item.comingSoon && (
-                        <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5 leading-none flex-shrink-0">
-                          {t("pg.AppSidebar.0964")}
-                        </span>
-                      )}
-                      <ChevronDown
-                        className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${
-                          groupOpen ? "" : "-rotate-90"
-                        }`}
-                        strokeWidth={2}
-                      />
-                    </button>
-                  </CollapsibleTrigger>
-
-                  <CollapsibleContent>
-                    <div className="ml-6 mt-0.5 mb-1 pl-3 border-l-2 border-border/40 space-y-0.5">
-                      {item.children!.map((child) => {
-                        const ChildIcon = child.icon;
-                        const childActive = isChildActive(child);
-
-                        return (
-                          <button
-                            key={child.name}
-                            onClick={() => handleNavigation(child.href)}
-                            className={[
-                              "w-full flex items-center gap-2.5 px-2.5 h-8 rounded-md text-left",
-                              "text-[12.5px] tracking-tight transition-colors duration-100",
-                              childActive
-                                ? "bg-primary/10 dark:bg-primary/15 text-primary dark:text-primary font-semibold"
-                                : "text-foreground/60 dark:text-foreground/50 hover:text-foreground dark:hover:text-foreground hover:bg-accent/50 dark:hover:bg-accent/30 font-normal",
-                            ].join(" ")}
-                          >
-                            <ChildIcon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
-                            <span className="truncate">{child.name}</span>
-                            {child.comingSoon && (
-                              <span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5 leading-none flex-shrink-0">
-                                {t("pg.AppSidebar.0964")}
-                              </span>
-                            )}
-                            {typeof child.badge === "number" && child.badge > 0 && (
-                              <span className="ml-auto text-[9px] font-bold text-red-500 leading-none tabular-nums">
-                                {child.badge > 10 ? "10+" : child.badge}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              );
-            }
-
-            return (
-              <button
-                key={item.name}
-                onClick={() => handleNavigation(item.href)}
-                className={[
-                  "w-full flex items-center gap-3 px-3 h-9 rounded-lg text-left",
-                  "text-[13px] tracking-tight transition-colors duration-100",
-                  isActive
-                    ? "bg-primary/10 dark:bg-primary/15 text-primary dark:text-primary font-semibold"
-                    : "text-foreground/70 dark:text-foreground/60 hover:text-foreground dark:hover:text-foreground hover:bg-accent/60 dark:hover:bg-accent/30 font-medium",
-                ].join(" ")}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                <span className="truncate">{item.name}</span>
-                {item.comingSoon && (
-                  <span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5 leading-none flex-shrink-0">
-                    {t("pg.AppSidebar.0964")}
-                  </span>
+        <nav className="flex-1 overflow-y-auto px-2 py-1 scrollbar-none" aria-label={t("app.name")}>
+          {needle ? (
+            <div className="space-y-0.5">
+              {results.length === 0 ? <p className="px-3 py-2 text-xs text-muted-foreground">{t("ai.tk.empty")}</p> : results.map((item) => leaf(item))}
+            </div>
+          ) : (
+            navSections.map((sec, i) => (
+              <div key={sec.id} className={i === 0 ? "" : collapsed ? "mt-2 border-t border-border/60 pt-2" : "mt-4"}>
+                {!collapsed && sec.id !== "overview" && (
+                  <p className="px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{sec.label}</p>
                 )}
-              </button>
-            );
-          })}
+                <div className="space-y-0.5">{sec.items.map((item) => (item.children?.length ? group(item) : leaf(item)))}</div>
+              </div>
+            ))
+          )}
         </nav>
+
+        {/* Collapse to an icon rail (desktop only). */}
+        {!isMobile && (
+          <button
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? t("nav.expand") : t("nav.collapse")}
+            className={["mx-2 mb-1 flex h-8 items-center gap-2 rounded-md text-[12px] text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors", collapsed ? "justify-center" : "px-3"].join(" ")}
+          >
+            {collapsed ? <ChevronsRight className="h-4 w-4" /> : <><ChevronsLeft className="h-4 w-4" />{t("nav.collapse")}</>}
+          </button>
+        )}
 
         {/* ── Divider ──────────────────────────────────── */}
         <div className="mx-3 h-px bg-border/50 mt-2" />
 
         {/* ── User row ─────────────────────────────────── */}
         <div className="px-2 py-3">
-          <div className="flex items-center gap-3 px-2.5 py-2.5 rounded-lg hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors duration-100 group">
-            <Avatar className="h-11 w-11 flex-shrink-0 ring-2 ring-border/60 dark:ring-border/40 shadow-sm">
+          <div className={["flex items-center rounded-md hover:bg-accent/50 transition-colors duration-100 group", collapsed ? "justify-center py-1.5" : "gap-3 px-2.5 py-2.5"].join(" ")}>
+            <Avatar className={["flex-shrink-0 ring-1 ring-border", collapsed ? "h-8 w-8" : "h-10 w-10"].join(" ")}>
               <AvatarImage src={avatar} alt={userName} className="object-cover" />
               <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary text-[13px] font-bold">
                 {getInitials(userName)}
               </AvatarFallback>
             </Avatar>
 
-            <div className="flex-1 min-w-0">
+            {!collapsed && <div className="flex-1 min-w-0">
               <p className="text-[13px] font-semibold text-foreground dark:text-foreground truncate leading-tight">
                 {userName}
               </p>
               <p className="text-[11px] text-foreground/60 dark:text-foreground/50 truncate leading-tight mt-0.5">
                 {userEmail}
               </p>
-            </div>
+            </div>}
 
-            <Tooltip>
+            {!collapsed && <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={logout}
@@ -479,7 +511,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               <TooltipContent side="right" className="text-xs font-medium">
                 {t("pg.AppSidebar.0965")}
               </TooltipContent>
-            </Tooltip>
+            </Tooltip>}
           </div>
         </div>
       </aside>

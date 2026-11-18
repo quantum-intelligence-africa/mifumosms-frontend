@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   MessageSquare,
   Users,
@@ -44,7 +45,7 @@ import { appLocale } from "@/utils/appLocale";
 // ─── Reusable card shell ──────────────────────────────────────────────────────
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-card dark:bg-card/95 rounded-xl border border-border dark:border-border/60 shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] overflow-hidden ${className}`}>
+    <div className={`bg-card rounded-lg border border-border overflow-hidden ${className}`}>
       {children}
     </div>
   );
@@ -72,46 +73,67 @@ interface MetricProps {
   accentText: string;
 }
 
-function Metric({ title, value, description, icon: Icon, accentBg, accentText }: MetricProps) {
+function Metric({ title, value, description, icon: Icon, accentText }: MetricProps) {
+  // One neutral look for every figure: the colour is kept only on the icon (and only to tell a warning from the rest).
   return (
-    <div
-      className={[
-        "relative overflow-hidden",
-        "bg-card dark:bg-card/95",
-        "rounded-2xl border border-border/70 dark:border-border/50",
-        "shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.3)]",
-        "hover:shadow-md dark:hover:shadow-lg hover:-translate-y-0.5",
-        "transition-all duration-200",
-        "p-2.5 md:p-3.5 flex flex-col gap-1.5 md:gap-2 min-h-[110px] md:min-h-[128px]",
-      ].join(" ")}
-    >
-      {/* Row 1: icon + title side-by-side */}
-      <div className="flex items-center gap-2 md:gap-2.5 min-w-0">
-        <div className={`w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${accentBg} dark:opacity-90`}>
-          <Icon className={`w-[14px] h-[14px] md:w-[16px] md:h-[16px] ${accentText}`} strokeWidth={2.2} />
-        </div>
-        <span className="flex-1 min-w-0 text-[11.5px] md:text-xs font-semibold text-foreground/70 dark:text-foreground/60 leading-tight tracking-tight truncate">
-          {title}
-        </span>
+    <div className="rounded-lg border border-border bg-card p-3 md:p-4 flex flex-col gap-1.5 min-h-[96px]">
+      <div className="flex items-center gap-2 min-w-0">
+        <Icon className={`w-4 h-4 flex-shrink-0 ${accentText}`} strokeWidth={2} />
+        <span className="min-w-0 truncate text-xs font-medium text-muted-foreground">{title}</span>
       </div>
-
-      {/* Row 2: big value */}
-      <p className="text-[22px] md:text-2xl lg:text-[26px] leading-none font-bold text-foreground dark:text-foreground tabular-nums tracking-tight">
-        {value}
-      </p>
-
-      {/* Row 3: description */}
-      <p className="text-[11px] md:text-[11.5px] text-foreground/55 dark:text-foreground/50 leading-snug font-medium line-clamp-2">
-        {description}
-      </p>
+      <p className="text-2xl leading-none font-semibold text-foreground tabular-nums tracking-tight">{value}</p>
+      <p className="text-[11.5px] text-muted-foreground leading-snug line-clamp-2">{description}</p>
     </div>
+  );
+}
+
+// ─── Account overview: credits, sender names and numbers in one quiet strip, with a warning only when credits are low ───
+function AccountOverview({
+  credits, creditsNote, showCredits, approvedSenders, showSenders, activeNumbers, showNumbers, onBuy, onSenders, onNumbers,
+}: {
+  credits?: number; creditsNote?: string; showCredits: boolean; approvedSenders: number; showSenders: boolean; activeNumbers: number; showNumbers: boolean;
+  onBuy: () => void; onSenders: () => void; onNumbers: () => void;
+}) {
+  const { t } = useLanguage();
+  const low = showCredits && typeof credits === "number" && credits < 100;
+  const cell = "flex min-w-0 flex-col gap-0.5 px-4 py-3";
+  if (!showCredits && !showSenders && !showNumbers) return null;
+  return (
+    <section aria-label={t("dashboard.overview.title")} className="rounded-lg border border-border bg-card">
+      <div className="grid grid-cols-1 divide-y divide-border sm:grid-flow-col sm:auto-cols-fr sm:divide-x sm:divide-y-0">
+        {showCredits && (
+          <div className={cell}>
+            <span className="text-xs font-medium text-muted-foreground">{t("dashboard.metric.current_credits")}</span>
+            <div className="flex items-center justify-between gap-2">
+              <span className={`text-2xl font-semibold tabular-nums ${low ? "text-destructive" : "text-foreground"}`}>{(credits ?? 0).toLocaleString(appLocale())}</span>
+              <button onClick={onBuy} className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90">{t("dashboard.overview.buy")}</button>
+            </div>
+            <span className={`text-[11.5px] ${low ? "text-destructive" : "text-muted-foreground"}`}>{low ? t("dashboard.overview.low") : creditsNote || t("dashboard.metric.available_credits")}</span>
+          </div>
+        )}
+        {showSenders && (
+          <button onClick={onSenders} className={`${cell} text-left hover:bg-accent/40`}>
+            <span className="text-xs font-medium text-muted-foreground">{t("dashboard.metric.sender_id")}</span>
+            <span className="text-2xl font-semibold tabular-nums text-foreground">{approvedSenders}</span>
+            <span className="text-[11.5px] text-muted-foreground">{t("dashboard.metric.approved_sender_names")}</span>
+          </button>
+        )}
+        {showNumbers && (
+          <button onClick={onNumbers} className={`${cell} text-left hover:bg-accent/40`}>
+            <span className="text-xs font-medium text-muted-foreground">{t("dashboard.metric.active_numbers")}</span>
+            <span className="text-2xl font-semibold tabular-nums text-foreground">{activeNumbers}</span>
+            <span className="text-[11.5px] text-muted-foreground">{t("dashboard.metric.connected_phone_numbers")}</span>
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 function DashboardSkeleton({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSidebarOpen: (v: boolean) => void }) {
   return (
-    <div className="flex h-screen bg-gradient-to-br from-background via-background to-primary/5 dark:from-background dark:via-background dark:to-primary/10 overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden">
       <div className="flex-shrink-0 h-full bg-card dark:bg-background border-r border-border dark:border-border/60">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       </div>
@@ -150,6 +172,7 @@ function DashboardSkeleton({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boole
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { metrics, recentCampaigns, performanceOverview, senderIds, isLoading, secondaryLoading } = useDashboard();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -282,19 +305,6 @@ const Dashboard = () => {
     ...smsMetricCards,
     ...voiceMetricCards,
     ...planCards,
-    ...(showSms || !showIvr ? [creditsCard] : []),
-    ...(showSms
-      ? [
-          {
-            title: t("dashboard.metric.sender_id"),
-            value: (approvedSenderIds || metrics?.senderId?.value || 0).toString(),
-            description: t("dashboard.metric.approved_sender_names"),
-            icon: Hash,
-            accentBg: "bg-violet-50",
-            accentText: "text-violet-600",
-          },
-        ]
-      : []),
     ...(showIvr ? [activeNumbersCard] : []),
   ];
 
@@ -303,7 +313,9 @@ const Dashboard = () => {
   // While the access check is still running the voice layout is assumed, so the page does not jump when it answers.
   const callLayout = analyticsShown || (showIvr && callAnalytics.isLoading);
   const callSectionCards: MetricProps[] = callLayout ? [...planCards, activeNumbersCard] : [];
-  const metricCards: MetricProps[] = allMetricCards.filter((c) => !callSectionCards.includes(c));
+  const showCreditsStrip = showSms || !showIvr;
+  const numbersInStrip = showIvr && !callLayout;
+  const metricCards: MetricProps[] = allMetricCards.filter((c) => !callSectionCards.includes(c) && !(numbersInStrip && c === activeNumbersCard));
 
   // Live call center: for the people who run the call center. It sits under the activity chart when call analytics is shown,
   // and where it always was (above the Quick Actions row) otherwise.
@@ -316,7 +328,7 @@ const Dashboard = () => {
 
   try {
     return (
-      <div className="flex h-screen bg-gradient-to-br from-background via-background to-primary/5 dark:from-background dark:via-background dark:to-primary/10 overflow-hidden">
+      <div className="flex h-screen bg-background overflow-hidden">
 
         {/* Sidebar */}
         <div className="flex-shrink-0 h-full bg-card dark:bg-background border-r border-border dark:border-border/60 shadow-[1px_0_2px_rgba(0,0,0,0.05)] dark:shadow-[1px_0_2px_rgba(0,0,0,0.3)]">
@@ -330,13 +342,32 @@ const Dashboard = () => {
             {/* Mobile-only colored hero */}
             <MobileHomeHero metricCards={allMetricCards.slice(0, 2)} />
 
-            <div className="p-1.5 sm:p-2.5 md:p-3.5 w-full overflow-x-hidden">
-              <div className="max-w-full px-1 mx-auto space-y-2 sm:space-y-2.5">
+            <div className="p-2 sm:p-3 md:p-5 w-full overflow-x-hidden">
+              <div className="mx-auto w-full max-w-[1400px] px-1 space-y-3 sm:space-y-4">
 
                 {(
                   <>
                     {/* Welcome Section — hidden on mobile (already shown in the top bar) */}
-                    <h1 className="hidden md:block text-sm sm:text-base font-bold text-foreground dark:text-foreground">{t("pg.Dashboard.0998")} {user?.first_name || user?.full_name || t("pg.Dashboard.0999")}! 👋</h1>
+                    <div className="hidden md:block pb-1">
+                      <h1 className="text-xl font-semibold tracking-tight text-foreground">{t("pg.Dashboard.0998")} {user?.first_name || user?.full_name || t("pg.Dashboard.0999")}</h1>
+                      <p className="text-sm text-muted-foreground">{t("dashboard.welcome_sub")}</p>
+                    </div>
+
+                    {/* Account overview: credits (with a warning only when they run low), sender names, numbers. */}
+                    {widgetOn("metrics") && (
+                      <AccountOverview
+                        credits={metrics?.current_credits?.value}
+                        creditsNote={metrics?.current_credits?.description}
+                        showCredits={showCreditsStrip}
+                        approvedSenders={approvedSenderIds || Number(metrics?.senderId?.value || 0)}
+                        showSenders={showSms}
+                        activeNumbers={voiceStats.activeNumbers}
+                        showNumbers={numbersInStrip}
+                        onBuy={() => navigate("/messaging/purchase")}
+                        onSenders={() => navigate("/messaging/sender-names")}
+                        onNumbers={() => navigate("/voice/numbers")}
+                      />
+                    )}
 
                     {/* 1-3. Call analytics first: its KPIs, the minute cards and Active numbers, then Call Activity Over Time with
                         Quick Actions beside it (stacked on tablets and phones), then the Live Call Center. The component asks the
@@ -408,9 +439,15 @@ const Dashboard = () => {
 
                     {/* Sender IDs Section — SMS-only concept */}
                     {showSms && (
-                      <Card>
-                        {secondaryLoading ? <Skeleton className="m-4 h-24 rounded-xl" /> : <SenderIds senderIds={senderIds} />}
-                      </Card>
+                      <details className="group rounded-lg border border-border bg-card">
+                        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-foreground">
+                          {t("dashboard.metric.sender_id")}
+                          <span className="text-xs font-normal text-muted-foreground group-open:hidden">{t("dashboard.overview.show")}</span>
+                        </summary>
+                        <div className="border-t border-border">
+                          {secondaryLoading ? <Skeleton className="m-4 h-24 rounded-xl" /> : <SenderIds senderIds={senderIds} />}
+                        </div>
+                      </details>
                     )}
                   </>
                 )}

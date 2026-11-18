@@ -1,4 +1,4 @@
-import { Send, MessageSquare, Users, FileText, Rocket, Play, X, PhoneOutgoing, Workflow, Phone } from "lucide-react";
+import { Send, MessageSquare, Users, FileText, Play, PhoneOutgoing, Workflow, Phone, MessageSquareText, Bot, Headphones, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -6,7 +6,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDialer } from "@/contexts/DialerContext";
-import { hasSmsAccess, hasIvrAccess } from "@/utils/roleUtils";
+import { hasSmsAccess, hasIvrAccess, canUseCallCenter } from "@/utils/roleUtils";
+import { useServices } from "@/hooks/useServices";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +30,9 @@ export function QuickActions() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { openDialer } = useDialer();
+  const services = useServices();
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [more, setMore] = useState(false);
   const showSms = hasSmsAccess(user);
   const showIvr = hasIvrAccess(user);
   const showTutorial = showSms || !showIvr; // the video is the SMS tutorial; voice-only users never see it
@@ -93,47 +96,57 @@ export function QuickActions() {
     },
   ];
 
-  const quickActions: QuickAction[] = [
-    ...(showSms ? smsActions : []),
-    ...(showIvr ? ivrActions : []),
+  // The things people do every day come first; setup tasks sit behind "More" so the card stays light.
+  const everyday: QuickAction[] = [
+    ...(showSms ? [smsActions[0]] : []),
     contactsAction,
+    ...(services.sms
+      ? [{ name: "WhatsApp", description: "", icon: MessageSquare, variant: "outline" as const, to: "/whatsapp" }]
+      : []),
+    ...(services.inbox ? [{ name: "Team Inbox", description: "", icon: MessageSquareText, variant: "outline" as const, to: "/conversations" }] : []),
+    ...(showSms && !showIvr ? [{ name: t("nav.ai_copilots"), description: "", icon: Bot, variant: "outline" as const, to: "/ai-copilots" }] : []),
+    ...(showIvr && canUseCallCenter(user) ? [{ name: t("nav.voice_ivr"), description: "", icon: Headphones, variant: "outline" as const, to: "/call-center" }] : []),
+    ...(showIvr ? [ivrActions[0]] : []),
   ];
+  const setup: QuickAction[] = [...(showSms ? smsActions.slice(1) : []), ...(showIvr ? ivrActions.slice(1) : [])];
+  const quickActions = more ? [...everyday, ...setup] : everyday;
   return (
-    <Card className="p-3 glass border border-border-subtle">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="p-1.5 rounded-md bg-primary/10">
-          <Rocket className="w-3 h-3 text-primary" />
-        </div>
-        <h3 className="font-heading text-xs sm:text-sm font-bold text-foreground">
-          {t("dashboard.quick_actions.title")}
-        </h3>
-      </div>
+    <Card className="rounded-lg border border-border bg-card p-4 shadow-none">
+      <h3 className="mb-3 text-sm font-semibold text-foreground">{t("dashboard.quick_actions.title")}</h3>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="flex flex-wrap gap-2">
         {quickActions.map((action) => {
           const Icon = action.icon;
+          const primary = action.variant === "default";
           return (
-            <Button
+            <button
               key={action.name}
-              variant={action.variant}
-              className="h-[78px] sm:h-[86px] p-2.5 flex-col items-start text-left whitespace-normal hover:scale-[1.02] transition-all shadow-sm hover:shadow-md"
+              type="button"
               onClick={() => (action.onClick ? action.onClick() : action.to && navigate(action.to))}
+              className={[
+                "inline-flex h-9 items-center gap-2 rounded-md border px-3 text-[13px] font-medium transition-colors",
+                primary ? "border-primary bg-primary text-primary-foreground hover:opacity-90" : "border-border bg-background text-foreground hover:bg-accent/60",
+              ].join(" ")}
             >
-              <div className="flex items-center gap-1.5 w-full mb-1">
-                <Icon className="w-3 h-3 flex-shrink-0" />
-                <span className="font-semibold text-[11px] sm:text-xs flex-1 min-w-0 leading-tight">
-                  {action.name}
-                </span>
-              </div>
-              <p className="text-[9px] sm:text-[10px] opacity-75 text-left leading-snug">
-                {action.description}
-              </p>
-            </Button>
+              <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+              {action.name}
+            </button>
           );
         })}
+        {setup.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setMore((v) => !v)}
+            aria-expanded={more}
+            className="inline-flex h-9 items-center gap-1 rounded-md px-2 text-[13px] font-medium text-muted-foreground hover:text-foreground"
+          >
+            {more ? t("dashboard.overview.less") : t("dashboard.overview.more")}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${more ? "rotate-180" : ""}`} />
+          </button>
+        )}
       </div>
 
-      <div className="mt-2.5 pt-2 border-t border-border-subtle">
+      <div className="mt-3 pt-3 border-t border-border">
         <div className="flex flex-row gap-2">
           {showTutorial && (
             <Button
