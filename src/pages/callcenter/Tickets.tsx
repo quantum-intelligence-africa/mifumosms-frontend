@@ -100,7 +100,7 @@ export default function Tickets() {
     const [tk, ms] = await Promise.all([
       wantsTickets ? aiAgentApi.tickets.list({ q: q || undefined }) : Promise.resolve(null),
       wantsMissed
-        ? callCenterApi.missed.list({ page_size: 200, q: q || undefined, ...(filter === "closed" || filter === "all" || filter === "tickets" ? {} : { status: "attention", group: "caller" }) })
+        ? callCenterApi.missed.list({ page_size: 60, q: q || undefined, ...(filter === "closed" || filter === "all" || filter === "tickets" ? {} : { status: "attention", group: "caller" }) })
         : Promise.resolve(null),
     ]);
     setTickets(tk && tk.success && tk.data ? tk.data.results : []);
