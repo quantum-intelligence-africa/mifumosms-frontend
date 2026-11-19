@@ -251,7 +251,10 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
         { name: t("nav.settings"), href: "/settings", icon: Settings },
       ],
     },
-  ].filter((sec) => sec.items.length > 0);
+  ]
+    // Features marked "coming soon" are shown only to SENDA staff (to see what is being built); customers never see them.
+    .map((sec) => ({ ...sec, items: sec.items.filter((it) => !(it as NavItem).comingSoon || !!(user?.is_staff || user?.is_superuser)) }))
+    .filter((sec) => sec.items.length > 0);
 
   // The quick filter: every leaf entry whose name matches.
   const needle = query.trim().toLowerCase();

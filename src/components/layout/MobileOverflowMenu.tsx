@@ -76,6 +76,9 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
   const { isPartina } = useRoles();
   const { openDialer } = useDialer();
   const { isComingSoon } = useComingSoonFeatures();
+  // "Coming soon" entries are visible to SENDA staff only; customers never see them.
+  const staff = !!(user?.is_staff || user?.is_superuser);
+  const hideSoon = (key: string) => !staff && isComingSoon(key);
 
   // Lock body scroll while open.
   useEffect(() => {
@@ -123,8 +126,10 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
       { key: "outbox", label: "Outbox", icon: Inbox, onClick: () => go("/messaging/outbox") },
       { key: "sender-names", label: "Sender Names", icon: Tag, onClick: () => go("/messaging/sender-names") },
       { key: "campaigns", label: "Campaigns", icon: BarChart3, onClick: () => go("/messaging/campaigns") },
-      { key: "whatsapp", label: "WhatsApp", icon: WhatsAppIcon, onClick: () => go("/whatsapp"), badge: isComingSoon("whatsapp") ? "Soon" : undefined },
-      { key: "wa-campaigns", label: "WhatsApp Campaigns", icon: Megaphone, onClick: () => go("/whatsapp/campaigns"), badge: isComingSoon("whatsapp") ? "Soon" : undefined },
+      ...(hideSoon("whatsapp") ? [] : [
+        { key: "whatsapp", label: "WhatsApp", icon: WhatsAppIcon, onClick: () => go("/whatsapp"), badge: isComingSoon("whatsapp") ? "Soon" : undefined },
+        { key: "wa-campaigns", label: "WhatsApp Campaigns", icon: Megaphone, onClick: () => go("/whatsapp/campaigns"), badge: isComingSoon("whatsapp") ? "Soon" : undefined },
+      ]),
     ],
   };
 
@@ -145,7 +150,7 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
           ]
         : []),
       // A call-center-only account (call center on, SMS off) does not see the copilot entries.
-      ...(callCenterOnly || inboxOnly ? [] : [{ key: "ai", label: "AI Copilots", icon: Bot, onClick: () => go("/ai-copilots"), badge: isComingSoon("ai_copilots") ? "Soon" : undefined }]),
+      ...(callCenterOnly || inboxOnly || hideSoon("ai_copilots") ? [] : [{ key: "ai", label: "AI Copilots", icon: Bot, onClick: () => go("/ai-copilots"), badge: isComingSoon("ai_copilots") ? "Soon" : undefined }]),
       ...(hasIvrAccess(user) && !callCenterOnly && !inboxOnly
         ? [{ key: "voice", label: "Voice Copilots", icon: Mic, onClick: () => go("/voice-copilots") }]
         : []),

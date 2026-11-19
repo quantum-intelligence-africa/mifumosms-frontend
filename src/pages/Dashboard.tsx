@@ -97,48 +97,47 @@ function AccountOverview({
   const { t } = useLanguage();
   const low = showCredits && typeof credits === "number" && credits < 100;
   if (!showCredits && !showSenders && !showNumbers && extras.length === 0) return null;
-  const item = "flex items-center gap-1.5 whitespace-nowrap text-[13px]";
-  const label = "text-muted-foreground";
-  const value = "font-semibold tabular-nums text-foreground";
-  const divider = <span aria-hidden className="hidden h-4 w-px bg-border sm:block" />;
+  // Small separate cards in one row: label above, figure below, a clear gap between them.
+  const card = "flex min-w-[150px] items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-2.5 text-left";
+  const label = "block text-xs text-muted-foreground";
+  const value = "block text-xl font-semibold leading-tight tabular-nums text-foreground";
   const parts: Array<{ el: JSX.Element; extra?: boolean }> = [];
   if (showCredits) {
     parts.push({ el: (
-      <div key="credits" className={item} title={low ? t("dashboard.overview.low") : undefined}>
-        <span className={label}>{t("dashboard.metric.current_credits")}</span>
-        <span className={`${value} ${low ? "!text-destructive" : ""}`}>{(credits ?? 0).toLocaleString(appLocale())}</span>
-        <button onClick={onBuy} className="ml-1 rounded-md bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90">{t("dashboard.overview.buy")}</button>
+      <div key="credits" className={card} title={low ? t("dashboard.overview.low") : undefined}>
+        <div>
+          <span className={label}>{t("dashboard.metric.current_credits")}</span>
+          <span className={`${value} ${low ? "!text-destructive" : ""}`}>{(credits ?? 0).toLocaleString(appLocale())}</span>
+        </div>
+        <button onClick={onBuy} className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90">{t("dashboard.overview.buy")}</button>
       </div>
     ) });
   }
   if (showSenders) {
     parts.push({ el: (
-      <button key="senders" onClick={onSenders} className={`${item} hover:text-primary`}>
-        <span className={label}>{t("dashboard.metric.sender_id")}</span><span className={value}>{approvedSenders}</span>
+      <button key="senders" onClick={onSenders} className={`${card} hover:bg-accent/40`}>
+        <div><span className={label}>{t("dashboard.metric.sender_id")}</span><span className={value}>{approvedSenders}</span></div>
       </button>
     ) });
   }
   if (showNumbers) {
     parts.push({ el: (
-      <button key="numbers" onClick={onNumbers} className={`${item} hover:text-primary`}>
-        <span className={label}>{t("dashboard.metric.active_numbers")}</span><span className={value}>{activeNumbers}</span>
+      <button key="numbers" onClick={onNumbers} className={`${card} hover:bg-accent/40`}>
+        <div><span className={label}>{t("dashboard.metric.active_numbers")}</span><span className={value}>{activeNumbers}</span></div>
       </button>
     ) });
   }
   extras.forEach((m) => {
     parts.push({ extra: true, el: (
-      <div key={m.title} className={item} title={m.description}>
-        <span className={label}>{m.title}</span><span className={value}>{m.value}</span>
+      <div key={m.title} className={card} title={m.description}>
+        <div><span className={label}>{m.title}</span><span className={value}>{m.value}</span></div>
       </div>
     ) });
   });
   return (
-    <section aria-label={t("dashboard.overview.title")} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-border bg-card px-4 py-2">
+    <section aria-label={t("dashboard.overview.title")} className="flex flex-wrap items-stretch gap-3">
       {parts.map((p, i) => (
-        <div key={i} className={`${p.extra ? "hidden md:flex" : "flex"} items-center gap-4`}>
-          {i > 0 && divider}
-          {p.el}
-        </div>
+        <div key={i} className={p.extra ? "hidden md:block" : "block"}>{p.el}</div>
       ))}
     </section>
   );
