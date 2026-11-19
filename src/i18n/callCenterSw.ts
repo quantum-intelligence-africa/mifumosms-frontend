@@ -984,6 +984,8 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.invoice.email_me": "Nitumie nakala kwa barua pepe",
   "cc.invoice.emailed": "Ankara imetumwa kwenye barua pepe yako",
   "cc.invoice.email_failed": "Imeshindwa kutuma ankara",
+  "enh.transcribed_enhanced": "Maneno yamenakiliwa kutoka rekodi iliyopunguzwa kelele",
+  "enh.transcribed_original": "Maneno yamenakiliwa kutoka rekodi asili",
   "enh.title": "Kuboresha rekodi",
   "enh.subtitle": "Fanya rekodi za simu zisikike vizuri kwa kupunguza kelele za mazingira. Rekodi asili huhifadhiwa daima.",
   "enh.enabled": "Punguza kelele kwenye rekodi",

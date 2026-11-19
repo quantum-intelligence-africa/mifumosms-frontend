@@ -1004,6 +1004,8 @@ export const ccEn = {
   "cc.invoice.email_me": "Email me a copy",
   "cc.invoice.emailed": "Invoice sent to your email",
   "cc.invoice.email_failed": "Couldn't send the invoice",
+  "enh.transcribed_enhanced": "Transcribed from the noise-reduced recording",
+  "enh.transcribed_original": "Transcribed from the original recording",
   "enh.title": "Recording enhancement",
   "enh.subtitle": "Make call recordings clearer by reducing background noise. The original recording is always kept.",
   "enh.enabled": "Reduce noise in recordings",

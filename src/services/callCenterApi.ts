@@ -351,6 +351,8 @@ export interface AnalysisResultFull {
   asr_model: string;
   llm_model: string;
   pipeline_version: string;
+  /** What the pipeline recorded; ``audio_source`` says whether the transcript came from the noise-reduced copy or the original. */
+  raw_result?: { audio_source?: "original" | "enhanced" };
   review: { id: string; reviewer_name: string; created_at: string; note: string } | null;
   effective: { segments: AnalysisSegment[]; analysis: AnalysisBody | null; reviewed: boolean };
 }

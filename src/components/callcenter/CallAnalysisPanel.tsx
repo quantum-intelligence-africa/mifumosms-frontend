@@ -5,7 +5,7 @@
 // Supervisors/admins can correct the transcript and the analysis. A correction is a new, attributed
 // review: the machine output is kept untouched and can always be shown again.
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, Info, Loader2, Pencil, RefreshCw, Sparkles } from "lucide-react";
+import { AlertTriangle, AudioLines, CheckCircle2, ChevronDown, Info, Loader2, Pencil, RefreshCw, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -180,6 +180,13 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
           <Badge variant="secondary" className="gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" />{t("cc.analysis.reviewed_by", { name: result.review?.reviewer_name || "—" })}</Badge>
         )}
       </div>
+
+      {result.raw_result?.audio_source && (
+        <p className={`flex items-center gap-1.5 text-xs ${result.raw_result.audio_source === "enhanced" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>
+          <AudioLines className="h-3.5 w-3.5" />
+          {result.raw_result.audio_source === "enhanced" ? t("enh.transcribed_enhanced") : t("enh.transcribed_original")}
+        </p>
+      )}
 
       {poor && (
         <div className={`flex gap-2 rounded-md border p-3 text-xs ${quality.status === "failed" ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200" : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"}`}>
