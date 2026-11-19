@@ -66,6 +66,7 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
   const [enh, setEnh] = useState<RecordingEnhancement | null>(null);
   const [source, setSource] = useState<"original" | "enhanced">("original");
   const [working, setWorking] = useState(false);
+  const userChose = useRef(false);   // once the listener picks a version themselves, it is never switched for them
 
   // A plain <a href> to a cross-origin URL (the recording lives on the
   // voice backend's own domain, not this app's) opens a new tab in most
@@ -103,6 +104,7 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
   useEffect(() => {
     setEnh(null);
     setSource("original");
+    userChose.current = false;
     const id = track?.recordingId;
     if (!id) return;
     let stopped = false;
@@ -121,9 +123,10 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
   }, [track?.id, track?.recordingId]);
 
   // Original <-> enhanced while listening: the position and play state are kept so the two can be compared at the same moment.
-  const switchTo = (next: "original" | "enhanced") => {
+  const switchTo = (next: "original" | "enhanced", auto = false) => {
     const audio = audioRef.current;
     if (!audio || !track || next === source) return;
+    if (!auto) userChose.current = true;
     const url = next === "enhanced" ? enh?.enhanced_url : track.url;
     if (!url) return;
     const at = audio.currentTime;
@@ -136,6 +139,15 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
       if (wasPlaying) audio.play().then(() => onPlayingChange(true)).catch(() => onPlayingChange(false));
     }, { once: true });
   };
+
+  // The enhanced version is the one people should hear: as soon as it is known to exist, play it (from the same moment), unless the listener already chose.
+  useEffect(() => {
+    if (!enh?.enhanced_url || source !== "original" || userChose.current) return;
+    const audio = audioRef.current;
+    if (!audio || audio.currentTime > 3) return;   // already well into the original: leave it
+    switchTo("enhanced", true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enh?.enhanced_url]);
 
   const makeCopy = async (force: boolean) => {
     if (!track?.recordingId || working) return;

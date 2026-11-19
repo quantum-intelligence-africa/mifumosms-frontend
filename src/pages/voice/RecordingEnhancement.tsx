@@ -105,10 +105,10 @@ export default function RecordingEnhancement() {
                       <AudioLines className="mt-0.5 h-5 w-5 text-primary" />
                       <div>
                         <CardTitle className="text-base">{t("enh.enabled")}</CardTitle>
-                        <CardDescription className="mt-1">{t("enh.enabled_hint")}</CardDescription>
+                        <CardDescription className="mt-1">{settings.platform_managed ? t("enh.platform_managed") : t("enh.enabled_hint")}</CardDescription>
                       </div>
                     </div>
-                    <Switch checked={settings.enabled} onCheckedChange={(v) => patch({ enabled: v })} disabled={!canEdit || isSaving || !anyEngine} aria-label={t("enh.enabled")} />
+                    <Switch checked={settings.enabled} onCheckedChange={(v) => patch({ enabled: v })} disabled={!canEdit || isSaving || !anyEngine || !!settings.platform_managed} aria-label={t("enh.enabled")} />
                   </CardHeader>
                 </Card>
 
@@ -162,6 +162,14 @@ export default function RecordingEnhancement() {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">{t("enh.intensity_hint")}</p>
+
+                    <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+                      <div className="pr-4">
+                        <Label className="text-sm text-foreground">{t("enh.clarity")}</Label>
+                        <p className="text-xs text-muted-foreground">{t("enh.clarity_hint")}</p>
+                      </div>
+                      <Switch checked={settings.clarity} onCheckedChange={(v) => patch({ clarity: v })} disabled={!canEdit || isSaving || off} aria-label={t("enh.clarity")} />
+                    </div>
 
                     <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
                       <div className="pr-4">

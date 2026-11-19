@@ -8,10 +8,13 @@ export type EnhanceQuality = "standard" | "high";
 
 export interface EnhancementSettings {
   enabled: boolean;
+  /** SENDA turned enhancement on for every organization (the master switch is then not the organization's to change). */
+  platform_managed?: boolean;
   auto: boolean;
   engine: EnhanceEngine;
   intensity: EnhanceIntensity;
   quality: EnhanceQuality;
+  clarity: boolean;
   transcribe_enhanced: boolean;
   /** Which engines this server can run right now. */
   engines_available: Record<EnhanceEngine, boolean>;
@@ -43,7 +46,7 @@ export interface RecordingEnhancement {
 
 export const enhancementApi = {
   settings: () => voiceApi.get<EnhancementSettings>("/voice/call-center/recording-enhancement/"),
-  saveSettings: (body: Partial<Pick<EnhancementSettings, "enabled" | "auto" | "engine" | "intensity" | "quality" | "transcribe_enhanced">>) =>
+  saveSettings: (body: Partial<Pick<EnhancementSettings, "enabled" | "auto" | "engine" | "intensity" | "quality" | "clarity" | "transcribe_enhanced">>) =>
     voiceApi.patch<EnhancementSettings>("/voice/call-center/recording-enhancement/", body),
   forRecording: (recordingId: string) => voiceApi.get<RecordingEnhancement>(`/voice/recordings/${recordingId}/enhancement/`),
   /** Make the copy, retry a failed one, or (``force``) make it again. */

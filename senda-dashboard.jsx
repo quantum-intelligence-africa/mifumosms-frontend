@@ -17171,6 +17171,25 @@ function RecordingEnhancementCard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [everyone, setEveryone] = useState(null);   // SENDA's switch: enhance every organization's recordings
+  const [backfilling, setBackfilling] = useState(false);
+  useEffect(() => { voiceAdminFetch('/voice/admin/settings/', {}, onLogout).then(res => { if (res.success) setEveryone(res.data?.enhancement_all !== false); }); }, [onLogout]);
+  const toggleEveryone = (on) => {
+    const before = everyone;
+    setEveryone(on);
+    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ enhancement_all: on }) }, onLogout).then(res => {
+      if (!res.success) { setEveryone(before); showToast?.(res.error || 'Could not save.', 'error'); return; }
+      showToast?.(on ? 'Every organization now gets enhanced recordings (from the next recording).' : 'Only organizations that switched it on get enhanced recordings.', 'success');
+    });
+  };
+  const backfill = () => {
+    setBackfilling(true);
+    voiceAdminFetch('/voice/admin/recording-enhancement/', { method: 'POST', body: JSON.stringify({ action: 'backfill', days: 7 }) }, onLogout).then(res => {
+      setBackfilling(false);
+      if (res.success) { showToast?.(`${res.data?.queued || 0} recordings from the last 7 days queued for enhancement.`, 'success'); load(); }
+      else showToast?.(res.error || 'Could not queue them.', 'error');
+    });
+  };
   const load = React.useCallback(() => {
     voiceAdminFetch('/voice/admin/recording-enhancement/', {}, onLogout).then(res => {
       if (res.success) { setData(res.data); setError(''); } else setError(res.error || 'Could not load recording enhancement.');
@@ -17199,6 +17218,14 @@ function RecordingEnhancementCard() {
     <div style={card}>
       <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Recording enhancement (noise-reduced copies)</div>
       {error && <p style={{ fontSize: 12, color: '#b91c1c', margin: '8px 0 0' }}>{error}</p>}
+      <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'10px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
+        <input type="checkbox" checked={everyone === true} disabled={everyone === null} onChange={e => toggleEveryone(e.target.checked)} style={{marginTop:3}}/>
+        <span><b>Enhance every organization's recordings</b>: each new recording gets a clearer, noise-reduced copy that the organization can hear and download, and call analysis reads it.</span>
+      </label>
+      <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',margin:'2px 0 8px'}}>
+        <button className="senda-btn senda-btn-sm" disabled={backfilling} onClick={backfill}>{backfilling ? 'Queueing...' : 'Enhance the last 7 days of recordings'}</button>
+        <span style={{fontSize:12,color:'#94a3b8'}}>Up to 200 at a time, newest first. Press again for more.</span>
+      </div>
       {data && (() => {
         const anyEngine = Object.values(data.engines_available || {}).some(Boolean);
         const steps = [
