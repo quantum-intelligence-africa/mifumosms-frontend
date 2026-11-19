@@ -87,45 +87,59 @@ function Metric({ title, value, description, icon: Icon, accentText }: MetricPro
   );
 }
 
-// ─── Account overview: credits, sender names and numbers in one quiet strip, with a warning only when credits are low ───
+// ─── Account overview: every headline figure in one small line (credits, sender names, numbers, then the other metrics) ───
 function AccountOverview({
-  credits, creditsNote, showCredits, approvedSenders, showSenders, activeNumbers, showNumbers, onBuy, onSenders, onNumbers,
+  credits, showCredits, approvedSenders, showSenders, activeNumbers, showNumbers, extras, onBuy, onSenders, onNumbers,
 }: {
-  credits?: number; creditsNote?: string; showCredits: boolean; approvedSenders: number; showSenders: boolean; activeNumbers: number; showNumbers: boolean;
-  onBuy: () => void; onSenders: () => void; onNumbers: () => void;
+  credits?: number; showCredits: boolean; approvedSenders: number; showSenders: boolean; activeNumbers: number; showNumbers: boolean;
+  extras: MetricProps[]; onBuy: () => void; onSenders: () => void; onNumbers: () => void;
 }) {
   const { t } = useLanguage();
   const low = showCredits && typeof credits === "number" && credits < 100;
-  const cell = "flex min-w-0 flex-col gap-0.5 px-4 py-3";
-  if (!showCredits && !showSenders && !showNumbers) return null;
-  return (
-    <section aria-label={t("dashboard.overview.title")} className="rounded-lg border border-border bg-card">
-      <div className="grid grid-cols-1 divide-y divide-border sm:grid-flow-col sm:auto-cols-fr sm:divide-x sm:divide-y-0">
-        {showCredits && (
-          <div className={cell}>
-            <span className="text-xs font-medium text-muted-foreground">{t("dashboard.metric.current_credits")}</span>
-            <div className="flex items-center justify-between gap-2">
-              <span className={`text-2xl font-semibold tabular-nums ${low ? "text-destructive" : "text-foreground"}`}>{(credits ?? 0).toLocaleString(appLocale())}</span>
-              <button onClick={onBuy} className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90">{t("dashboard.overview.buy")}</button>
-            </div>
-            <span className={`text-[11.5px] ${low ? "text-destructive" : "text-muted-foreground"}`}>{low ? t("dashboard.overview.low") : creditsNote || t("dashboard.metric.available_credits")}</span>
-          </div>
-        )}
-        {showSenders && (
-          <button onClick={onSenders} className={`${cell} text-left hover:bg-accent/40`}>
-            <span className="text-xs font-medium text-muted-foreground">{t("dashboard.metric.sender_id")}</span>
-            <span className="text-2xl font-semibold tabular-nums text-foreground">{approvedSenders}</span>
-            <span className="text-[11.5px] text-muted-foreground">{t("dashboard.metric.approved_sender_names")}</span>
-          </button>
-        )}
-        {showNumbers && (
-          <button onClick={onNumbers} className={`${cell} text-left hover:bg-accent/40`}>
-            <span className="text-xs font-medium text-muted-foreground">{t("dashboard.metric.active_numbers")}</span>
-            <span className="text-2xl font-semibold tabular-nums text-foreground">{activeNumbers}</span>
-            <span className="text-[11.5px] text-muted-foreground">{t("dashboard.metric.connected_phone_numbers")}</span>
-          </button>
-        )}
+  if (!showCredits && !showSenders && !showNumbers && extras.length === 0) return null;
+  const item = "flex items-center gap-1.5 whitespace-nowrap text-[13px]";
+  const label = "text-muted-foreground";
+  const value = "font-semibold tabular-nums text-foreground";
+  const divider = <span aria-hidden className="hidden h-4 w-px bg-border sm:block" />;
+  const parts: Array<{ el: JSX.Element; extra?: boolean }> = [];
+  if (showCredits) {
+    parts.push({ el: (
+      <div key="credits" className={item} title={low ? t("dashboard.overview.low") : undefined}>
+        <span className={label}>{t("dashboard.metric.current_credits")}</span>
+        <span className={`${value} ${low ? "!text-destructive" : ""}`}>{(credits ?? 0).toLocaleString(appLocale())}</span>
+        <button onClick={onBuy} className="ml-1 rounded-md bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90">{t("dashboard.overview.buy")}</button>
       </div>
+    ) });
+  }
+  if (showSenders) {
+    parts.push({ el: (
+      <button key="senders" onClick={onSenders} className={`${item} hover:text-primary`}>
+        <span className={label}>{t("dashboard.metric.sender_id")}</span><span className={value}>{approvedSenders}</span>
+      </button>
+    ) });
+  }
+  if (showNumbers) {
+    parts.push({ el: (
+      <button key="numbers" onClick={onNumbers} className={`${item} hover:text-primary`}>
+        <span className={label}>{t("dashboard.metric.active_numbers")}</span><span className={value}>{activeNumbers}</span>
+      </button>
+    ) });
+  }
+  extras.forEach((m) => {
+    parts.push({ extra: true, el: (
+      <div key={m.title} className={item} title={m.description}>
+        <span className={label}>{m.title}</span><span className={value}>{m.value}</span>
+      </div>
+    ) });
+  });
+  return (
+    <section aria-label={t("dashboard.overview.title")} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-border bg-card px-4 py-2">
+      {parts.map((p, i) => (
+        <div key={i} className={`${p.extra ? "hidden md:flex" : "flex"} items-center gap-4`}>
+          {i > 0 && divider}
+          {p.el}
+        </div>
+      ))}
     </section>
   );
 }
@@ -357,12 +371,12 @@ const Dashboard = () => {
                     {widgetOn("metrics") && (
                       <AccountOverview
                         credits={metrics?.current_credits?.value}
-                        creditsNote={metrics?.current_credits?.description}
                         showCredits={showCreditsStrip}
                         approvedSenders={approvedSenderIds || Number(metrics?.senderId?.value || 0)}
                         showSenders={showSms}
                         activeNumbers={voiceStats.activeNumbers}
                         showNumbers={numbersInStrip}
+                        extras={metricCards}
                         onBuy={() => navigate("/messaging/purchase")}
                         onSenders={() => navigate("/messaging/sender-names")}
                         onNumbers={() => navigate("/voice/numbers")}
@@ -384,13 +398,6 @@ const Dashboard = () => {
                           live={liveNode}
                         />
                       </Suspense>
-                    )}
-
-                    {/* Desktop: the remaining metric cards (SMS, credits). */}
-                    {widgetOn("metrics") && metricCards.length > 0 && (
-                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-2.5 overflow-x-hidden">
-                      {metricCards.map((card) => <Metric key={card.title} {...card} />)}
-                    </div>
                     )}
 
                     {/* Mobile: remaining metric cards below the hero. */}

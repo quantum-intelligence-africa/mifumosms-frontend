@@ -303,7 +303,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
     const Icon = item.icon;
     const key = item.id ?? item.name;
     const anyActive = item.children!.some(isChildActive);
-    const open = openGroups[key] ?? true;
+    // Closed until clicked, except the group that holds the page you are on.
+    const open = openGroups[key] ?? anyActive;
     if (collapsed) {
       // In the rail a group is one icon: opening it widens the menu first.
       return (
@@ -457,12 +458,13 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           ) : (
             navSections.map((sec, i) => {
               const body = <div className="space-y-0.5">{sec.items.map((item) => (item.children?.length ? group(item) : leaf(item)))}</div>;
-              // The rail shows every entry; the full menu gives each category a dropdown that starts open, so nothing is hidden.
+              // The rail shows every entry; the full menu gives each category a dropdown that starts closed (except the one holding the current page); a click opens it.
               if (collapsed || sec.id === "overview") {
                 return <div key={sec.id} className={i === 0 ? "" : collapsed ? "mt-2 border-t border-border/60 pt-2" : "mt-3"}>{body}</div>;
               }
               const key = `section:${sec.id}`;
-              const open = openGroups[key] ?? true;
+              const hasActive = sec.items.some((it) => (it.children?.length ? it.children.some(isChildActive) : isChildActive(it)));
+              const open = openGroups[key] ?? hasActive;
               return (
                 <Collapsible key={sec.id} open={open} onOpenChange={(v) => setOpenGroups((prev) => ({ ...prev, [key]: v }))} className="mt-3">
                   <CollapsibleTrigger asChild>
