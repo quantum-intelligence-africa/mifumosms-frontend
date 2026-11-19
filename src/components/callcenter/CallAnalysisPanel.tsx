@@ -23,6 +23,21 @@ function clock(seconds: number | undefined): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
+// A model that loops over noise writes the same sentence dozens of times: show it once with a count, so it does not bury the page.
+function squash(text: string): string {
+  const parts = text.match(/[^.!?]+[.!?]*\s*/g);
+  if (!parts) return text;
+  const out: string[] = [];
+  for (let i = 0; i < parts.length; ) {
+    const key = parts[i].trim().toLowerCase();
+    let j = i + 1;
+    while (j < parts.length && parts[j].trim().toLowerCase() === key) j++;
+    out.push(j - i >= 3 ? `${parts[i].trim()} (×${j - i}) ` : parts.slice(i, j).join(""));
+    i = j;
+  }
+  return out.join("").trim();
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-1">
@@ -59,7 +74,8 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
   const [showOriginal, setShowOriginal] = useState(false);
   // The analysis is written in Swahili; when an English copy exists the reader can switch to it.
   const [lang, setLang] = useState<"sw" | "en">("sw");
-  const [openTranscript, setOpenTranscript] = useState(true); // what was said is the thing people come here for: show it open
+  // What was said is what people come here for, so the transcript starts open, unless it could not be made out (then it is noise).
+  const [openTranscript, setOpenTranscript] = useState(() => job.result?.transcription_quality?.status !== "failed");
   const [highlight, setHighlight] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string[]>([]);
@@ -188,11 +204,22 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
         </p>
       )}
 
-      {poor && (
-        <div className={`flex gap-2 rounded-md border p-3 text-xs ${quality.status === "failed" ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200" : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"}`}>
+      {poor && quality.status === "failed" && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+          <p className="flex items-center gap-1.5 text-sm font-medium"><AlertTriangle className="h-4 w-4 shrink-0" />{t("cc.analysis.unclear_title")}</p>
+          <p className="mt-1">{t("cc.analysis.unclear_hint")}</p>
+          <details className="mt-1.5">
+            <summary className="cursor-pointer text-[11px] underline">{t("cc.analysis.unclear_why")}</summary>
+            <ul className="mt-1 list-disc pl-4">{quality.reasons.map((r) => <li key={r.code}>{r.message}</li>)}</ul>
+          </details>
+        </div>
+      )}
+
+      {poor && quality.status !== "failed" && (
+        <div className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="space-y-1">
-            <p className="font-medium">{quality.status === "failed" ? t("cc.analysis.quality_failed") : t("cc.analysis.quality_review")}</p>
+            <p className="font-medium">{t("cc.analysis.quality_review")}</p>
             <ul className="list-disc pl-4">{quality.reasons.map((r) => <li key={r.code}>{r.message}</li>)}</ul>
           </div>
         </div>
@@ -260,7 +287,7 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
         </summary>
         <div className="max-h-96 space-y-2 overflow-y-auto border-t border-border bg-muted/30 p-3">
           {segments.length === 0 ? (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{result.transcript || t("cc.analysis.no_words")}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{result.transcript ? squash(result.transcript) : t("cc.analysis.no_words")}</p>
           ) : segments.map((s, i) => (
             <div key={i} id={`seg-${job.id}-${i}`} className={`flex gap-3 rounded px-1.5 py-1.5 text-sm leading-relaxed ${highlight === i ? "bg-primary/10" : ""}`}>
               {onSeek && s.start !== undefined ? (
@@ -275,7 +302,7 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
                 {editing ? (
                   <Textarea value={draft[i] ?? ""} onChange={(e) => setDraft((d) => d.map((x, j) => (j === i ? e.target.value : x)))} rows={3} className="mt-1 text-xs" />
                 ) : (
-                  <span className={`text-foreground ${s.uncertain ? "underline decoration-amber-500 decoration-dotted underline-offset-2" : ""}`} title={s.uncertain ? t("cc.analysis.uncertain_segment") : undefined}>{s.text}</span>
+                  <span className={`text-foreground ${s.uncertain ? "underline decoration-amber-500 decoration-dotted underline-offset-2" : ""}`} title={s.uncertain ? t("cc.analysis.uncertain_segment") : undefined}>{squash(s.text)}</span>
                 )}
                 {s.edited && <span className="ml-1 text-[10px] text-primary">{t("cc.analysis.edited")}</span>}
               </div>

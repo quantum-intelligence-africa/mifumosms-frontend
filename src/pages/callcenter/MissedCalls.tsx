@@ -304,20 +304,69 @@ export default function MissedCalls() {
       subtitle={t("cc.missed.subtitle")}
       actions={
         <>
-          <Button variant="outline" size="sm" onClick={copyNumbers} disabled={exporting || count === 0}><Copy className="mr-1.5 h-3.5 w-3.5" />{t("cc.missed.copy_numbers")}</Button>
-          <Button variant="outline" size="sm" onClick={downloadCsv} disabled={exporting || count === 0}><Download className="mr-1.5 h-3.5 w-3.5" />{t("cc.missed.download")}</Button>
-          {isCallCenterAdmin(user) && <CloseOldMissed onDone={load} />}
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />{t("common.refresh")}</Button>
+          {isCallCenterAdmin(user) && <CloseOldMissed onDone={load} />}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm"><MoreHorizontal className="mr-1.5 h-3.5 w-3.5" />{t("cc.missed.more")}</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={copyNumbers} disabled={exporting || count === 0}><Copy className="mr-2 h-4 w-4" />{t("cc.missed.copy_numbers")}</DropdownMenuItem>
+              <DropdownMenuItem onClick={downloadCsv} disabled={exporting || count === 0}><Download className="mr-2 h-4 w-4" />{t("cc.missed.download")}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </>
       }
     >
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {card("attention", t("cc.missed.sum_attention"), summary?.needs_attention, status === "attention" && !onlyOverdue && !onlyRepeated, () => { setStatus("attention"); setOnlyOverdue(false); setOnlyRepeated(false); }, undefined, summary?.needs_attention_numbers != null ? t("cc.missed.from_numbers", { count: summary.needs_attention_numbers }) : undefined)}
-        {card("new", t("cc.missed.sum_new"), summary?.new, status === "new", () => { setStatus("new"); setOnlyOverdue(false); })}
-        {card("abandoned", t("cc.history.outcome_abandoned"), summary?.abandoned, result === "abandoned", () => { setResult(result === "abandoned" ? "any" : "abandoned"); setStatus("attention"); setOnlyOverdue(false); })}
-        {card("overdue", t("cc.missed.sum_overdue"), summary?.overdue, onlyOverdue, () => { setStatus("open"); setOnlyOverdue(true); }, summary && summary.overdue > 0 ? "text-destructive" : undefined)}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {card("attention", t("cc.missed.sum_attention"), summary?.needs_attention, status === "attention" && !onlyOverdue && !onlyRepeated && result === "any", () => { setStatus("attention"); setOnlyOverdue(false); setOnlyRepeated(false); setResult("any"); },
+          undefined, summary?.needs_attention_numbers != null ? t("cc.missed.sum_numbers", { count: summary.needs_attention_numbers }) : undefined)}
+        {card("overdue", t("cc.missed.sum_overdue"), summary?.overdue, onlyOverdue, () => { setStatus("open"); setOnlyOverdue(true); }, summary && summary.overdue > 0 ? "text-destructive" : undefined, t("cc.missed.sum_overdue_sub"))}
+        {card("voicemail", t("cc.missed.sum_voicemail"), summary?.by_result?.voicemail, status === "voicemail", () => { setStatus("voicemail"); setOnlyOverdue(false); },
+          undefined, summary?.voicemail_with_message != null ? t("cc.missed.r_voicemail_msg", { count: summary.voicemail_with_message }) : undefined)}
         {card("scheduled", t("cc.missed.sum_scheduled"), summary?.scheduled, status === "scheduled", () => { setStatus("scheduled"); setOnlyOverdue(false); })}
       </div>
+
+      {summary?.by_result && summary.by_age && summary.needs_attention > 0 && (
+        <Card className="p-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="text-sm font-semibold">{t("cc.missed.where_title")}</h3>
+            <p className="text-[11px] text-muted-foreground">{t("cc.missed.where_note")}</p>
+          </div>
+          <div className="mt-2 grid gap-3 md:grid-cols-2">
+            <div>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("cc.missed.by_result")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {([["missed", "r_missed"], ["voicemail", "r_voicemail"], ["abandoned", "r_abandoned"], ["rejected", "r_rejected"], ["failed", "r_failed"], ["other", "r_other"]] as const)
+                  .filter(([k]) => (summary.by_result as Record<string, number>)[k] > 0)
+                  .map(([k, label]) => {
+                    const n = (summary.by_result as Record<string, number>)[k];
+                    const filterable = k === "missed" || k === "voicemail" || k === "abandoned";
+                    const on = result === k;
+                    return (
+                      <button key={k} type="button" disabled={!filterable} aria-pressed={on}
+                        onClick={() => { setResult(on ? "any" : k); setStatus("attention"); setOnlyOverdue(false); }}
+                        className={`rounded-full border px-2.5 py-1 text-xs ${on ? "border-primary bg-primary/10 font-semibold" : "border-border bg-background"} ${filterable ? "hover:bg-muted" : "cursor-default"}`}>
+                        <b className="tabular-nums">{n}</b> {t(`cc.missed.${label}` as never)}
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("cc.missed.by_age")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {([["last_day", "age_day"], ["days_1_3", "age_3"], ["days_3_7", "age_7"], ["older", "age_old"]] as const).map(([k, label]) => (
+                  <span key={k} className={`rounded-full border px-2.5 py-1 text-xs ${k === "older" && summary.by_age![k] > 0 ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200" : "border-border bg-background"}`}>
+                    <b className="tabular-nums">{summary.by_age![k]}</b> {t(`cc.missed.${label}` as never)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+          {summary.by_age.older > 0 && <p className="mt-2 text-xs text-muted-foreground">{t("cc.missed.where_old_hint", { count: summary.by_age.older })}</p>}
+        </Card>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
@@ -407,7 +456,6 @@ export default function MissedCalls() {
                   <TableHead>{t("cc.missed.col_caller")}</TableHead>
                   <TableHead>{t("cc.missed.col_time")}</TableHead>
                   <TableHead>{t("cc.history.col_team")}</TableHead>
-                  <TableHead>{t("cc.missed.col_assigned")}</TableHead>
                   <TableHead>{t("cc.missed.col_followup")}</TableHead>
                   <TableHead>{t("cc.missed.col_status")}</TableHead>
                   <TableHead className="text-right">{t("cc.common.actions")}</TableHead>
@@ -472,8 +520,8 @@ export default function MissedCalls() {
                         {r.waited_seconds > 0 && <span className="block text-[11px]">{t(r.call_outcome === "abandoned" ? "cc.missed.waited_abandoned" : "cc.missed.waited", { time: formatClock(r.waited_seconds) })}</span>}
                       </TableCell>
                       <TableCell className="text-sm">{r.team_name || "—"}</TableCell>
-                      <TableCell className="text-sm">{r.assigned_to_name || "—"}</TableCell>
-                      <TableCell className="max-w-[220px] text-xs text-muted-foreground">
+                      <TableCell className="max-w-[240px] text-xs text-muted-foreground">
+                        {r.assigned_to_name && <span className="block text-sm font-medium text-foreground">{r.assigned_to_name}</span>}
                         {r.callback_attempts > 0 || r.last_followup_at ? (
                           <span className="block">
                             {t("cc.missed.attempts_n", { count: r.callback_attempts })}
@@ -531,7 +579,7 @@ export default function MissedCalls() {
                     </TableRow>
                     {r.group && openGroups[r.id] && (
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableCell colSpan={7}>
+                        <TableCell colSpan={6}>
                           <div className="space-y-1.5">
                             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("cc.missed.group_title", { count: r.group.count })}</p>
                             {r.group.records.map((sub) => (
@@ -557,7 +605,7 @@ export default function MissedCalls() {
                     )}
                     {r.voicemail && expanded[r.id] !== false && (
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableCell colSpan={7}>
+                        <TableCell colSpan={6}>
                           <VoicemailPanel row={r} vm={r.voicemail} playing={player.isPlaying(r.voicemail.id)} current={player.isCurrent(r.voicemail.id)} onListen={() => listen(r, r.voicemail!)} canReview={supervisor} onChanged={() => void refresh()} onSeek={(seconds) => seek(r, r.voicemail!, seconds)} />
                         </TableCell>
                       </TableRow>

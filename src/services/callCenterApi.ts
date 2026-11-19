@@ -19,7 +19,13 @@ export type AfterHoursAction = "voicemail" | "message";
 export type MissedCallStatus = "new" | "assigned" | "called_back" | "scheduled" | "contacted" | "unreachable" | "resolved" | "unresolved";
 
 /** The counts behind the "needs attention" badge, from the same records the list shows. */
-export interface MissedSummary { needs_attention: number; needs_attention_numbers?: number; new: number; overdue: number; scheduled: number; abandoned: number; today: number }
+export interface MissedSummary {
+  needs_attention: number; needs_attention_numbers?: number; new: number; overdue: number; scheduled: number; abandoned: number; today: number;
+  /** Where the open calls come from: how each call ended, and how long ago it was. */
+  by_result?: { missed: number; voicemail: number; abandoned: number; rejected: number; failed: number; other: number };
+  voicemail_with_message?: number;
+  by_age?: { last_day: number; days_1_3: number; days_3_7: number; older: number };
+}
 export type CallOutcome =
   | "resolved"
   | "follow_up_required"
