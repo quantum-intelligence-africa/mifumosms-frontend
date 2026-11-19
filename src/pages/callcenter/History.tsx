@@ -85,6 +85,7 @@ export default function History() {
 
   const trackFor = (c: CallRow, rec: { id: string; storage_path: string; duration_seconds: number | null }) => ({
     id: rec.id,
+    recordingId: rec.id,
     url: rec.storage_path,
     title: c.direction === "inbound" ? c.from_number : c.to_number,
     subtitle: [c.agent_name || c.agent?.name, new Date(c.started_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" })].filter(Boolean).join(" · "),

@@ -216,6 +216,7 @@ export default function MissedCalls() {
   const listen = (row: MissedCall, vm: Voicemail) =>
     player.toggle({
       id: vm.id,
+      recordingId: vm.id,
       url: vm.storage_path,
       title: row.caller_number,
       subtitle: `${t("cc.missed.voicemail")} · ${new Date(vm.created_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" })}`,
@@ -226,6 +227,7 @@ export default function MissedCalls() {
   const seek = (row: MissedCall, vm: Voicemail, seconds: number) =>
     player.seek({
       id: vm.id,
+      recordingId: vm.id,
       url: vm.storage_path,
       title: row.caller_number,
       subtitle: `${t("cc.missed.voicemail")} · ${new Date(vm.created_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" })}`,

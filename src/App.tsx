@@ -80,6 +80,7 @@ const Recordings = lazy(() => import("./pages/voice/Recordings"));
 const VoiceAgentDirectory = lazy(() => import("./pages/voice/Agents"));
 const AudioPrompts = lazy(() => import("./pages/voice/AudioPrompts"));
 const AISettings = lazy(() => import("./pages/voice/AISettings"));
+const RecordingEnhancement = lazy(() => import("./pages/voice/RecordingEnhancement"));
 const VoiceOverview = lazy(() => import("./pages/voice/VoiceOverview"));
 const IvrFlowBuilder = lazy(() => import("./pages/voice/IvrFlowBuilder"));
 const CallCenterHome = lazy(() => import("./pages/callcenter/Home"));
@@ -542,6 +543,11 @@ const AppContent = () => {
               <Route path="/voice/ai-settings" element={
                 <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
                   <AISettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/voice/recording-enhancement" element={
+                <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
+                  <RecordingEnhancement />
                 </ProtectedRoute>
               } />
               <Route path="/voice/ivr/:flowId" element={

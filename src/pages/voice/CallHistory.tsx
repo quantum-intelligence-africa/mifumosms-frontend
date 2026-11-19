@@ -353,7 +353,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
   const seekCall = (call: CallSummary, rec: { id: string; storage_path: string; duration_seconds: number | null }, seconds: number) => {
     const when = new Date(call.started_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" });
     player.seek({
-      id: rec.id, url: rec.storage_path, title: otherParty(call), subtitle: [call.agent?.name, when].filter(Boolean).join(" · "),
+      id: rec.id, recordingId: rec.id, url: rec.storage_path, title: otherParty(call), subtitle: [call.agent?.name, when].filter(Boolean).join(" · "),
       direction: call.direction, durationSeconds: rec.duration_seconds,
     }, seconds);
   };
@@ -367,6 +367,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
     const when = new Date(call.started_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" });
     player.toggle({
       id: rec.id,
+      recordingId: rec.id,
       url: rec.storage_path,
       title: otherParty(call),
       subtitle: [call.agent?.name, when].filter(Boolean).join(" · "),

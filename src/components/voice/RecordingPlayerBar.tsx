@@ -3,10 +3,12 @@
 // a scrubber and the time — the way a call-centre console does it, rather
 // than a browser <audio> widget squeezed into every row.
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play, X, Download, Loader2, PhoneIncoming, PhoneOutgoing } from "lucide-react";
+import { Pause, Play, X, Download, Loader2, PhoneIncoming, PhoneOutgoing, Sparkles, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useToast } from "@/hooks/use-toast";
+import { enhancementApi, type RecordingEnhancement } from "@/services/enhancementApi";
 
 export interface PlayerTrack {
   id: string;
@@ -19,6 +21,8 @@ export interface PlayerTrack {
   durationSeconds?: number | null;
   /** Begin playback here (seconds) instead of at the top — used when a transcript timestamp is clicked. */
   startAtSeconds?: number;
+  /** The call recording's id. When set, the bar offers the noise-reduced copy (listen, compare, download, make it again). */
+  recordingId?: string;
 }
 
 export const SEEK_EVENT = "recording-seek";
@@ -57,24 +61,30 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [downloading, setDownloading] = useState(false);
+  const { toast } = useToast();
+  // The noise-reduced copy of this recording, when the organization uses that feature.
+  const [enh, setEnh] = useState<RecordingEnhancement | null>(null);
+  const [source, setSource] = useState<"original" | "enhanced">("original");
+  const [working, setWorking] = useState(false);
 
   // A plain <a href> to a cross-origin URL (the recording lives on the
   // voice backend's own domain, not this app's) opens a new tab in most
   // browsers instead of downloading, since the `download` attribute is
   // unreliable across origins. Fetching the bytes ourselves and saving from
   // a same-origin blob: URL keeps the user on this page and always saves.
-  const downloadTrack = async () => {
+  const saveFrom = async (url: string, label = "") => {
     if (!track || downloading) return;
     setDownloading(true);
     try {
-      const response = await fetch(track.url);
+      const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      const ext = track.url.split(".").pop()?.split("?")[0] || "mp3";
+      const type = blob.type || "";
+      const ext = type.includes("wav") ? "wav" : type.includes("mpeg") || type.includes("mp3") ? "mp3" : url.split("?")[0].split(".").pop() || "mp3";
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `${track.title.replace(/[^\w+-]+/g, "_")}_${track.id.slice(0, 8)}.${ext}`;
+      link.download = `${track.title.replace(/[^\w+-]+/g, "_")}_${track.id.slice(0, 8)}${label ? `_${label}` : ""}.${ext}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -82,9 +92,70 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
     } catch {
       // Last resort: let the browser handle it its own way rather than
       // silently doing nothing on a failed fetch (e.g. blocked by CORS).
-      window.open(track.url, "_blank", "noreferrer");
+      window.open(url, "_blank", "noreferrer");
     } finally {
       setDownloading(false);
+    }
+  };
+  const downloadTrack = () => saveFrom(source === "enhanced" && enh?.enhanced_download_url ? enh.enhanced_download_url : track?.url ?? "", source === "enhanced" ? "enhanced" : "");
+
+  // Load the enhancement status for a recording, and keep watching it while it is being made.
+  useEffect(() => {
+    setEnh(null);
+    setSource("original");
+    const id = track?.recordingId;
+    if (!id) return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async () => {
+      const res = await enhancementApi.forRecording(id);
+      if (stopped) return;
+      if (res.success && res.data) {
+        setEnh(res.data);
+        if (res.data.status === "pending" || res.data.status === "processing") timer = setTimeout(poll, 4000);
+      }
+    };
+    void poll();
+    return () => { stopped = true; if (timer) clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [track?.id, track?.recordingId]);
+
+  // Original <-> enhanced while listening: the position and play state are kept so the two can be compared at the same moment.
+  const switchTo = (next: "original" | "enhanced") => {
+    const audio = audioRef.current;
+    if (!audio || !track || next === source) return;
+    const url = next === "enhanced" ? enh?.enhanced_url : track.url;
+    if (!url) return;
+    const at = audio.currentTime;
+    const wasPlaying = !audio.paused;
+    setSource(next);
+    audio.src = url;
+    audio.load();
+    audio.addEventListener("loadedmetadata", () => {
+      audio.currentTime = at;
+      if (wasPlaying) audio.play().then(() => onPlayingChange(true)).catch(() => onPlayingChange(false));
+    }, { once: true });
+  };
+
+  const makeCopy = async (force: boolean) => {
+    if (!track?.recordingId || working) return;
+    setWorking(true);
+    const res = await enhancementApi.make(track.recordingId, force);
+    setWorking(false);
+    if (res.success && res.data) {
+      setEnh(res.data);
+      // the status watcher above only starts with a new track: wake it for this one
+      const id = track.recordingId;
+      const again = async () => {
+        const next = await enhancementApi.forRecording(id);
+        if (next.success && next.data) {
+          setEnh(next.data);
+          if (next.data.status === "pending" || next.data.status === "processing") setTimeout(again, 4000);
+        }
+      };
+      setTimeout(again, 4000);
+    } else {
+      toast({ title: t("enh.request_failed"), description: res.error || res.message, variant: "destructive" });
     }
   };
 
@@ -144,6 +215,7 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
     if (!playing && !audio.paused) audio.pause();
   }, [playing, track, onPlayingChange]);
 
+  const showEnh = Boolean(track?.recordingId && enh && (enh.enabled || enh.status !== "none"));
   const Icon = track?.direction === "outbound" ? PhoneOutgoing : PhoneIncoming;
   const total = duration || track?.durationSeconds || 0;
 
@@ -183,6 +255,16 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
             <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
               <Icon className={cn("h-3.5 w-3.5 shrink-0", track.direction === "outbound" ? "text-blue-600" : "text-emerald-600")} />
               <span className="truncate">{track.title}</span>
+              {showEnh && (
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                    source === "enhanced" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {source === "enhanced" ? t("enh.enhanced") : t("enh.original")}
+                </span>
+              )}
             </div>
             <div className="mt-1 flex items-center gap-2">
               <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">{formatClock(current)}</span>
@@ -203,6 +285,43 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
               <span className="w-10 shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">{formatClock(total)}</span>
             </div>
             {track.subtitle && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{track.subtitle}</p>}
+            {showEnh && enh && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div role="group" aria-label={t("enh.compare_hint")} title={t("enh.compare_hint")} className="inline-flex overflow-hidden rounded-md border border-border text-[11px] font-semibold">
+                  <button type="button" onClick={() => switchTo("original")} aria-pressed={source === "original"}
+                    className={cn("px-2 py-0.5", source === "original" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent")}>
+                    {t("enh.original")}
+                  </button>
+                  <button type="button" onClick={() => switchTo("enhanced")} disabled={!enh.enhanced_url} aria-pressed={source === "enhanced"}
+                    title={enh.metrics?.after ? `${enh.engine} · ${enh.intensity}${enh.metrics.before?.mean_db != null && enh.metrics.after.mean_db != null ? ` · ${enh.metrics.before.mean_db} → ${enh.metrics.after.mean_db} dB` : ""}` : undefined}
+                    className={cn("flex items-center gap-1 px-2 py-0.5", source === "enhanced" ? "bg-emerald-600 text-white" : "text-muted-foreground hover:bg-accent", !enh.enhanced_url && "cursor-not-allowed opacity-40")}>
+                    <Sparkles className="h-3 w-3" />
+                    {t("enh.enhanced")}
+                  </button>
+                </div>
+                <span className={cn("flex items-center gap-1 text-[11px]", enh.status === "failed" ? "text-destructive" : "text-muted-foreground")} title={enh.status === "failed" ? enh.error : undefined}>
+                  {(enh.status === "pending" || enh.status === "processing") && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {enh.status === "none" && !enh.enabled ? t("enh.off_hint") : t(`enh.status.${enh.status}`)}
+                </span>
+                {enh.enabled && (enh.status === "none" || enh.status === "failed" || enh.status === "ready" || enh.status === "skipped") && (
+                  <button type="button" onClick={() => makeCopy(enh.status === "ready" || enh.status === "skipped")} disabled={working}
+                    className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline disabled:opacity-60">
+                    {working ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                    {enh.status === "none" ? t("enh.make") : enh.status === "failed" ? t("enh.retry") : t("enh.regenerate")}
+                  </button>
+                )}
+                <button type="button" onClick={() => saveFrom(enh.original_download_url, "original")} disabled={downloading}
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-60">
+                  <Download className="h-3 w-3" />{t("enh.download_original")}
+                </button>
+                {enh.enhanced_download_url && (
+                  <button type="button" onClick={() => saveFrom(enh.enhanced_download_url, "enhanced")} disabled={downloading}
+                    className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-60">
+                    <Download className="h-3 w-3" />{t("enh.download_enhanced")}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <button

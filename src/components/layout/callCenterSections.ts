@@ -72,6 +72,7 @@ export function getCallCenterSections(user: User | null | undefined): CallCenter
             // Numbers a flow's "transfer" box can ring — not logins (those are Manage → Agents).
             { labelKey: "cc.nav.transfer_numbers", href: "/voice/agents" },
             { labelKey: "nav.ai_call_intelligence", href: "/voice/ai-settings" },
+            { labelKey: "enh.title", href: "/voice/recording-enhancement" },
           ]
         : [],
     },

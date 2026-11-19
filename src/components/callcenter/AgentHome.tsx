@@ -57,6 +57,7 @@ export function AgentHome({ workspace }: { workspace: Workspace }) {
     c.recording &&
     player.toggle({
       id: c.recording.id,
+      recordingId: c.recording.id,
       url: c.recording.storage_path,
       title: c.number,
       subtitle: new Date(c.started_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" }),

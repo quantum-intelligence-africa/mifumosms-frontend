@@ -129,6 +129,7 @@ export default function Recordings() {
     const when = new Date(rec.created_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" });
     player.toggle({
       id: rec.id,
+      recordingId: rec.id,
       url: rec.storage_path,
       title: otherParty(rec.call),
       subtitle: [ourNumber(rec.call), rec.call.agent?.name, when].filter(Boolean).join(" · "),
