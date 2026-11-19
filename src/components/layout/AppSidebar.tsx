@@ -5,7 +5,6 @@ import {
   BarChart3,
   Settings,
   Home,
-  Plus,
   ChevronDown,
   CreditCard,
   Tag,
@@ -408,18 +407,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
         {/* ── Which organization this is, and a switch when there are several ── */}
         {!collapsed && <div className="px-3 pb-3"><OrganizationSwitcher /></div>}
 
-        {/* ── Global CTAs: buy credits, place a call ─────── */}
+        {/* ── Global CTA: place a call ─────── */}
         <div className={["pb-3 space-y-2", collapsed ? "px-2" : "px-3"].join(" ")}>
-          {services.sms && (
-            <button
-              onClick={() => handleNavigation("/messaging/purchase")}
-              aria-label={t("pg.AppSidebar.0962")}
-              className="w-full flex items-center justify-center gap-2 h-9 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold tracking-tight hover:opacity-90 transition-opacity"
-            >
-              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-              {!collapsed && t("pg.AppSidebar.0962")}
-            </button>
-          )}
           {/* The dialer lives at the app root (DialerProvider), so this opens it over whatever page is showing. */}
           {hasIvrAccess(user) && (
             <button
