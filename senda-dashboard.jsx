@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import {
   Activity,
+  ChevronDown,
   AlertTriangle,
   Ban,
   BarChart3,
@@ -16796,6 +16797,163 @@ function VoiceUsageTab() {
 
 // SENDA staff's read-only view of every organization's call logs: IVR path, queue and routing events, who was rung, recordings,
 // AI summary. Calls an organization deleted stay here, marked deleted (the organization no longer sees them).
+// Recordings, original and enhanced side by side (SENDA staff): every organization's recordings with the state of their noise-reduced copy,
+// filterable by "enhanced" / "not enhanced", so the two can be heard one after the other, from the same moment.
+function VoiceRecordingsTab() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [status, setStatus] = useState('all');
+  const [q, setQ] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState('');
+  const audio = useRef({});   // recording id -> { original, enhanced } <audio> elements
+
+  const load = useCallback(() => {
+    const qs = new URLSearchParams({ status, page: String(page), page_size: '25' });
+    if (search) qs.set('q', search);
+    return voiceAdminFetch(`/voice/admin/recordings/?${qs}`, {}, onLogout).then(res => {
+      if (res.success) { setData(res.data); setError(''); } else setError(res.error || 'Could not load the recordings.');
+    });
+  }, [status, page, search, onLogout]);
+  useEffect(() => { load(); }, [load]);
+  // while copies are being made, refresh the list so they appear without a reload
+  const waiting = !!data && data.results.some(r => r.status === 'pending' || r.status === 'processing');
+  useEffect(() => { if (!waiting) return undefined; const t = setInterval(load, 6000); return () => clearInterval(t); }, [waiting, load]);
+  useEffect(() => { const t = setTimeout(() => { setSearch(q.trim()); setPage(1); }, 350); return () => clearTimeout(t); }, [q]);
+
+  const make = (row, force) => {
+    setBusyId(row.recording_id);
+    voiceAdminFetch(`/voice/admin/recordings/${row.recording_id}/enhance/`, { method: 'POST', body: JSON.stringify({ force }) }, onLogout).then(res => {
+      setBusyId('');
+      if (res.success) { showToast?.('The enhanced copy is being made. It will appear here in a moment.', 'success'); load(); }
+      else showToast?.(res.error || 'Could not start the enhancement.', 'error');
+    });
+  };
+
+  // Hearing the other version from the same moment: pause this one, start the other at the same second.
+  const compare = (row, from) => {
+    const els = audio.current[row.recording_id] || {};
+    const here = els[from], there = els[from === 'original' ? 'enhanced' : 'original'];
+    if (!here || !there) return;
+    const at = here.currentTime;
+    here.pause();
+    there.currentTime = at;
+    there.play().catch(() => {});
+  };
+  const onlyOne = (row, which) => {
+    Object.entries(audio.current).forEach(([id, els]) => Object.entries(els || {}).forEach(([k, el]) => {
+      if (el && !(id === row.recording_id && k === which) && !el.paused) el.pause();
+    }));
+  };
+
+  const chip = (id, label, count) => (
+    <button key={id} onClick={() => { setStatus(id); setPage(1); }}
+      style={{padding:'6px 13px',borderRadius:999,border:status === id ? `1.5px solid ${BRAND}` : '1px solid #e2e8f0',background:status === id ? `${BRAND}12` : '#fff',
+        color:status === id ? BRAND : '#475569',fontSize:12.5,fontWeight:status === id ? 800 : 600,cursor:'pointer'}}>
+      {label}{typeof count === 'number' ? <span style={{marginLeft:6,color:'#94a3b8',fontWeight:700}}>{count}</span> : null}
+    </button>
+  );
+  const sm = data?.summary;
+  const label = { fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 };
+  const statusText = { pending: 'Waiting to be enhanced', processing: 'Enhancing...', failed: 'Enhancement failed', skipped: 'Nothing to enhance (silent)', none: 'Not enhanced yet' };
+  const pages = data ? Math.max(1, Math.ceil(data.count / data.page_size)) : 1;
+
+  return (
+    <div style={{padding:24}}>
+      <div style={{marginBottom:14}}>
+        <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>Recordings: original and enhanced</h2>
+        <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
+          Every organization's recordings. Listen to the original and its noise-reduced copy one after the other (use "Hear the other from here" to continue from the same second),
+          and make a copy for any recording that has none. The original is never changed.
+        </p>
+      </div>
+
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:14}}>
+        {chip('all', 'All', sm?.all)}
+        {chip('enhanced', 'Enhanced', sm?.enhanced)}
+        {chip('not_enhanced', 'Not enhanced', sm?.not_enhanced)}
+        {chip('waiting', 'Waiting', sm?.waiting)}
+        {chip('failed', 'Failed', sm?.failed)}
+        <input className="senda-input" placeholder="Search a number or organization..." value={q} onChange={e => setQ(e.target.value)} style={{marginLeft:'auto',width:260,height:34,fontSize:13}}/>
+      </div>
+
+      {error && <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px',marginBottom:14}}>{error}</div>}
+      {!data && !error && <div style={{color:'#94a3b8',fontSize:13}}>Loading...</div>}
+      {data && data.results.length === 0 && (
+        <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'28px 16px',textAlign:'center',color:'#94a3b8',fontSize:13}}>
+          {status === 'enhanced' ? 'No enhanced recordings yet. Switch to "Not enhanced" and press "Make enhanced copy" on one.' : 'No recordings match.'}
+        </div>
+      )}
+
+      {data && data.results.map(row => {
+        const ready = !!row.enhanced_url;
+        const inProgress = row.status === 'pending' || row.status === 'processing';
+        return (
+          <div key={row.recording_id} style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'12px 16px',marginBottom:10}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:10}}>
+              <b style={{fontSize:13,color:'#0f172a'}}>{row.tenant}</b>
+              <span style={{fontSize:12.5,color:'#475569'}}>{row.direction === 'outbound' ? 'to' : 'from'} {(row.direction === 'outbound' ? row.to_number : row.from_number) || '-'}</span>
+              <span style={{fontSize:12,color:'#94a3b8'}}>{row.created_at ? new Date(row.created_at).toLocaleString() : ''}{row.duration_seconds ? ` · ${Math.floor(row.duration_seconds / 60)}m ${row.duration_seconds % 60}s` : ''}</span>
+              <span style={{marginLeft:'auto',padding:'2px 10px',borderRadius:999,fontSize:11,fontWeight:800,
+                background:ready ? '#dcfce7' : row.status === 'failed' ? '#fee2e2' : '#f1f5f9',color:ready ? '#15803d' : row.status === 'failed' ? '#b91c1c' : '#64748b'}}>
+                {ready ? `Enhanced · ${row.engine}${row.intensity ? ' · ' + row.intensity : ''}` : (statusText[row.status] || 'Not enhanced yet')}
+              </span>
+            </div>
+            <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+              <div style={{flex:'1 1 300px',minWidth:260}}>
+                <div style={label}>Original</div>
+                <audio controls preload="none" src={row.original_url} style={{width:'100%',height:36}}
+                  ref={el => { (audio.current[row.recording_id] ||= {}).original = el; }} onPlay={() => onlyOne(row, 'original')}/>
+                <div style={{display:'flex',gap:12,marginTop:4,fontSize:12}}>
+                  <a href={row.original_download_url} style={{color:BRAND,fontWeight:600}}>Download</a>
+                  {ready && <button onClick={() => compare(row, 'original')} style={{border:'none',background:'none',color:BRAND,fontWeight:600,cursor:'pointer',padding:0,fontSize:12}}>Hear the enhanced from here</button>}
+                </div>
+              </div>
+              <div style={{flex:'1 1 300px',minWidth:260}}>
+                <div style={{...label,color:ready ? '#15803d' : '#64748b'}}>Enhanced</div>
+                {ready ? (
+                  <>
+                    <audio controls preload="none" src={row.enhanced_url} style={{width:'100%',height:36}}
+                      ref={el => { (audio.current[row.recording_id] ||= {}).enhanced = el; }} onPlay={() => onlyOne(row, 'enhanced')}/>
+                    <div style={{display:'flex',gap:12,marginTop:4,fontSize:12,alignItems:'center'}}>
+                      <a href={row.enhanced_download_url} style={{color:BRAND,fontWeight:600}}>Download</a>
+                      <button onClick={() => compare(row, 'enhanced')} style={{border:'none',background:'none',color:BRAND,fontWeight:600,cursor:'pointer',padding:0,fontSize:12}}>Hear the original from here</button>
+                      <button onClick={() => make(row, true)} disabled={busyId === row.recording_id || inProgress} style={{border:'none',background:'none',color:'#64748b',cursor:'pointer',padding:0,fontSize:12,marginLeft:'auto'}}>Make it again</button>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{display:'flex',alignItems:'center',gap:10,minHeight:36,flexWrap:'wrap'}}>
+                    <span style={{fontSize:12.5,color:row.status === 'failed' ? '#b91c1c' : '#64748b'}} title={row.error || undefined}>
+                      {statusText[row.status] || 'Not enhanced yet'}{row.status === 'failed' && row.error ? `: ${row.error}` : ''}
+                    </span>
+                    {!inProgress && (
+                      <button className="senda-btn senda-btn-sm" disabled={busyId === row.recording_id} onClick={() => make(row, false)}>
+                        {busyId === row.recording_id ? 'Starting...' : row.status === 'failed' ? 'Retry' : 'Make enhanced copy'}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {data && pages > 1 && (
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:8}}>
+          <span style={{fontSize:12,color:'#94a3b8'}}>Page {data.page} of {pages} · {data.count} recordings</span>
+          <div style={{display:'flex',gap:8}}>
+            <button className="senda-btn senda-btn-sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
+            <button className="senda-btn senda-btn-sm" disabled={page >= pages} onClick={() => setPage(p => p + 1)}>Next</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function VoiceCallLogsTab() {
   const { onLogout } = React.useContext(AppContext);
   const [orgId, setOrgId]     = useState('');          // '' = every organization
@@ -17041,6 +17199,27 @@ function RecordingEnhancementCard() {
     <div style={card}>
       <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Recording enhancement (noise-reduced copies)</div>
       {error && <p style={{ fontSize: 12, color: '#b91c1c', margin: '8px 0 0' }}>{error}</p>}
+      {data && (() => {
+        const anyEngine = Object.values(data.engines_available || {}).some(Boolean);
+        const steps = [
+          { ok: !!data.engines_available?.ffmpeg, text: 'ffmpeg is installed on the voice server' },
+          { ok: data.queue !== '(default worker)', text: 'It has its own worker queue (ENHANCE_QUEUE), so it never slows live calls' },
+          { ok: data.organizations.length > 0, text: 'An organization has switched it on (Call center, Set up, Recording enhancement)' },
+          { ok: (data.totals.ready || 0) > 0, text: 'A first enhanced copy has been made' },
+        ];
+        const [bg, fg, label] = !anyEngine ? ['#fef2f2', '#b91c1c', 'Needs setup']
+          : data.totals.failed > 0 ? ['#fffbeb', '#b45309', 'Working, but some copies failed']
+          : steps.every(x => x.ok) ? ['#f0fdf4', '#15803d', 'Working']
+          : ['#eff6ff', '#1d4ed8', 'Almost ready'];
+        return (
+          <div style={{background:bg,borderRadius:10,padding:'10px 12px',margin:'10px 0'}}>
+            <div style={{fontSize:13,fontWeight:800,color:fg,marginBottom:steps.every(x => x.ok) ? 0 : 6}}>{label}</div>
+            {!steps.every(x => x.ok) && steps.map(x => (
+              <div key={x.text} style={{fontSize:12,color:x.ok ? '#15803d' : '#475569',lineHeight:1.7}}>{x.ok ? '\u2713' : '\u25CB'} {x.text}</div>
+            ))}
+          </div>
+        );
+      })()}
       {data && (
         <>
           <div style={{ margin: '8px 0 10px', fontSize: 12, color: '#475569' }}>
@@ -17240,6 +17419,63 @@ function LiveVoiceCard() {
   );
 }
 
+// ─── Admin page kit: the same few building blocks on every page, so pages look and behave alike ───
+// Tiles: a row of key figures. A tile with onClick is a filter shortcut (the selected one is outlined).
+function StatTiles({ items }) {
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:16}}>
+      {items.map(t => (
+        <button key={t.label} onClick={t.onClick} disabled={!t.onClick}
+          style={{textAlign:'left',background:'#fff',border:t.selected ? `1.5px solid ${BRAND}` : '1px solid #eef2f7',borderRadius:12,padding:'12px 14px',cursor:t.onClick ? 'pointer' : 'default',
+            boxShadow:t.selected ? `0 0 0 3px ${BRAND}14` : 'none'}}>
+          <div style={{fontSize:22,fontWeight:800,lineHeight:1.1,color:t.tone || '#0f172a'}}>{t.value}</div>
+          <div style={{fontSize:12,color:'#64748b',marginTop:3,fontWeight:600}}>{t.label}</div>
+          {t.hint && <div style={{fontSize:11,color:'#94a3b8',marginTop:2}}>{t.hint}</div>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// A coloured pill: tone is one of green, red, amber, blue, grey.
+const BADGE_TONES = { green:['#ecfdf5','#059669'], red:['#fef2f2','#b91c1c'], amber:['#fffbeb','#b45309'], blue:['#eff6ff','#1d4ed8'], grey:['#f1f5f9','#64748b'] };
+function ToneBadge({ tone = 'grey', children, title }) {
+  const [bg, fg] = BADGE_TONES[tone] || BADGE_TONES.grey;
+  return (
+    <span title={title} style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:99,fontSize:11,fontWeight:700,background:bg,color:fg,whiteSpace:'nowrap'}}>
+      <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>{children}
+    </span>
+  );
+}
+
+// A group of platform voice settings: a heading, one line saying what they are for, then the cards.
+function VoiceSettingsGroup({ id, title, hint, children }) {
+  return (
+    <section id={id} style={{marginBottom:26,scrollMarginTop:12}}>
+      <div style={{marginBottom:10}}>
+        <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>{title}</h3>
+        <p style={{fontSize:12.5,color:'#94a3b8',margin:'3px 0 0'}}>{hint}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+// "Jump to" chips at the top of the settings tab, so nobody scrolls through a long page to find one setting.
+function VoiceSettingsJump({ items }) {
+  return (
+    <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:18}}>
+      <span style={{fontSize:12,color:'#94a3b8',alignSelf:'center'}}>Jump to:</span>
+      {items.map(([id, label]) => (
+        <button key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          style={{padding:'5px 12px',borderRadius:999,border:'1px solid #e2e8f0',background:'#fff',fontSize:12,fontWeight:600,color:'#334155',cursor:'pointer'}}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function VoiceNumbersTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [rows, setRows]       = useState([]);
@@ -17318,6 +17554,8 @@ function VoiceNumbersTab() {
 
 
   const [pool, setPool]       = useState([]);          // provider entries (to connect a typed number to)
+  const [view, setView]       = useState('numbers');   // 'numbers' = the numbers table, 'settings' = every platform voice setting, grouped
+  const [lineFilter, setLineFilter] = useState('all'); // all | active | off | unconnected
 
   useEffect(() => {
     voiceAdminFetch('/voice/admin/settings/', {}, onLogout).then(res => {
@@ -17534,11 +17772,14 @@ function VoiceNumbersTab() {
       .finally(() => setBusyId(null));
   };
 
+  const matchesLine = (r) => lineFilter === 'all' || (lineFilter === 'active' && r.is_active) || (lineFilter === 'off' && !r.is_active) || (lineFilter === 'unconnected' && !r.provider_credential_detail);
   const filtered = rows.filter(r => {
+    if (!matchesLine(r)) return false;
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     return (r.tenant_name || '').toLowerCase().includes(q) || (r.phone_number || '').toLowerCase().includes(q) || (r.display_name || '').toLowerCase().includes(q);
   });
+  const counts = { all: rows.length, active: rows.filter(r => r.is_active).length, off: rows.filter(r => !r.is_active).length, unconnected: rows.filter(r => !r.provider_credential_detail).length };
 
   const th = {padding:'10px 16px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em'};
   const td = {padding:'12px 16px',verticalAlign:'middle'};
@@ -17547,11 +17788,14 @@ function VoiceNumbersTab() {
     <div style={{padding:24}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
         <div>
-          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>Voice Numbers</h2>
+          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>{view === 'numbers' ? 'Voice Numbers' : 'Voice settings'}</h2>
           <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
-            Every tenant's number assignment across the platform — release one to free it back into the unassigned pool.
+            {view === 'numbers'
+              ? "Every tenant's number assignment across the platform — release one to free it back into the unassigned pool."
+              : 'Platform-wide voice settings, grouped by what they do. They apply to every organization.'}
           </p>
         </div>
+        {view === 'numbers' && (
         <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
           <button onClick={() => setAssign({ q: '', tenant: null, mode: 'list', numberId: '', typed: '', credentialId: '', name: '', override: false })}
             style={{height:36,padding:'0 16px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>
@@ -17560,6 +17804,16 @@ function VoiceNumbersTab() {
           <input className="senda-input" placeholder="Search by tenant, number, or label..." value={search}
             onChange={e=>setSearch(e.target.value)} style={{width:260,height:36,fontSize:13}}/>
         </div>
+        )}
+      </div>
+
+      <div role="tablist" style={{display:'flex',gap:6,marginBottom:16,borderBottom:'1px solid #eef2f7'}}>
+        {[['numbers', 'Numbers'], ['settings', 'Settings']].map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={view === id} onClick={() => setView(id)}
+            style={{padding:'9px 16px',border:'none',background:'none',cursor:'pointer',fontSize:13,fontWeight:view === id ? 800 : 600,color:view === id ? BRAND : '#64748b',borderBottom:view === id ? `2px solid ${BRAND}` : '2px solid transparent',marginBottom:-1}}>
+            {label}
+          </button>
+        ))}
       </div>
 
       {error && (
@@ -17568,6 +17822,53 @@ function VoiceNumbersTab() {
         </div>
       )}
 
+      {view === 'settings' && (
+        <div style={{maxWidth:980}}>
+          <VoiceSettingsJump items={[['vset-recordings', 'Recordings and AI analysis'], ['vset-callers', 'What callers hear'], ['vset-reports', 'Reports and emails'], ['vset-access', 'Plans and access'], ['vset-live', 'Website and live voice assistant']]}/>
+        <VoiceSettingsGroup id="vset-recordings" title="Recordings and AI analysis" hint="Clearer recordings, transcripts and call summaries.">
+      <RecordingEnhancementCard/>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>AI call analysis</div>
+        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
+          <input type="checkbox" checked={aiAll} onChange={e => saveFlag('ai_analysis_all', e.target.checked, setAiAll, aiAll,
+            ['AI call analysis is on for every organization (calls that end from now on).', 'AI call analysis is back to each organization’s own switch.'])} style={{marginTop:3}}/>
+          <span><b>Analyse every organization's calls</b>: transcript, summary, sentiment and the emails and reports, with no switch for customers to find.</span>
+        </label>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
+          On by default: this is the one place to control it. Customers see it as on and cannot turn it off. It covers calls that end after you switch it on; older calls are not analysed.
+          Each analysed call uses speech-to-text and AI credits, so check your ElevenLabs and Hugging Face balances first.
+        </p>
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Call transcription</div>
+        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',margin:'8px 0 4px',fontSize:13,color:'#0f172a'}}>
+          <b>Reduce background noise</b> before transcribing:
+          <select value={noiseClean} onChange={e => saveFlag('noise_cleanup', e.target.value, setNoiseClean, noiseClean,
+            [`Noise cleanup: ${e.target.value === 'off' ? 'off' : e.target.value === 'deepfilter' ? 'DeepFilterNet' : 'FFmpeg'}.`, 'Noise cleanup updated.'])}
+            style={{height:32,borderRadius:8,border:'1px solid #e2e8f0',padding:'0 8px',fontSize:13}}>
+            <option value="off">Off</option>
+            <option value="ffmpeg" disabled={!noiseAvail.ffmpeg}>FFmpeg (high-pass + noise filter){noiseAvail.ffmpeg ? '' : ' - not installed'}</option>
+            <option value="deepfilter" disabled={!noiseAvail.deepfilter}>DeepFilterNet (speech enhancement){noiseAvail.deepfilter ? '' : ' - not installed'}</option>
+          </select>
+        </div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 10px'}}>
+          The cleaned audio is used only for the transcript: the stored recording is never changed, and if cleaning fails the original audio is used. Applies to calls analysed from now on.
+          Compare the options on real calls first with <code>python manage.py compare_cleanup</code> on the voice server.
+        </p>
+        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
+          <input type="checkbox" checked={diarizeMono} onChange={e => saveFlag('diarize_mono_calls', e.target.checked, setDiarizeMono, diarizeMono,
+            ['Speaker separation is on for new transcriptions.', 'Speaker separation is off.'])} style={{marginTop:3}}/>
+          <span><b>Separate the speakers</b> on short single-channel recordings (labels and timestamps in the transcript).</span>
+        </label>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
+          Applies to new transcriptions only, and only to recordings of about 30 seconds or less; longer ones keep the plain transcript. Recordings with a voice on each channel are always labelled.
+          Earlier results are not changed. Not yet measured on SENDA recordings: try it on a few test calls first.
+        </p>
+      </div>
+        </VoiceSettingsGroup>
+        <VoiceSettingsGroup id="vset-callers" title="What callers hear" hint="Messages and music callers hear before they reach an agent.">
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Message for switched-off numbers</div>
         <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 8px'}}>
@@ -17592,6 +17893,20 @@ function VoiceNumbersTab() {
         </div>
       </div>
 
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Waiting music</div>
+        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
+          <input type="checkbox" checked={builtInMusic} onChange={e => saveBuiltInMusic(e.target.checked)} style={{marginTop:3}}/>
+          <span><b>Play SENDA's built-in waiting music</b> to callers while an agent's phone rings and while they wait in line.</span>
+        </label>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
+          Switch it off to send the provider no audio file from SENDA at all: a ringing phone then uses Africa's Talking's own default tone, and a caller waiting in line hears the
+          announcement only (no music). A team's own music link, if it has one, is still used. It applies from the next call; nothing needs restarting. Use this if the provider
+          reports it could not download the music file.
+        </p>
+      </div>
+        </VoiceSettingsGroup>
+        <VoiceSettingsGroup id="vset-reports" title="Reports and emails" hint="Daily and weekly reports and call summary emails.">
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Report and summary emails</div>
         <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 10px'}}>
@@ -17660,62 +17975,8 @@ function VoiceNumbersTab() {
           </div>
         </div>
       </div>
-
-      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Website help button</div>
-        <p style={{fontSize:12,color:'#94a3b8',margin:'4px 0 8px',lineHeight:1.5}}>
-          The "Need help? Call us" button on the public website shows this number. If web calling is switched on for it (Voice, Phone Numbers), visitors can also call it from their browser. Leave empty to hide the button.
-        </p>
-        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-          <input className="senda-input" style={{height:34,fontSize:13,width:220}} value={helpNumber} onChange={e => setHelpNumber(e.target.value)} placeholder="0699 997 919"/>
-          <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={helpNumber === helpSaved} onClick={saveHelpNumber}>Save</button>
-        </div>
-      </div>
-
-      <LiveVoiceCard/>
-
-      <RecordingEnhancementCard/>
-
-      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>AI call analysis</div>
-        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
-          <input type="checkbox" checked={aiAll} onChange={e => saveFlag('ai_analysis_all', e.target.checked, setAiAll, aiAll,
-            ['AI call analysis is on for every organization (calls that end from now on).', 'AI call analysis is back to each organization’s own switch.'])} style={{marginTop:3}}/>
-          <span><b>Analyse every organization's calls</b>: transcript, summary, sentiment and the emails and reports, with no switch for customers to find.</span>
-        </label>
-        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
-          On by default: this is the one place to control it. Customers see it as on and cannot turn it off. It covers calls that end after you switch it on; older calls are not analysed.
-          Each analysed call uses speech-to-text and AI credits, so check your ElevenLabs and Hugging Face balances first.
-        </p>
-      </div>
-
-      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Call transcription</div>
-        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',margin:'8px 0 4px',fontSize:13,color:'#0f172a'}}>
-          <b>Reduce background noise</b> before transcribing:
-          <select value={noiseClean} onChange={e => saveFlag('noise_cleanup', e.target.value, setNoiseClean, noiseClean,
-            [`Noise cleanup: ${e.target.value === 'off' ? 'off' : e.target.value === 'deepfilter' ? 'DeepFilterNet' : 'FFmpeg'}.`, 'Noise cleanup updated.'])}
-            style={{height:32,borderRadius:8,border:'1px solid #e2e8f0',padding:'0 8px',fontSize:13}}>
-            <option value="off">Off</option>
-            <option value="ffmpeg" disabled={!noiseAvail.ffmpeg}>FFmpeg (high-pass + noise filter){noiseAvail.ffmpeg ? '' : ' - not installed'}</option>
-            <option value="deepfilter" disabled={!noiseAvail.deepfilter}>DeepFilterNet (speech enhancement){noiseAvail.deepfilter ? '' : ' - not installed'}</option>
-          </select>
-        </div>
-        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 10px'}}>
-          The cleaned audio is used only for the transcript: the stored recording is never changed, and if cleaning fails the original audio is used. Applies to calls analysed from now on.
-          Compare the options on real calls first with <code>python manage.py compare_cleanup</code> on the voice server.
-        </p>
-        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
-          <input type="checkbox" checked={diarizeMono} onChange={e => saveFlag('diarize_mono_calls', e.target.checked, setDiarizeMono, diarizeMono,
-            ['Speaker separation is on for new transcriptions.', 'Speaker separation is off.'])} style={{marginTop:3}}/>
-          <span><b>Separate the speakers</b> on short single-channel recordings (labels and timestamps in the transcript).</span>
-        </label>
-        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
-          Applies to new transcriptions only, and only to recordings of about 30 seconds or less; longer ones keep the plain transcript. Recordings with a voice on each channel are always labelled.
-          Earlier results are not changed. Not yet measured on SENDA recordings: try it on a few test calls first.
-        </p>
-      </div>
-
+        </VoiceSettingsGroup>
+        <VoiceSettingsGroup id="vset-access" title="Plans and access" hint="Who may use voice, and what organizations may delete.">
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Plans</div>
         <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
@@ -17725,19 +17986,6 @@ function VoiceNumbersTab() {
         <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
           Two beeps mean the number is connected and the organization simply has no active (paid or trial) plan. The moment a plan becomes active, its next call runs the flow:
           nothing needs switching. Plan limits (agents, numbers, menus) follow the same switch. Switch it off to let every number work whatever its plan; it applies from the next call.
-        </p>
-      </div>
-
-      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Waiting music</div>
-        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
-          <input type="checkbox" checked={builtInMusic} onChange={e => saveBuiltInMusic(e.target.checked)} style={{marginTop:3}}/>
-          <span><b>Play SENDA's built-in waiting music</b> to callers while an agent's phone rings and while they wait in line.</span>
-        </label>
-        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
-          Switch it off to send the provider no audio file from SENDA at all: a ringing phone then uses Africa's Talking's own default tone, and a caller waiting in line hears the
-          announcement only (no music). A team's own music link, if it has one, is still used. It applies from the next call; nothing needs restarting. Use this if the provider
-          reports it could not download the music file.
         </p>
       </div>
 
@@ -17821,6 +18069,23 @@ function VoiceNumbersTab() {
           )}
         </div>
       </div>
+        </VoiceSettingsGroup>
+        <VoiceSettingsGroup id="vset-live" title="Website and live voice assistant" hint="The website call button and the live AI voice.">
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Website help button</div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'4px 0 8px',lineHeight:1.5}}>
+          The "Need help? Call us" button on the public website shows this number. If web calling is switched on for it (Voice, Phone Numbers), visitors can also call it from their browser. Leave empty to hide the button.
+        </p>
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+          <input className="senda-input" style={{height:34,fontSize:13,width:220}} value={helpNumber} onChange={e => setHelpNumber(e.target.value)} placeholder="0699 997 919"/>
+          <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={helpNumber === helpSaved} onClick={saveHelpNumber}>Save</button>
+        </div>
+      </div>
+
+      <LiveVoiceCard/>
+        </VoiceSettingsGroup>
+        </div>
+      )}
 
       {assign && createPortal(
         <div onClick={() => setAssign(null)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}}>
@@ -17920,99 +18185,103 @@ function VoiceNumbersTab() {
           </div>
         </div>, document.body)}
 
-      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',overflowX:'auto'}}>
-        <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-          <thead>
-            <tr style={{background:'#f8fafc',textAlign:'left'}}>
-              <th style={th}>Tenant</th>
-              <th style={th}>Label</th>
-              <th style={th}>Phone number</th>
-              <th style={th}>Active flow</th>
-              <th style={th}>Status</th>
-              <th style={th}>Line</th>
-              <th style={th}>Provider connection</th>
-              <th style={th}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={8} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={8} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No voice accounts found.</td></tr>
-            ) : filtered.map(row => {
-              const assigned = !!row.provider_credential_detail;
-              const free = pool.filter(c => c.is_active);   // a login serves any number of numbers
-              return (
-                <tr key={row.id}>
-                  <td style={{...td,fontWeight:600,color:'#0f172a'}}>{row.tenant_name || '—'}</td>
-                  <td style={{...td,fontSize:12,color:'#64748b'}}>{row.display_name || '—'}</td>
-                  <td style={{...td,fontSize:12,color:'#64748b'}}>{row.phone_number || '—'}</td>
-                  <td style={{...td,fontSize:12,color:'#64748b'}}>{row.active_flow_detail?.name || '—'}</td>
-                  <td style={td}>
-                    <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:99,
-                      fontSize:11,fontWeight:600,background:assigned?'#ecfdf5':'#f1f5f9',color:assigned?'#059669':'#64748b'}}>
-                      <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>{assigned ? 'Assigned' : 'Unassigned'}
-                    </span>
-                  </td>
-                  <td style={{...td,minWidth:190}}>
-                    <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                      <div style={{display:'flex',alignItems:'center',gap:6}}>
-                        <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:99,fontSize:11,fontWeight:700,
-                          background:row.is_active?'#ecfdf5':'#fef2f2',color:row.is_active?'#059669':'#b91c1c'}}>
-                          <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
+      {view === 'numbers' && (
+      <>
+        <StatTiles items={[
+          { label: 'Numbers', value: counts.all, onClick: () => setLineFilter('all'), selected: lineFilter === 'all' },
+          { label: 'Active', value: counts.active, tone: '#059669', hint: 'Taking calls', onClick: () => setLineFilter('active'), selected: lineFilter === 'active' },
+          { label: 'Switched off', value: counts.off, tone: counts.off ? '#b91c1c' : undefined, hint: 'Callers hear the off message', onClick: () => setLineFilter('off'), selected: lineFilter === 'off' },
+          { label: 'Not connected', value: counts.unconnected, tone: counts.unconnected ? '#b45309' : undefined, hint: 'No provider login: calls will not ring', onClick: () => setLineFilter('unconnected'), selected: lineFilter === 'unconnected' },
+        ]}/>
+        <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <thead>
+              <tr style={{background:'#f8fafc',textAlign:'left'}}>
+                <th style={th}>Number</th>
+                <th style={th}>Organization</th>
+                <th style={th}>Call flow</th>
+                <th style={th}>Line</th>
+                <th style={th}>Provider</th>
+                <th style={th}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={6} style={{padding:'28px 16px',textAlign:'center',color:'#94a3b8'}}>
+                  {rows.length === 0 ? 'No voice numbers yet. Use "+ Assign number" to add one.' : 'No numbers match. Clear the search or pick "Numbers" above to see them all.'}
+                </td></tr>
+              ) : filtered.map(row => {
+                const assigned = !!row.provider_credential_detail;
+                const free = pool.filter(c => c.is_active);   // a login serves any number of numbers
+                return (
+                  <tr key={row.id} style={{borderTop:'1px solid #f1f5f9'}}>
+                    <td style={td}>
+                      <div style={{fontWeight:800,color:'#0f172a',fontSize:14,letterSpacing:'.01em'}}>{row.phone_number || '—'}</div>
+                      <div style={{fontSize:12,color:'#94a3b8',marginTop:1}}>{row.display_name || 'No label'}</div>
+                    </td>
+                    <td style={{...td,fontWeight:600,color:'#334155'}}>{row.tenant_name || '—'}</td>
+                    <td style={{...td,fontSize:12.5,color:'#475569'}}>{row.active_flow_detail?.name || <span style={{color:'#cbd5e1'}}>No flow</span>}</td>
+                    <td style={{...td,minWidth:210}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                        <ToneBadge tone={row.is_active ? 'green' : (row.admin_suspended ? 'amber' : 'red')}>
                           {row.is_active ? 'Active' : (row.admin_suspended ? 'Off (by SENDA)' : 'Off')}
-                        </span>
+                        </ToneBadge>
                         <button className="senda-btn senda-btn-sm" disabled={busyId === row.id} onClick={() => setLine(row, !row.is_active)}
                           style={{border:'1.5px solid #e2e8f0',background:'#fff',fontSize:11}}>
                           {row.is_active ? 'Switch off' : 'Switch on'}
                         </button>
                       </div>
-                      <button className="senda-btn senda-btn-sm" onClick={() => setMsgEdit({ row, text: row.inactive_message || '', voice: row.inactive_voice || '' })}
+                      <button onClick={() => setMsgEdit({ row, text: row.inactive_message || '', voice: row.inactive_voice || '' })}
                         title={row.inactive_message || `Uses the default: ${defaultMsg}`}
-                        style={{border:'1.5px solid #e2e8f0',background:'#fff',fontSize:11,textAlign:'left'}}>
-                        {row.inactive_message ? 'Message: custom' : 'Message: default'} · {voiceName(row.inactive_voice || defaultVoice)} · Edit
+                        style={{border:'none',background:'none',padding:0,marginTop:6,color:'#64748b',fontSize:11.5,cursor:'pointer',textAlign:'left'}}>
+                        Off message: {row.inactive_message ? 'custom' : 'default'} · {voiceName(row.inactive_voice || defaultVoice)} · <span style={{color:BRAND,fontWeight:700}}>Edit</span>
                       </button>
-                    </div>
-                  </td>
-                  <td style={{...td,minWidth:230}}>
-                    {assigned ? (
-                      <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                        <span style={{fontSize:11,color:'#64748b'}}>{row.provider_credential_detail.name}</span>
-                        {row.webhook_url && (
-                          <button className="senda-btn senda-btn-sm" onClick={() => copy(row.webhook_url)} title={row.webhook_url}
-                            style={{border:'1.5px solid #e2e8f0',background:'#fff',fontSize:11}}>Copy callback URL</button>
-                        )}
-                      </div>
-                    ) : (
-                      <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                        <span style={{fontSize:11,color:'#b45309'}}>Not connected — calls will not ring</span>
-                        <div style={{display:'flex',gap:4}}>
-                          <select className="senda-input" value={pick[row.id] || ''} onChange={e => setPick(p => ({ ...p, [row.id]: e.target.value }))}
-                            style={{height:30,fontSize:11,flex:1}}>
-                            <option value="">{free.length ? 'Choose provider login…' : 'No provider yet — add one in Voice Providers'}</option>
-                            {free.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                          </select>
-                          <button className="senda-btn senda-btn-sm" disabled={!pick[row.id] || busyId === row.id} onClick={() => connect(row)}
-                            style={{background:BRAND,color:'#fff',border:'none'}}>Connect</button>
+                    </td>
+                    <td style={{...td,minWidth:230}}>
+                      {assigned ? (
+                        <div>
+                          <ToneBadge tone="green">Connected</ToneBadge>
+                          <div style={{fontSize:11.5,color:'#64748b',marginTop:4}}>{row.provider_credential_detail.name}</div>
+                          {row.webhook_url && (
+                            <button onClick={() => copy(row.webhook_url)} title={row.webhook_url}
+                              style={{border:'none',background:'none',padding:0,marginTop:2,color:BRAND,fontSize:11.5,fontWeight:700,cursor:'pointer'}}>Copy callback URL</button>
+                          )}
                         </div>
-                      </div>
-                    )}
-                  </td>
-                  <td style={td}>
-                    {assigned && (
-                      <button className="senda-btn senda-btn-sm" disabled={busyId === row.id}
-                        onClick={() => release(row)}
-                        style={{background:'#fef2f2',color:'#b91c1c',border:'1px solid #fecaca'}}>
-                        {busyId === row.id ? 'Releasing…' : 'Release'}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                      ) : (
+                        <div>
+                          <ToneBadge tone="amber" title="No provider login is connected to this number">Not connected</ToneBadge>
+                          <div style={{fontSize:11.5,color:'#b45309',margin:'4px 0'}}>Calls will not ring until you connect one.</div>
+                          <div style={{display:'flex',gap:4}}>
+                            <select className="senda-input" value={pick[row.id] || ''} onChange={e => setPick(p => ({ ...p, [row.id]: e.target.value }))}
+                              style={{height:30,fontSize:11,flex:1}}>
+                              <option value="">{free.length ? 'Choose provider login…' : 'No provider yet — add one in Voice Providers'}</option>
+                              {free.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                            <button className="senda-btn senda-btn-sm" disabled={!pick[row.id] || busyId === row.id} onClick={() => connect(row)}
+                              style={{background:BRAND,color:'#fff',border:'none'}}>Connect</button>
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                    <td style={{...td,textAlign:'right'}}>
+                      {assigned && (
+                        <button className="senda-btn senda-btn-sm" disabled={busyId === row.id}
+                          onClick={() => release(row)}
+                          style={{background:'#fff',color:'#b91c1c',border:'1px solid #fecaca'}}>
+                          {busyId === row.id ? 'Releasing…' : 'Release'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </>
+      )}
     </div>
   );
 }
@@ -22786,12 +23055,21 @@ function RegisteredIdleTab() {
   );
 }
 
-// Sidebar items grouped into labeled sections.
+// Sidebar items grouped into labeled sections. The order follows how the portal is used: look at the numbers, look after customers and
+// what they send, then voice, then money and partners, and the platform itself last. Each group opens and closes in the sidebar.
 const NAV_GROUPS = [
   { title: 'Analytics', items: [
     { id:'overview',      Icon:BarChart3,    label:'Overview'         },
     { id:'insights',      Icon:Activity,     label:'Insights'         },
     { id:'smsintelligence', Icon:Sparkles,   label:'SMS Intelligence' },
+  ]},
+  { title: 'Customers', items: [
+    { id:'users',         Icon:Users,        label:'Users'            },
+    { id:'idleusers',     Icon:Clock,        label:'Idle Users'       },
+    { id:'engagement',    Icon:MessageSquare, label:'Engagement'      },
+    { id:'featureaccess', Icon:UserCheck,    label:'Feature Access'   },
+    { id:'trash',         Icon:Trash2,       label:'Trash'            },
+    { id:'deletionrequests', Icon:Trash2,    label:'Inbox Data Deletion' },
   ]},
   { title: 'Messaging', items: [
     { id:'broadcast',     Icon:Megaphone,    label:'Broadcast'        },
@@ -22809,24 +23087,34 @@ const NAV_GROUPS = [
     { id:'approvedsenders', Icon:ShieldCheck, label:'Approved Senders' },
     { id:'textifysendernames', Icon:Send,    label:'Textify Sender Names' },
   ]},
-  { title: 'Customers', items: [
-    { id:'users',         Icon:Users,        label:'Users'            },
-    { id:'idleusers',     Icon:Clock,        label:'Idle Users'       },
-    { id:'engagement',    Icon:MessageSquare, label:'Engagement'      },
-    { id:'featureaccess', Icon:UserCheck,    label:'Feature Access'   },
-    { id:'trash',         Icon:Trash2,       label:'Trash'            },
-    { id:'deletionrequests', Icon:Trash2,    label:'Inbox Data Deletion' },
+  { title: 'Voice / IVR', items: [
+    { id:'ivrflows',       Icon:Workflow,    label:'IVR Flows'        },
+    { id:'voicenumbers',   Icon:Phone,       label:'Voice Numbers'    },
+    { id:'agentaccounts',  Icon:Users,       label:'Agent Accounts'   },
+    { id:'calllogs',       Icon:ListChecks,  label:'Call Logs'        },
+    { id:'voicerecordings', Icon:Sparkles,    label:'Recordings (A/B)' },
+    { id:'voiceusage',     Icon:BarChart3,   label:'Voice Usage'      },
   ]},
-  { title: 'Partners', items: [
-    { id:'partners',      Icon:Handshake,    label:'Partners'         },
-    { id:'partnersenders', Icon:Tag,         label:'Partner Clients'  },
-    { id:'freesmspool',    Icon:Gift,        label:'Free SMS Pool'    },
+  { title: 'Voice reports', items: [
+    { id:'analysisemails', Icon:Mail,        label:'Analysis Emails'  },
+    { id:'analysiswhatsapp', Icon:Send,      label:'WhatsApp Reports' },
+    { id:'analysisalerts', Icon:AlertTriangle, label:'Analysis Alerts'  },
+  ]},
+  { title: 'Voice setup', items: [
+    { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
+    { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
+    { id:'callcenterplans', Icon:CreditCard, label:'Call Center Plans' },
   ]},
   { title: 'Billing', items: [
     { id:'transactions',  Icon:CreditCard,   label:'Transactions'     },
     { id:'packages',      Icon:Package,      label:'Packages'         },
     { id:'creditalerts',  Icon:Wallet,       label:'Credit Alerts'    },
     { id:'netprofit',     Icon:DollarSign,   label:'Net Profit'       },
+  ]},
+  { title: 'Partners', items: [
+    { id:'partners',      Icon:Handshake,    label:'Partners'         },
+    { id:'partnersenders', Icon:Tag,         label:'Partner Clients'  },
+    { id:'freesmspool',    Icon:Gift,        label:'Free SMS Pool'    },
   ]},
   { title: 'Reports', items: [
     { id:'emailreports',  Icon:Mail,         label:'Email Reports'    },
@@ -22838,27 +23126,52 @@ const NAV_GROUPS = [
     { id:'settings',      Icon:Settings,     label:'Settings'         },
     { id:'operations',    Icon:Globe,        label:'Operations'       },
   ]},
-  { title: 'Voice / IVR', items: [
-    { id:'ivrflows',       Icon:Workflow,    label:'IVR Flows'        },
-    { id:'voicenumbers',   Icon:Phone,       label:'Voice Numbers'    },
-    { id:'agentaccounts',  Icon:Users,       label:'Agent Accounts'   },
-    { id:'calllogs',       Icon:ListChecks,  label:'Call Logs'        },
-    { id:'voiceusage',     Icon:BarChart3,   label:'Voice Usage'      },
-    { id:'analysisemails', Icon:Mail,        label:'Analysis Emails'  },
-    { id:'analysiswhatsapp', Icon:Send,      label:'WhatsApp Reports' },
-    { id:'analysisalerts', Icon:AlertTriangle, label:'Analysis Alerts'  },
-    { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
-    { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
-    { id:'callcenterplans', Icon:CreditCard, label:'Call Center Plans' },
-  ]},
 ];
 
 // Flattened list for lookups (e.g. resolving the active tab's label/icon).
 const NAV = NAV_GROUPS.flatMap(g => g.items);
 
+// Which sidebar groups are open: a group is closed until clicked, except the one holding the page you are on (and the first one).
+// A search over every menu entry replaces the groups while something is typed.
+function useNavState(active) {
+  const [openMap, setOpenMap] = useState({});
+  const [query, setQuery] = useState('');
+  const isOpen = (group, index) => openMap[group.title] ?? (index === 0 || group.items.some(n => n.id === active));
+  const toggle = (group, index) => setOpenMap(m => ({ ...m, [group.title]: !isOpen(group, index) }));
+  const needle = query.trim().toLowerCase();
+  const hits = needle ? NAV.filter(n => n.label.toLowerCase().includes(needle)) : [];
+  return { isOpen, toggle, query, setQuery, needle, hits };
+}
+
+function NavSearch({ value, onChange, padding }) {
+  return (
+    <div style={{padding: padding || '0 8px 8px', position:'relative'}}>
+      <Search size={13} color="#94a3b8" style={{position:'absolute', left:18, top:9}}/>
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder="Search menu" aria-label="Search menu"
+        style={{width:'100%', height:30, borderRadius:8, border:'1px solid #e2e8f0', background:'#f8fafc', padding:'0 8px 0 28px', fontSize:12, outline:'none', boxSizing:'border-box'}}/>
+    </div>
+  );
+}
+
+function NavGroupHeader({ title, open, onClick, badge }) {
+  return (
+    <button onClick={onClick} aria-expanded={open}
+      style={{width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', border:'none', background:'none', cursor:'pointer',
+        fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'.1em', textTransform:'uppercase', padding:'8px 8px 6px'}}>
+      <span style={{display:'flex', alignItems:'center', gap:6}}>
+        {title}
+        {!open && badge > 0 && <span style={{background:'#dc2626', color:'#fff', fontSize:9, fontWeight:800, borderRadius:999, padding:'0 5px', lineHeight:'14px'}}>{badge}</span>}
+      </span>
+      <ChevronDown size={13} strokeWidth={2.2} style={{transition:'transform .15s', transform: open ? 'none' : 'rotate(-90deg)'}}/>
+    </button>
+  );
+}
+
+
 function Sidebar({ active, setActive, onLogout, mode }) {
   // mode: 'full' | 'icon' | 'hidden'
   const alertCount = useAnalysisAlertCount();
+  const navState = useNavState(active);
   if (mode === 'hidden') return null;
   const collapsed = mode === 'icon';
   const w = collapsed ? 60 : 220;
@@ -22887,13 +23200,27 @@ function Sidebar({ active, setActive, onLogout, mode }) {
 
       {/* Nav */}
       <nav style={{flex:1,padding:'12px 8px',overflowY:'auto'}}>
-        {NAV_GROUPS.map((group, gi) => (
-          <div key={group.title} style={{marginBottom: collapsed ? 4 : 8}}>
+        {!collapsed && <NavSearch value={navState.query} onChange={navState.setQuery}/>}
+        {!collapsed && navState.needle && (
+          <div>
+            {navState.hits.length === 0 && <div style={{fontSize:12,color:'#94a3b8',padding:'6px 10px'}}>Nothing matches.</div>}
+            {navState.hits.map(n => (
+              <button key={n.id} className={`senda-nav-item${active===n.id?' active':''}`} onClick={() => { setActive(n.id); navState.setQuery(''); }}
+                style={{justifyContent:'flex-start', borderLeft:active===n.id?`3px solid ${BRAND}`:'3px solid transparent', paddingLeft:9}}>
+                <n.Icon className="senda-nav-icon" strokeWidth={2.2} /><span>{n.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {!(navState.needle && !collapsed) && NAV_GROUPS.map((group, gi) => {
+          const open = collapsed || navState.isOpen(group, gi);
+          return (
+          <div key={group.title} style={{marginBottom: collapsed ? 4 : 6}}>
             {!collapsed
-              ? <div style={{fontSize:9,fontWeight:700,color:'#cbd5e1',letterSpacing:'.1em',textTransform:'uppercase',padding:'8px 8px 6px'}}>{group.title}</div>
+              ? <NavGroupHeader title={group.title} open={open} onClick={() => navState.toggle(group, gi)} badge={group.items.some(n => n.id === 'analysisalerts') ? alertCount : 0}/>
               : (gi > 0 ? <div style={{height:1,background:'#f1f5f9',margin:'5px 10px'}}/> : null)
             }
-            {group.items.map(n=>(
+            {open && group.items.map(n=>(
               <button key={n.id} className={`senda-nav-item${active===n.id?' active':''}`}
                 onClick={()=>setActive(n.id)}
                 title={collapsed?n.label:''}
@@ -22906,7 +23233,8 @@ function Sidebar({ active, setActive, onLogout, mode }) {
               </button>
             ))}
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Logout */}
@@ -22927,6 +23255,7 @@ function Sidebar({ active, setActive, onLogout, mode }) {
 // Triggered by the hamburger button in the mobile header. No bottom bar — the
 // drawer has room for the full label of every section without truncation.
 function LeftDrawerNav({ open, onClose, active, setActive, onLogout, adminInfo }) {
+  const navState = useNavState(active);
   return (
     <>
       {/* backdrop */}
@@ -22987,10 +23316,15 @@ function LeftDrawerNav({ open, onClose, active, setActive, onLogout, adminInfo }
 
         {/* nav list — scrollable if needed; all NAV items shown, grouped */}
         <nav style={{flex:1, overflowY:'auto', padding:'10px 8px'}}>
-          {NAV_GROUPS.map(group => (
+          <NavSearch value={navState.query} onChange={navState.setQuery} padding="0 4px 8px"/>
+          {(navState.needle ? [{ title: 'Results', items: navState.hits }] : NAV_GROUPS).map((group, gi) => {
+          const open = navState.needle ? true : navState.isOpen(group, gi);
+          return (
           <div key={group.title} style={{marginBottom:6}}>
-            <div style={{fontSize:9,fontWeight:700,color:'#cbd5e1',letterSpacing:'.1em',textTransform:'uppercase',padding:'8px 12px 4px'}}>{group.title}</div>
-            {group.items.map(n => {
+            {navState.needle
+              ? <div style={{fontSize:10,fontWeight:700,color:'#94a3b8',letterSpacing:'.1em',textTransform:'uppercase',padding:'8px 12px 4px'}}>{group.items.length ? 'Results' : 'Nothing matches'}</div>
+              : <NavGroupHeader title={group.title} open={open} onClick={() => navState.toggle(group, gi)} badge={0}/>}
+            {open && group.items.map(n => {
             const isActive = active === n.id;
             return (
               <button
@@ -23020,7 +23354,8 @@ function LeftDrawerNav({ open, onClose, active, setActive, onLogout, adminInfo }
             );
           })}
           </div>
-          ))}
+          );
+          })}
         </nav>
 
         {/* logout pinned at bottom */}
@@ -27124,6 +27459,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     voicenumbers:   <VoiceNumbersTab/>,
     agentaccounts:  <AgentAccountsTab/>,
     calllogs:       <VoiceCallLogsTab/>,
+    voicerecordings: <VoiceRecordingsTab/>,
     voiceusage:     <VoiceUsageTab/>,
     analysisemails: <AnalysisEmailsTab/>,
     analysiswhatsapp: <AnalysisWhatsAppTab/>,
