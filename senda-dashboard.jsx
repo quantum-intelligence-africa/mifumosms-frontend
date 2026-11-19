@@ -17005,6 +17005,104 @@ const LIVE_VOICE_MODELS = [
   { model: 'inworld/inworld-tts-2', label: 'Inworld (default voice)', voices: [] },
 ];
 
+// SENDA staff's view of recording enhancement (noise-reduced copies of call recordings): what this server can run, how many copies are in
+// each state, which organizations use it, and the latest failures, with one button to retry them. Organizations switch it on themselves
+// (Call center, Set up, Recording enhancement); nothing here changes their settings.
+function RecordingEnhancementCard() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = React.useCallback(() => {
+    voiceAdminFetch('/voice/admin/recording-enhancement/', {}, onLogout).then(res => {
+      if (res.success) { setData(res.data); setError(''); } else setError(res.error || 'Could not load recording enhancement.');
+    });
+  }, [onLogout]);
+  useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
+  const retry = () => {
+    setBusy(true);
+    voiceAdminFetch('/voice/admin/recording-enhancement/', { method: 'POST', body: JSON.stringify({ action: 'retry_failed' }) }, onLogout).then(res => {
+      setBusy(false);
+      if (res.success) { showToast?.(`${res.data?.queued || 0} failed copies queued again.`, 'success'); load(); }
+      else showToast?.(res.error || 'Could not retry.', 'error');
+    });
+  };
+  const card = { background: '#fff', border: '1px solid #eef2f7', borderRadius: 12, padding: '14px 16px', marginBottom: 14 };
+  const pill = (ok) => ({ display: 'inline-block', padding: '2px 9px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: ok ? '#dcfce7' : '#f1f5f9', color: ok ? '#15803d' : '#64748b', marginRight: 6 });
+  const cell = { padding: '5px 10px 5px 0', fontSize: 12, color: '#0f172a', verticalAlign: 'top' };
+  const head = { ...cell, fontWeight: 700, color: '#475569' };
+  const stat = (label, value, tone) => (
+    <div style={{ flex: '1 1 90px', minWidth: 90 }}>
+      <div style={{ fontSize: 20, fontWeight: 800, color: tone || '#0f172a' }}>{value}</div>
+      <div style={{ fontSize: 11, color: '#64748b' }}>{label}</div>
+    </div>
+  );
+  return (
+    <div style={card}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Recording enhancement (noise-reduced copies)</div>
+      {error && <p style={{ fontSize: 12, color: '#b91c1c', margin: '8px 0 0' }}>{error}</p>}
+      {data && (
+        <>
+          <div style={{ margin: '8px 0 10px', fontSize: 12, color: '#475569' }}>
+            This server can run:{' '}
+            {['ffmpeg', 'deepfilter', 'rnnoise'].map(e => <span key={e} style={pill(!!data.engines_available?.[e])}>{e}{data.engines_available?.[e] ? '' : ' (not installed)'}</span>)}
+            <span style={{ marginLeft: 6 }}>Queue: <b>{data.queue}</b></span>
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
+            {stat('Ready', data.totals.ready, '#15803d')}
+            {stat('Waiting', data.totals.pending)}
+            {stat('Processing', data.totals.processing)}
+            {stat('Failed', data.totals.failed, data.totals.failed ? '#b91c1c' : undefined)}
+            {stat('Skipped (silent)', data.totals.skipped)}
+            {stat('Last 24 h: ready', data.last_24h.ready, '#15803d')}
+            {stat('Last 24 h: failed', data.last_24h.failed, data.last_24h.failed ? '#b91c1c' : undefined)}
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', margin: '10px 0 4px' }}>Organizations using it</div>
+          {data.organizations.length === 0 ? (
+            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>None yet. An organization owner turns it on in Call center, Set up, Recording enhancement.</p>
+          ) : (
+            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <thead><tr><th style={head}>Organization</th><th style={head}>Engine</th><th style={head}>Strength</th><th style={head}>Auto</th><th style={head}>Transcribe copy</th><th style={head}>Ready</th><th style={head}>Waiting</th><th style={head}>Failed</th></tr></thead>
+              <tbody>
+                {data.organizations.map(o => (
+                  <tr key={o.tenant_id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                    <td style={cell}>{o.tenant}</td><td style={cell}>{o.engine}</td><td style={cell}>{o.intensity}</td>
+                    <td style={cell}>{o.auto ? 'yes' : 'no'}</td><td style={cell}>{o.transcribe_enhanced ? 'yes' : 'no'}</td>
+                    <td style={cell}>{o.ready}</td><td style={cell}>{o.waiting}</td><td style={{ ...cell, color: o.failed ? '#b91c1c' : '#0f172a' }}>{o.failed}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {data.recent_failures.length > 0 && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '12px 0 4px' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Latest failures</span>
+                <button className="senda-btn senda-btn-sm" disabled={busy} onClick={retry}>{busy ? 'Queueing...' : 'Retry all failed'}</button>
+              </div>
+              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                <tbody>
+                  {data.recent_failures.map(f => (
+                    <tr key={f.recording_id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                      <td style={cell}>{f.tenant}</td><td style={cell}>{f.engine}</td>
+                      <td style={{ ...cell, color: '#b91c1c' }}>{f.error || 'Failed'}</td>
+                      <td style={cell}>{f.at ? new Date(f.at).toLocaleString() : ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </>
+      )}
+      <p style={{ fontSize: 12, color: '#94a3b8', margin: '10px 0 0' }}>
+        The original recording is never changed. On the voice server: <code>python manage.py enhancement_selftest</code> checks every installed engine,
+        <code> enhance_recordings</code> makes copies of recent recordings, <code>compare_enhancement &lt;recording-id&gt;</code> compares transcripts.
+      </p>
+    </div>
+  );
+}
+
 function LiveVoiceCard() {
   const { onLogout, showToast } = React.useContext(AppContext);
   const [saved, setSaved]   = useState(null);        // what the server returned (never contains the secret)
@@ -17575,6 +17673,8 @@ function VoiceNumbersTab() {
       </div>
 
       <LiveVoiceCard/>
+
+      <RecordingEnhancementCard/>
 
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>AI call analysis</div>
