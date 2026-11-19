@@ -21,7 +21,7 @@ export interface Services {
 
 export function useServices(): Services {
   const { user } = useAuth();
-  const { features, hasFeature } = useFeatures();
+  const { hasFeature } = useFeatures();
   const active = (user?.memberships ?? []).filter((m) => m.status === "active");
   const inbox = hasFeature("team_inbox");
   const callCenter = canUseCallCenter(user);
@@ -29,7 +29,9 @@ export function useServices(): Services {
   // in the admin dashboard. A missing answer never hides it.
   // Agents and supervisors work in the call center only: SMS is a service the organization's owner buys, so it is never offered to them.
   const staffRole = callCenter && ["agent", "supervisor"].includes(getCallCenterRole(user) ?? "");
-  const sms = hasSmsAccess(user) && features.sms !== false && !staffRole;
+  // The organization-wide feature map is NOT used here: it reports "false" for every key whenever the plan/override data is missing,
+  // which used to hide Messaging from ordinary customers. Only the per-user SMS switch (admin dashboard, Feature Access) and the staff rule apply.
+  const sms = hasSmsAccess(user) && !staffRole;
   return {
     inbox, callCenter, sms, inboxOnly: inbox && !callCenter && !sms,
     currentOrganization: active.find((m) => m.is_current) ?? active[0] ?? null,
