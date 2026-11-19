@@ -16799,6 +16799,62 @@ function VoiceUsageTab() {
 // AI summary. Calls an organization deleted stay here, marked deleted (the organization no longer sees them).
 // Recordings, original and enhanced side by side (SENDA staff): every organization's recordings with the state of their noise-reduced copy,
 // filterable by "enhanced" / "not enhanced", so the two can be heard one after the other, from the same moment.
+// The impact of an enhanced copy on the transcript (SENDA staff): original and enhanced audio transcribed and compared, with a verdict and what it means.
+const IMPACT_VERDICT = {
+  better: ['The transcript is better with the enhanced audio', 'Cleaner audio helped the speech model: fewer invented or repeated phrases, so the summary is more reliable.', '#15803d'],
+  same: ['No change in the words', "The cleaner audio is easier to listen to, but the speech model heard the same words. The model's accuracy for this language is the limit here, not the noise: try another speech model.", '#0f172a'],
+  worse: ['The transcript is worse with the enhanced audio', 'On this call the cleanup removed something the speech model needed. Switch off "Transcribe the enhanced copy" or lower the strength.', '#b91c1c'],
+  different: ['The words changed a lot, with the same quality', 'Read both versions to see which is closer to what was said.', '#b45309'],
+};
+const IMPACT_QUALITY = { ok: ['OK', '#dcfce7', '#15803d'], review: ['Needs review', '#fef3c7', '#b45309'], failed: ['Not usable', '#fee2e2', '#b91c1c'] };
+function TranscriptImpactPanel({ cmp, metrics, onRun }) {
+  const box = { marginTop: 10, padding: '12px 14px', background: '#f8fafc', border: '1px solid #eef2f7', borderRadius: 10 };
+  const running = cmp?.status === 'running';
+  const ready = cmp?.status === 'ready' && cmp.original && cmp.enhanced;
+  const v = ready ? (IMPACT_VERDICT[cmp.verdict] || IMPACT_VERDICT.same) : null;
+  const pill = (q) => { const [label, bg, fg] = IMPACT_QUALITY[q] || IMPACT_QUALITY.ok; return <span style={{ padding: '2px 9px', borderRadius: 999, fontSize: 11, fontWeight: 800, background: bg, color: fg }}>{label}</span>; };
+  const cell = { padding: '6px 10px 6px 0', fontSize: 12.5, color: '#0f172a', verticalAlign: 'top' };
+  return (
+    <div style={box}>
+      {running && <div style={{ fontSize: 13, color: '#475569' }}>Transcribing both versions... about a minute.</div>}
+      {!running && cmp?.status === 'failed' && <div style={{ fontSize: 13, color: '#b91c1c' }}>The comparison could not be made{cmp.error ? `: ${cmp.error}` : ''}</div>}
+      {!running && !ready && cmp?.status !== 'failed' && (
+        <div style={{ fontSize: 12.5, color: '#475569' }}>
+          Cleaner audio sounds better, but what matters for summaries is whether the <b>words</b> came out better. This transcribes the original and the enhanced audio with the organization's own speech settings and compares them (two speech requests).
+        </div>
+      )}
+      {ready && (
+        <>
+          <div style={{ fontSize: 14, fontWeight: 800, color: v[2] }}>{v[0]}</div>
+          <div style={{ fontSize: 12.5, color: '#475569', margin: '3px 0 10px' }}>{v[1]}</div>
+          <table style={{ borderCollapse: 'collapse' }}>
+            <thead><tr><th style={{ ...cell, color: '#64748b' }}></th><th style={{ ...cell, color: '#64748b' }}>Original audio</th><th style={{ ...cell, color: '#15803d' }}>Enhanced audio</th></tr></thead>
+            <tbody>
+              <tr><td style={cell}>Transcript quality</td><td style={cell}>{pill(cmp.original.quality)}</td><td style={cell}>{pill(cmp.enhanced.quality)}</td></tr>
+              <tr><td style={cell}>Words recognised</td><td style={cell}>{cmp.original.words}</td><td style={cell}>{cmp.enhanced.words}</td></tr>
+              <tr><td style={cell}>Words in a repeated phrase (a model loop over noise)</td><td style={cell}>{cmp.original.repeated_words}</td><td style={cell}>{cmp.enhanced.repeated_words}</td></tr>
+              <tr><td style={cell}>Words that changed</td><td style={cell} colSpan={2}>{cmp.changed_pct}%</td></tr>
+              {metrics?.before?.mean_db != null && metrics?.after?.mean_db != null && (
+                <tr><td style={cell}>Level (mean dB)</td><td style={cell} colSpan={2}>{metrics.before.mean_db} → {metrics.after.mean_db}</td></tr>
+              )}
+            </tbody>
+          </table>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
+            {[['Original', cmp.original.text, '#64748b'], ['Enhanced', cmp.enhanced.text, '#15803d']].map(([label, text, color]) => (
+              <div key={label} style={{ flex: '1 1 280px', minWidth: 240 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
+                <div style={{ fontSize: 12, lineHeight: 1.55, background: '#fff', border: '1px solid #eef2f7', borderRadius: 8, padding: '8px 10px', maxHeight: 150, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>{text || '—'}</div>
+              </div>
+            ))}
+          </div>
+          {cmp.model && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Speech model: {cmp.model} · language: {cmp.language}</div>}
+        </>
+      )}
+      {!running && <button className="senda-btn senda-btn-sm" style={{ marginTop: 10 }} onClick={onRun}>{ready ? 'Compare again' : 'Compare the transcripts'}</button>}
+    </div>
+  );
+}
+
 function VoiceRecordingsTab() {
   const { onLogout, showToast } = React.useContext(AppContext);
   const [status, setStatus] = useState('all');
@@ -16808,6 +16864,7 @@ function VoiceRecordingsTab() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState('');
+  const [open, setOpen] = useState({});   // recording id -> its transcript comparison is expanded
   const audio = useRef({});   // recording id -> { original, enhanced } <audio> elements
 
   const load = useCallback(() => {
@@ -16818,8 +16875,8 @@ function VoiceRecordingsTab() {
     });
   }, [status, page, search, onLogout]);
   useEffect(() => { load(); }, [load]);
-  // while copies are being made, refresh the list so they appear without a reload
-  const waiting = !!data && data.results.some(r => r.status === 'pending' || r.status === 'processing');
+  // while copies are being made, or a transcript comparison is running, refresh the list so results appear without a reload
+  const waiting = !!data && data.results.some(r => r.status === 'pending' || r.status === 'processing' || r.compare?.status === 'running');
   useEffect(() => { if (!waiting) return undefined; const t = setInterval(load, 6000); return () => clearInterval(t); }, [waiting, load]);
   useEffect(() => { const t = setTimeout(() => { setSearch(q.trim()); setPage(1); }, 350); return () => clearTimeout(t); }, [q]);
 
@@ -16829,6 +16886,14 @@ function VoiceRecordingsTab() {
       setBusyId('');
       if (res.success) { showToast?.('The enhanced copy is being made. It will appear here in a moment.', 'success'); load(); }
       else showToast?.(res.error || 'Could not start the enhancement.', 'error');
+    });
+  };
+
+  const compareTranscripts = (row) => {
+    setOpen(o => ({ ...o, [row.recording_id]: true }));
+    voiceAdminFetch(`/voice/admin/recordings/${row.recording_id}/compare/`, { method: 'POST' }, onLogout).then(res => {
+      if (res.success) { showToast?.('Transcribing both versions: the result appears here in about a minute.', 'success'); load(); }
+      else showToast?.(res.error || 'Could not start the comparison.', 'error');
     });
   };
 
@@ -16920,6 +16985,7 @@ function VoiceRecordingsTab() {
                     <div style={{display:'flex',gap:12,marginTop:4,fontSize:12,alignItems:'center'}}>
                       <a href={row.enhanced_download_url} style={{color:BRAND,fontWeight:600}}>Download</a>
                       <button onClick={() => compare(row, 'enhanced')} style={{border:'none',background:'none',color:BRAND,fontWeight:600,cursor:'pointer',padding:0,fontSize:12}}>Hear the original from here</button>
+                      <button onClick={() => setOpen(o => ({ ...o, [row.recording_id]: !o[row.recording_id] }))} style={{border:'none',background:'none',color:BRAND,fontWeight:700,cursor:'pointer',padding:0,fontSize:12}}>See the impact on the words</button>
                       <button onClick={() => make(row, true)} disabled={busyId === row.recording_id || inProgress} style={{border:'none',background:'none',color:'#64748b',cursor:'pointer',padding:0,fontSize:12,marginLeft:'auto'}}>Make it again</button>
                     </div>
                   </>
@@ -16937,6 +17003,7 @@ function VoiceRecordingsTab() {
                 )}
               </div>
             </div>
+            {ready && open[row.recording_id] && <TranscriptImpactPanel cmp={row.compare} metrics={row.metrics} onRun={() => compareTranscripts(row)}/>}
           </div>
         );
       })}

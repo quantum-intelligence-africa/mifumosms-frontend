@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useToast } from "@/hooks/use-toast";
 import { enhancementApi, type RecordingEnhancement } from "@/services/enhancementApi";
+import { EnhancementImpactDialog } from "@/components/voice/EnhancementImpact";
 
 export interface PlayerTrack {
   id: string;
@@ -66,6 +67,8 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
   const [enh, setEnh] = useState<RecordingEnhancement | null>(null);
   const [source, setSource] = useState<"original" | "enhanced">("original");
   const [working, setWorking] = useState(false);
+  const [impactOpen, setImpactOpen] = useState(false);
+  const [startingCompare, setStartingCompare] = useState(false);
   const userChose = useRef(false);   // once the listener picks a version themselves, it is never switched for them
 
   // A plain <a href> to a cross-origin URL (the recording lives on the
@@ -148,6 +151,26 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
     switchTo("enhanced", true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enh?.enhanced_url]);
+
+  // While a transcript comparison runs, look for its result every few seconds.
+  useEffect(() => {
+    const id = track?.recordingId;
+    if (!id || enh?.compare?.status !== "running") return;
+    const timer = setInterval(async () => {
+      const res = await enhancementApi.forRecording(id);
+      if (res.success && res.data) setEnh(res.data);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [track?.recordingId, enh?.compare?.status]);
+
+  const runCompare = async () => {
+    if (!track?.recordingId || startingCompare) return;
+    setStartingCompare(true);
+    const res = await enhancementApi.compare(track.recordingId);
+    setStartingCompare(false);
+    if (res.success && res.data) setEnh(res.data);
+    else toast({ title: t("enh.impact.failed"), description: res.error || res.message, variant: "destructive" });
+  };
 
   const makeCopy = async (force: boolean) => {
     if (!track?.recordingId || working) return;
@@ -243,6 +266,7 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
         onPause={() => onPlayingChange(false)}
         onPlay={() => onPlayingChange(true)}
       />
+      <EnhancementImpactDialog open={impactOpen} onOpenChange={setImpactOpen} enh={enh} onRun={runCompare} starting={startingCompare} />
       {track && (
       <div
         role="region"
@@ -326,6 +350,11 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
                   className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-60">
                   <Download className="h-3 w-3" />{t("enh.download_original")}
                 </button>
+                {enh.enhanced_url && (
+                  <button type="button" onClick={() => setImpactOpen(true)} className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline">
+                    <Sparkles className="h-3 w-3" />{t("enh.impact.see")}
+                  </button>
+                )}
                 {enh.enhanced_download_url && (
                   <button type="button" onClick={() => saveFrom(enh.enhanced_download_url, "enhanced")} disabled={downloading}
                     className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-60">

@@ -23,6 +23,18 @@ export interface EnhancementSettings {
 
 export interface LoudnessReading { mean_db: number | null; peak_db: number | null }
 
+/** What the enhanced audio did to the transcript (the original and the enhanced recording transcribed and compared), made on request. */
+export interface TranscriptImpact {
+  status: "running" | "ready" | "failed";
+  error?: string;
+  verdict?: "better" | "same" | "worse" | "different";
+  changed_pct?: number;
+  model?: string;
+  language?: string;
+  original?: { words: number; quality: "ok" | "review" | "failed"; repeated_words: number; text: string };
+  enhanced?: { words: number; quality: "ok" | "review" | "failed"; repeated_words: number; text: string };
+}
+
 export interface RecordingEnhancement {
   recording_id: string;
   enabled: boolean;
@@ -41,6 +53,7 @@ export interface RecordingEnhancement {
   enhanced_url: string;
   enhanced_download_url: string;
   size_bytes: number | null;
+  compare?: TranscriptImpact | Record<string, never>;
   queued?: boolean;
 }
 
@@ -50,5 +63,7 @@ export const enhancementApi = {
     voiceApi.patch<EnhancementSettings>("/voice/call-center/recording-enhancement/", body),
   forRecording: (recordingId: string) => voiceApi.get<RecordingEnhancement>(`/voice/recordings/${recordingId}/enhancement/`),
   /** Make the copy, retry a failed one, or (``force``) make it again. */
+  /** Transcribe the original and the enhanced copy and compare them (takes about a minute; poll ``forRecording`` for the result). */
+  compare: (recordingId: string) => voiceApi.post<RecordingEnhancement>(`/voice/recordings/${recordingId}/enhancement/compare/`, {}),
   make: (recordingId: string, force = false) => voiceApi.post<RecordingEnhancement>(`/voice/recordings/${recordingId}/enhancement/`, { force }),
 };
