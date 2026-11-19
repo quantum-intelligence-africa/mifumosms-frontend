@@ -467,7 +467,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               }
               const key = `section:${sec.id}`;
               const hasActive = sec.items.some((it) => (it.children?.length ? it.children.some(isChildActive) : isChildActive(it)));
-              const open = openGroups[key] ?? hasActive;
+              const open = openGroups[key] ?? (hasActive || sec.id === "communication");
               return (
                 <Collapsible key={sec.id} open={open} onOpenChange={(v) => setOpenGroups((prev) => ({ ...prev, [key]: v }))} className="mt-3">
                   <CollapsibleTrigger asChild>

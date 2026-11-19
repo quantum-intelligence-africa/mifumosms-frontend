@@ -97,47 +97,55 @@ function AccountOverview({
   const { t } = useLanguage();
   const low = showCredits && typeof credits === "number" && credits < 100;
   if (!showCredits && !showSenders && !showNumbers && extras.length === 0) return null;
-  // Small separate cards in one row: label above, figure below, a clear gap between them.
-  const card = "flex min-w-[150px] items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-2.5 text-left";
-  const label = "block text-xs text-muted-foreground";
-  const value = "block text-xl font-semibold leading-tight tabular-nums text-foreground";
+  // The same card size as the call analytics figures below: label, big figure, a short note, equal widths across the row.
+  const card = "flex min-h-[104px] flex-col justify-between gap-1 rounded-lg border border-border bg-card p-4 text-left";
+  const label = "text-sm text-muted-foreground";
+  const value = "text-3xl font-semibold leading-tight tabular-nums text-foreground";
+  const note = "text-sm text-muted-foreground";
   const parts: Array<{ el: JSX.Element; extra?: boolean }> = [];
   if (showCredits) {
     parts.push({ el: (
-      <div key="credits" className={card} title={low ? t("dashboard.overview.low") : undefined}>
-        <div>
+      <div key="credits" className={card}>
+        <div className="flex items-start justify-between gap-2">
           <span className={label}>{t("dashboard.metric.current_credits")}</span>
-          <span className={`${value} ${low ? "!text-destructive" : ""}`}>{(credits ?? 0).toLocaleString(appLocale())}</span>
+          <button onClick={onBuy} className="rounded-md bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90">{t("dashboard.overview.buy")}</button>
         </div>
-        <button onClick={onBuy} className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90">{t("dashboard.overview.buy")}</button>
+        <span className={`${value} ${low ? "!text-destructive" : ""}`}>{(credits ?? 0).toLocaleString(appLocale())}</span>
+        <span className={`${note} ${low ? "text-destructive" : ""}`}>{low ? t("dashboard.overview.low") : t("dashboard.metric.available_credits")}</span>
       </div>
     ) });
   }
   if (showSenders) {
     parts.push({ el: (
       <button key="senders" onClick={onSenders} className={`${card} hover:bg-accent/40`}>
-        <div><span className={label}>{t("dashboard.metric.sender_id")}</span><span className={value}>{approvedSenders}</span></div>
+        <span className={label}>{t("dashboard.metric.sender_id")}</span>
+        <span className={value}>{approvedSenders}</span>
+        <span className={note}>{t("dashboard.metric.approved_sender_names")}</span>
       </button>
     ) });
   }
   if (showNumbers) {
     parts.push({ el: (
       <button key="numbers" onClick={onNumbers} className={`${card} hover:bg-accent/40`}>
-        <div><span className={label}>{t("dashboard.metric.active_numbers")}</span><span className={value}>{activeNumbers}</span></div>
+        <span className={label}>{t("dashboard.metric.active_numbers")}</span>
+        <span className={value}>{activeNumbers}</span>
+        <span className={note}>{t("dashboard.metric.connected_phone_numbers")}</span>
       </button>
     ) });
   }
   extras.forEach((m) => {
     parts.push({ extra: true, el: (
-      <div key={m.title} className={card} title={m.description}>
-        <div><span className={label}>{m.title}</span><span className={value}>{m.value}</span></div>
+      <div key={m.title} className={card}>
+        <span className={label}>{m.title}</span>
+        <span className={value}>{m.value}</span>
+        <span className={note}>{m.description}</span>
       </div>
     ) });
   });
   return (
-    <section aria-label={t("dashboard.overview.title")} className="flex flex-wrap items-stretch gap-3">
+    <section aria-label={t("dashboard.overview.title")} className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
       {parts.map((p, i) => (
-        <div key={i} className={p.extra ? "hidden md:block" : "block"}>{p.el}</div>
+        <div key={i} className={`${p.extra ? "hidden md:block" : "block"} [&>*]:h-full [&>*]:w-full`}>{p.el}</div>
       ))}
     </section>
   );
