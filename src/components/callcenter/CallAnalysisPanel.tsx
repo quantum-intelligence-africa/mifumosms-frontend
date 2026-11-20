@@ -38,6 +38,27 @@ function squash(text: string): string {
   return out.join("").trim();
 }
 
+// An analysis that is still running: which step it is on, how long it has been, and, when it is slow, what happens next.
+function AnalysisProgress({ job, onRerun }: { job: AnalysisJobFull; onRerun?: () => void }) {
+  const { t } = useLanguage();
+  const [extra, setExtra] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setExtra((n) => n + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const seconds = (job.elapsed_seconds ?? 0) + extra;
+  const label = job.stage ? t(`cc.analysis.stage_${job.stage}` as never) : t("cc.analysis.working");
+  const slow = seconds >= 300;
+  return (
+    <div className="space-y-1.5 text-sm">
+      <p className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />{label}</p>
+      <p className="pl-6 text-xs text-muted-foreground">{t("cc.analysis.elapsed", { time: `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, "0")}s` })}</p>
+      {slow && <p className="pl-6 text-xs text-amber-700 dark:text-amber-400">{t("cc.analysis.slow_hint")}</p>}
+      {seconds >= 600 && onRerun && <div className="pl-6"><Button size="sm" variant="outline" onClick={onRerun}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />{t("cc.analysis.retry_now")}</Button></div>}
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-1">
@@ -100,7 +121,7 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
   const analysis: AnalysisBody | null = (lang === "en" && result?.analysis_en ? result.analysis_en : reviewed ? result?.effective?.analysis : result?.analysis) ?? null;
 
   if (job.status === "pending" || job.status === "processing") {
-    return <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />{t("cc.analysis.working")}</p>;
+    return <AnalysisProgress job={job} onRerun={onRerun} />;
   }
   if (job.status === "failed" || !result) {
     return (

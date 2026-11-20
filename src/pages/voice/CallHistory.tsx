@@ -662,7 +662,16 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                                     {call.followup_status === "resolved" ? t("cc.calls.voicemail_done") : t("cc.calls.voicemail_waiting")}
                                   </Badge>
                                 ) : (
-                                  <span className="text-sm text-muted-foreground">—</span>
+                                  // Never a bare dash: say why there is no summary, so it is clear what to do about it.
+                                  <span className="text-xs text-muted-foreground">
+                                    {!rec ? t("voice.calls.summary_no_recording")
+                                      : !call.analysis ? t("voice.calls.summary_not_analysed")
+                                      : call.analysis.status === "failed" ? t("voice.calls.summary_failed")
+                                      : t("voice.calls.summary_unclear")}
+                                  </span>
+                                )}
+                                {!call.analysis?.summary && rec && call.analysis?.status === "completed" && (call.outcome_detail === "voicemail_left" || call.outcome_detail === "callback_requested") && (
+                                  <span className="mt-1 block text-[11px] text-muted-foreground">{t("voice.calls.summary_unclear")}</span>
                                 )}
                               </TableCell>
                               <TableCell>

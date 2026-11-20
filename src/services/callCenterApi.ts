@@ -369,6 +369,9 @@ export interface AnalysisJobFull {
   id: string;
   status: "pending" | "processing" | "completed" | "failed";
   error_message: string;
+  /** Which step an unfinished analysis is on, and how long it has been going (seconds). */
+  stage?: "enhancing" | "fetching" | "busy" | "queued" | "transcribing" | "";
+  elapsed_seconds?: number;
   result: AnalysisResultFull | null;
 }
 
