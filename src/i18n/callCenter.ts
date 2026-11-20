@@ -1069,6 +1069,8 @@ export const ccEn = {
   "cc.analysis.elapsed": "{{time}} so far",
   "cc.analysis.slow_hint": "This is taking longer than usual. It retries by itself, and if it stays stuck it is marked failed so it can be run again.",
   "cc.analysis.retry_now": "Run the analysis again",
+  "cc.analysis.no_speech_title": "No message: only background noise",
+  "cc.analysis.no_speech_hint": "Nobody spoke on this recording, so it was not transcribed and no credits were spent. There is nothing to follow up on.",
   "enh.title": "Recording enhancement",
   "enh.subtitle": "Make call recordings clearer by reducing background noise. The original recording is always kept.",
   "enh.enabled": "Reduce noise in recordings",

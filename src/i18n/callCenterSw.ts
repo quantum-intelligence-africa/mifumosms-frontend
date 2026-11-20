@@ -1049,6 +1049,8 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.analysis.elapsed": "{{time}} hadi sasa",
   "cc.analysis.slow_hint": "Inachukua muda mrefu kuliko kawaida. Hujaribu yenyewe, na ikikwama huwekwa kama imeshindwa ili iendeshwe tena.",
   "cc.analysis.retry_now": "Endesha uchambuzi tena",
+  "cc.analysis.no_speech_title": "Hakuna ujumbe: kelele za mazingira tu",
+  "cc.analysis.no_speech_hint": "Hakuna aliyezungumza kwenye rekodi hii, kwa hiyo haikunakiliwa na hakuna salio lililotumika. Hakuna cha kufuatilia.",
   "enh.title": "Kuboresha rekodi",
   "enh.subtitle": "Fanya rekodi za simu zisikike vizuri kwa kupunguza kelele za mazingira. Rekodi asili huhifadhiwa daima.",
   "enh.enabled": "Punguza kelele kwenye rekodi",

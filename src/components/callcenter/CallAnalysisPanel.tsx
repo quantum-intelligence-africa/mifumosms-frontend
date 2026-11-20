@@ -227,8 +227,15 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
 
       {poor && quality.status === "failed" && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-          <p className="flex items-center gap-1.5 text-sm font-medium"><AlertTriangle className="h-4 w-4 shrink-0" />{t("cc.analysis.unclear_title")}</p>
-          <p className="mt-1">{t("cc.analysis.unclear_hint")}</p>
+          {(() => {
+            const noSpeech = quality.reasons.some((r) => r.code === "no_speech");
+            return (
+              <>
+                <p className="flex items-center gap-1.5 text-sm font-medium"><AlertTriangle className="h-4 w-4 shrink-0" />{noSpeech ? t("cc.analysis.no_speech_title") : t("cc.analysis.unclear_title")}</p>
+                <p className="mt-1">{noSpeech ? t("cc.analysis.no_speech_hint") : t("cc.analysis.unclear_hint")}</p>
+              </>
+            );
+          })()}
           <details className="mt-1.5">
             <summary className="cursor-pointer text-[11px] underline">{t("cc.analysis.unclear_why")}</summary>
             <ul className="mt-1 list-disc pl-4">{quality.reasons.map((r) => <li key={r.code}>{r.message}</li>)}</ul>
