@@ -109,6 +109,8 @@ const translations = {
     "voice.calls.analyze_selected": "Analyze selected",
     "voice.calls.analysis_running": "Queueing analysis…",
     "voice.calls.analysis_queued": "Analysis queued for {{count}} recording(s).",
+    "voice.calls.analysis_busy": "This call is already being analysed. The result appears here in a minute or two.",
+    "voice.calls.analysis_done": "This call is already analysed, so nothing was sent again.",
     "voice.calls.analysis_error": "Could not queue the recording analysis.",
     "voice.calls.delete_selected": "Delete selected",
     "voice.calls.delete_matching": "Delete all {{count}} shown",

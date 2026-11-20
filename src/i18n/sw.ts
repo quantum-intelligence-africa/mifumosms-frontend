@@ -108,6 +108,8 @@ const sw: Record<string, string> = {
   "voice.calls.analyze_selected": "Changanua zilizochaguliwa",
   "voice.calls.analysis_running": "Inaweka uchambuzi kwenye foleni…",
   "voice.calls.analysis_queued": "Uchambuzi umewekwa kwenye foleni kwa rekodi {{count}}.",
+  "voice.calls.analysis_busy": "Simu hii inachambuliwa tayari. Matokeo yataonekana hapa baada ya dakika moja au mbili.",
+  "voice.calls.analysis_done": "Simu hii imeshachambuliwa, kwa hiyo hakuna kilichotumwa tena.",
   "voice.calls.analysis_error": "Imeshindikana kuweka uchambuzi wa rekodi kwenye foleni.",
   "voice.calls.delete_selected": "Futa zilizochaguliwa",
   "voice.calls.delete_matching": "Futa zote {{count}} zinazoonekana",

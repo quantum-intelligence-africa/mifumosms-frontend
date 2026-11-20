@@ -237,10 +237,11 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
   ];
 
   const fetchCalls = useCallback(
-    async (pageNum: number, append: boolean) => {
+    async (pageNum: number, append: boolean, quiet = false) => {
+      // quiet: refresh the rows in place (no loading skeleton, nothing collapses) after an action such as Analyze
       if (append) setIsLoadingMore(true);
-      else setIsLoading(true);
-      setError(null);
+      else if (!quiet) setIsLoading(true);
+      if (!quiet) setError(null);
       const params = new URLSearchParams({ page: String(pageNum), page_size: String(pageSize), group: "caller" });
       if (tab === "inbound" || tab === "outbound") params.set("direction", tab);
       if (tab === "answered") params.set("outcome", "answered");
@@ -255,7 +256,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
         setCount(res.data.count);
         setHasNext(Boolean(res.data.next));
         setPage(pageNum);
-      } else {
+      } else if (!quiet) {
         setError(res.error || t("voice.calls.error_loading"));
       }
       setIsLoading(false);
@@ -324,12 +325,21 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
     if (!callIds.length || analyzing) return;
     setAnalyzing(true);
     setAnalysisMessage(null);
-    const res = await voiceApi.post<{ queued: number }>("/audio/analyze-calls/", { call_ids: callIds });
+    const res = await voiceApi.post<{ queued: number; reason?: string }>("/audio/analyze-calls/", { call_ids: callIds });
     if (res.success && res.data) {
-      setAnalysisMessage(t("voice.calls.analysis_queued", { count: res.data.queued }));
+      setAnalysisMessage(
+        res.data.queued > 0
+          ? t("voice.calls.analysis_queued", { count: res.data.queued })
+          : t(res.data.reason === "busy" ? "voice.calls.analysis_busy" : "voice.calls.analysis_done"),
+      );
       setSelectedCallIds(new Set());
-      await fetchCalls(1, false);
-      setDetails({});
+      await fetchCalls(1, false, true);
+      // refresh only the calls that were opened, in place, so the open rows stay open
+      const opened = Object.keys(details).filter((id) => callIds.includes(id));
+      for (const id of opened) {
+        const detail = await voiceApi.get<CallDetail>(`/voice/calls/${id}/`);
+        if (detail.success && detail.data) setDetails((prev) => ({ ...prev, [id]: detail.data as CallDetail }));
+      }
     } else {
       setError(res.error || t("voice.calls.analysis_error"));
     }
