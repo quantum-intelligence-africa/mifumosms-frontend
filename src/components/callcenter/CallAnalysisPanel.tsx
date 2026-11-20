@@ -228,11 +228,13 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
       {poor && quality.status === "failed" && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
           {(() => {
+            const tooShort = quality.reasons.some((r) => r.code === "too_short");
             const noSpeech = quality.reasons.some((r) => r.code === "no_speech");
+            const kind = tooShort ? "too_short" : noSpeech ? "no_speech" : "unclear";
             return (
               <>
-                <p className="flex items-center gap-1.5 text-sm font-medium"><AlertTriangle className="h-4 w-4 shrink-0" />{noSpeech ? t("cc.analysis.no_speech_title") : t("cc.analysis.unclear_title")}</p>
-                <p className="mt-1">{noSpeech ? t("cc.analysis.no_speech_hint") : t("cc.analysis.unclear_hint")}</p>
+                <p className="flex items-center gap-1.5 text-sm font-medium"><AlertTriangle className="h-4 w-4 shrink-0" />{t(`cc.analysis.${kind}_title`)}</p>
+                <p className="mt-1">{t(`cc.analysis.${kind}_hint`)}</p>
               </>
             );
           })()}
@@ -368,20 +370,7 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
               )}
             </div>
           )}
-          {models.length > 1 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value={model} onValueChange={setModel}>
-                <SelectTrigger className="h-8 w-64 text-xs"><SelectValue placeholder={t("cc.analysis.retry_model")} /></SelectTrigger>
-                <SelectContent>{models.filter((m) => m !== result.asr_model).map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
-              </Select>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={retry} disabled={!model || busy}><RefreshCw className="h-3.5 w-3.5" />{t("cc.analysis.retry")}</Button>
-            </div>
-          )}
         </div>
-      )}
-
-      {(result.asr_model || result.llm_model) && (
-        <p className="text-[10px] text-muted-foreground">{t("cc.analysis.models", { asr: result.asr_model || "—", llm: result.llm_model || "—" })}</p>
       )}
     </div>
   );

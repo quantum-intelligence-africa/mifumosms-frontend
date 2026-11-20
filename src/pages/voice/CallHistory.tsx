@@ -61,6 +61,8 @@ interface RowAnalysis {
   sentiment: string;
   summary: string;
   intent: string;
+  /** Why nothing was sent to the speech service: "too_short" or "no_speech". */
+  skip_reason?: string;
 }
 
 interface CallSummary {
@@ -677,6 +679,8 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                                     {!rec ? t("voice.calls.summary_no_recording")
                                       : !call.analysis ? t("voice.calls.summary_not_analysed")
                                       : call.analysis.status === "failed" ? t("voice.calls.summary_failed")
+                                      : call.analysis.skip_reason === "too_short" ? t("voice.calls.summary_too_short")
+                                      : call.analysis.skip_reason === "no_speech" ? t("voice.calls.summary_no_voice")
                                       : t("voice.calls.summary_unclear")}
                                   </span>
                                 )}
