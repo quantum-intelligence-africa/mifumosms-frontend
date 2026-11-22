@@ -4,17 +4,19 @@ import { ArrowRight, ChevronDown, Menu, Phone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Wordmark, focusRing } from "./Layout";
 import { useSiteLang } from "./i18n";
+import { useUseCases } from "./pages/useCases";
 
 /* Site header in the style of retellai.com: a floating rounded bar that grows into a
  * mega-menu panel (grouped links + a featured card). Developers is its own top-level menu. */
 
-type MenuLink = { label: string; to: string; hint: string };
+type MenuLink = { label: string; to: string; hint?: string };
 type MenuGroup = { title: string; links: MenuLink[] };
 type Feature = { title: string; body: string; to: string; art: "call" | "bus" | "code" };
 type MegaMenu = { key: string; label: string; groups: MenuGroup[]; feature: Feature };
 
 function useMenus() {
   const { tr } = useSiteLang();
+  const useCases = useUseCases();
   const menus: MegaMenu[] = [
     {
       key: "products",
@@ -72,13 +74,7 @@ function useMenus() {
       groups: [
         {
           title: tr("By industry", "Kwa sekta"),
-          links: [
-            {
-              label: tr("Transport operators", "Wasafirishaji"),
-              to: "/use-cases/transport",
-              hint: tr("Booking enquiries, missed calls and shift handover", "Maulizo ya tiketi, simu zilizokosa na makabidhiano ya zamu"),
-            },
-          ],
+          links: useCases.map((u) => ({ label: u.industry, to: `/use-cases/${u.slug}`, hint: u.intro })),
         },
         {
           title: tr("By team", "Kwa timu"),
@@ -364,7 +360,6 @@ export function SiteHeader() {
                                 className={cn("-mx-3 block rounded-2xl px-3 py-2.5 transition-colors hover:bg-[#F5F6F8]", focusRing)}
                               >
                                 <span className="block text-[16px] font-semibold text-[#0B1B3F]">{l.label}</span>
-                                <span className="mt-0.5 block text-[14px] leading-snug text-[#5B6575]">{l.hint}</span>
                               </Link>
                             </li>
                           ))}
@@ -420,7 +415,6 @@ export function SiteHeader() {
                             {g.links.map((l) => (
                               <Link key={l.label} to={l.to} className={cn("block rounded-xl px-1 py-2", focusRing)}>
                                 <span className="block text-[15px] font-medium text-[#0B1B3F]">{l.label}</span>
-                                <span className="block text-xs text-[#5B6575]">{l.hint}</span>
                               </Link>
                             ))}
                           </div>

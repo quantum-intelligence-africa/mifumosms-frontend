@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Check, Phone } from "lucide-react";
+import { Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo, BrandName } from "@/components/layout/BrandLogo";
 import { useBranding, useHostBranding } from "@/contexts/BrandingContext";
@@ -28,33 +28,22 @@ export const authSecondaryBtnClass = cn(
 export const authLinkClass = cn("font-semibold text-[#2563EB] hover:text-[#1D4ED8] hover:underline rounded", focusRing);
 
 function DefaultAside() {
-  const { tr } = useSiteLang();
-  const bullets = [
-    tr("Answer, review and follow up on every customer call", "Pokea, pitia na fuatilia kila simu ya mteja"),
-    tr("Send SMS campaigns with your own sender name", "Tuma kampeni za SMS kwa jina lako la mtumaji"),
-    tr("Broadcast on WhatsApp and reply as a team", "Tuma matangazo WhatsApp na jibu kama timu"),
-  ];
   return (
     <div>
-      <h2 className="max-w-md text-2xl font-extrabold leading-tight tracking-tight text-[#0B1B3F] xl:text-[28px]">
-        {tr("Call Center, Bulk SMS and WhatsApp in one account", "Kituo cha Simu, SMS na WhatsApp katika akaunti moja")}
-      </h2>
-      <ul className="mt-6 space-y-3">
-        {bullets.map((b) => (
-          <li key={b} className="flex items-start gap-3 text-sm leading-relaxed text-[#4B5565]">
-            <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-white">
-              <Check className="h-3 w-3" aria-hidden="true" />
-            </span>
-            <span>{b}</span>
-          </li>
-        ))}
-      </ul>
+      <img
+        src="/sign in image.webp"
+        alt=""
+        aria-hidden="true"
+        className="w-full max-w-md object-contain"
+        loading="lazy"
+        draggable={false}
+      />
     </div>
   );
 }
 
 /** Support contact, always visible: in the panel on desktop and under the form on phones. */
-function SupportContact({ compact }: { compact?: boolean }) {
+function SupportContact({ compact, top }: { compact?: boolean; top?: boolean }) {
   const { tr } = useSiteLang();
   const links = (
     <span className="whitespace-nowrap">
@@ -76,7 +65,7 @@ function SupportContact({ compact }: { compact?: boolean }) {
     );
   }
   return (
-    <div className="mt-8 flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+    <div className={cn("flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5", top ? "mb-8" : "mt-8")}>
       <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#EFF4FF] text-[#2563EB]">
         <Phone className="h-5 w-5" aria-hidden="true" />
       </span>
@@ -165,8 +154,8 @@ export function AuthShell({
             </p>
           </div>
           <aside className="hidden rounded-[32px] bg-[radial-gradient(120%_120%_at_0%_0%,#DCE8FF_0%,#EEF3FF_35%,#F7F1FB_70%,#FDF2F4_100%)] p-8 lg:sticky lg:top-28 lg:block lg:self-start xl:p-10">
+            <SupportContact top />
             {aside ?? <DefaultAside />}
-            <SupportContact />
           </aside>
         </div>
       </main>

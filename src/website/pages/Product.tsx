@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, BarChart3, Check, FileText, Headphones, PhoneForwarded, PhoneMissed, PlayCircle, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ButtonLink, H2, Lead, Section, SitePage, Tag, focusRing } from "../Layout";
+import { ButtonLink, H2, Section, SitePage, Tag, focusRing } from "../Layout";
 import { AgentDashboardMock, MissedCallsMock, ReviewCallMock, SupervisorDashboardMock, TrendsMock } from "../Mockups";
 import { SAMPLE_LINES, fmtTime } from "../content";
 import { useSiteLang } from "../i18n";
@@ -118,12 +118,6 @@ function VoiceAndIvr() {
     <Section labelledBy="voice-title">
       <Reveal>
         <H2 id="voice-title">{tr("Everything you need to run a call team", "Kila unachohitaji kuendesha timu ya simu")}</H2>
-        <Lead>
-          {tr(
-            "Replace the scattered staff mobiles with one business line, one menu and one place to see every call.",
-            "Badala ya simu za mkononi za wafanyakazi zilizotawanyika, tumia laini moja ya biashara, menyu moja na sehemu moja ya kuona kila simu.",
-          )}
-        </Lead>
       </Reveal>
       <div className="mt-10 grid gap-5 md:grid-cols-3">
         {pillars.map(({ icon: Icon, title, body, items }, i) => (
@@ -167,12 +161,6 @@ export default function Product() {
           <h1 id="product-title" className="max-w-3xl text-4xl font-extrabold tracking-tight text-[#0B1B3F] sm:text-5xl">
             {tr("Give every customer call a clear next step", "Kila simu ya mteja ipate hatua inayofuata iliyo wazi")}
           </h1>
-          <Lead>
-            {tr(
-              "A cloud call center on the number your customers already know: IVR menus and call routing, recordings and transcripts, team review and missed-call follow-up.",
-              "Kituo cha simu cha mtandaoni kwenye namba ambayo wateja wako tayari wanaijua: menyu za IVR na uelekezaji wa simu, rekodi na maandishi ya mazungumzo, kupitia simu kama timu na ufuatiliaji wa simu zilizokosekana.",
-            )}
-          </Lead>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <ButtonLink to="/book-demo?source=call-center-hero">{tr("Book a demo", "Omba onyesho")}</ButtonLink>
             <ButtonLink to="/pricing#calls" variant="secondary">
@@ -233,12 +221,6 @@ export default function Product() {
       <Section id="walkthrough" labelledBy="walkthrough-title">
         <Reveal>
           <H2 id="walkthrough-title">{tr("What your agents and supervisors see", "Kile wahudumu na wasimamizi wako wanachoona")}</H2>
-          <Lead>
-            {tr(
-              "Illustrative screens with demonstration data. Labels and filters match the live Call Center dashboard.",
-              "Skrini za mfano zenye data ya maonyesho. Lebo na vichujio vinalingana na dashibodi halisi ya Kituo cha Simu.",
-            )}
-          </Lead>
         </Reveal>
 
         <Reveal className="mt-12 grid gap-8 lg:grid-cols-[0.55fr_1.45fr]">

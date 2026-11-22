@@ -2,9 +2,10 @@
 // call from the browser (when the number takes web calls) or from a phone. The number and the browser link come from the server, so the
 // button follows what SENDA staff set in the admin portal and hides itself when no help number is set.
 import { useEffect, useState } from "react";
-import { Copy, Globe, Headphones, Phone, X } from "lucide-react";
+import { Copy, Globe, Headphones, MessageCircle, Phone, PhoneCall, X } from "lucide-react";
 import { voiceApi } from "@/services/voiceApi";
 import { appLanguage } from "@/utils/appLocale";
+import { SUPPORT } from "@/website/content";
 
 const TEXT = {
   sw: {
@@ -14,6 +15,8 @@ const TEXT = {
     web: "Piga simu kutoka kwenye kivinjari",
     webHint: "Tumia kipaza sauti cha kompyuta au simu yako. Utaombwa namba yako ya simu ili tukupigie tena.",
     phone: "Piga kwa simu yako",
+    support: "Piga simu kwa timu ya msaada",
+    whatsapp: "Tuandikie WhatsApp",
     copy: "Nakili namba",
     copied: "Imenakiliwa",
     close: "Funga",
@@ -25,6 +28,8 @@ const TEXT = {
     web: "Call from your browser",
     webHint: "Use your computer's or phone's microphone. You will enter your phone number so we can call you back.",
     phone: "Call from your phone",
+    support: "Call our support team",
+    whatsapp: "Chat with us on WhatsApp",
     copy: "Copy number",
     copied: "Copied",
     close: "Close",
@@ -94,6 +99,20 @@ export function HelpCallButton() {
                 {copied ? <span className="text-xs text-green-700">{T.copied}</span> : <Copy className="h-4 w-4" />}
               </button>
             </div>
+            <a href={SUPPORT.phoneHref} className="flex items-start gap-3 rounded-xl border p-3 hover:bg-slate-50">
+              <PhoneCall className="mt-0.5 h-5 w-5 text-blue-600" />
+              <span>
+                <span className="block text-sm font-medium">{T.support}</span>
+                <span className="block text-base font-semibold tracking-wide">{SUPPORT.phoneDisplay}</span>
+              </span>
+            </a>
+            <a href={SUPPORT.whatsappHref} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 rounded-xl border p-3 hover:bg-slate-50">
+              <MessageCircle className="mt-0.5 h-5 w-5 text-green-600" />
+              <span>
+                <span className="block text-sm font-medium">{T.whatsapp}</span>
+                <span className="block text-base font-semibold tracking-wide">{SUPPORT.phoneDisplay}</span>
+              </span>
+            </a>
           </div>
         </div>
       )}

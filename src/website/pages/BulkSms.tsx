@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BarChart3, BadgeCheck, CalendarClock, Check, Code2, FileText, Languages, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ButtonLink, H2, Lead, Section, SitePage, Tag } from "../Layout";
+import { ButtonLink, H2, Section, SitePage, Tag } from "../Layout";
 import { SmsComposerMock, SmsReportMock, TeamInboxMock } from "../ChannelMockups";
 import { SMS_MIN_CREDITS, Tier, fmtTZS, smsRateFor, useContent } from "../content";
 import { useSiteLang } from "../i18n";
@@ -161,12 +161,6 @@ export default function BulkSms() {
             <h1 id="sms-title" className="text-4xl font-extrabold leading-[1.08] tracking-tight text-[#0B1B3F] sm:text-5xl">
               {tr("Reach every customer by SMS, on every network", "Wafikie wateja wako wote kwa SMS, kwenye kila mtandao")}
             </h1>
-            <Lead>
-              {tr(
-                "Send campaigns, reminders, receipts and alerts with your own sender name, and see exactly what was delivered.",
-                "Tuma kampeni, vikumbusho, risiti na taarifa kwa jina lako la mtumaji, na uone hasa kilichowasilishwa.",
-              )}
-            </Lead>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <ButtonLink to="/signup">{tr("Get started", "Anza sasa")}</ButtonLink>
               <ButtonLink to="/pricing#sms" variant="secondary">
@@ -204,12 +198,6 @@ export default function BulkSms() {
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
           <Reveal>
             <H2 id="sms-report-title">{tr("Know what reached your customers", "Jua kilichowafikia wateja wako")}</H2>
-            <Lead>
-              {tr(
-                "Every campaign has a live report: delivered, pending and failed, down to a single number.",
-                "Kila kampeni ina ripoti ya papo hapo: uliowasilishwa, unaosubiri na ulioshindwa, hadi kwa namba moja moja.",
-              )}
-            </Lead>
           </Reveal>
           <Reveal delay={120}>
             <SmsReportMock />
@@ -224,12 +212,6 @@ export default function BulkSms() {
           </Reveal>
           <Reveal delay={120}>
             <H2 id="sms-replies-title">{tr("Answer replies with your team", "Jibuni majibu ya wateja kama timu")}</H2>
-            <Lead>
-              {tr(
-                "Customer replies land in the shared inbox with their WhatsApp chats and calls, so the right person follows up.",
-                "Majibu ya wateja yanaingia kwenye kisanduku cha pamoja pamoja na mazungumzo yao ya WhatsApp na simu, ili mtu sahihi afuatilie.",
-              )}
-            </Lead>
           </Reveal>
         </div>
       </Section>
@@ -258,12 +240,6 @@ export default function BulkSms() {
       <Section grey id="sms-pricing" labelledBy="sms-pricing-title">
         <Reveal>
           <H2 id="sms-pricing-title">{tr("Pay only for what you send", "Lipia tu unachotuma")}</H2>
-          <Lead>
-            {tr(
-              "No contracts and no setup fees. The rate per SMS drops automatically as your purchase grows.",
-              "Hakuna mikataba wala ada za kuanzisha. Bei kwa kila SMS hushuka kiotomatiki kadiri ununuzi wako unavyoongezeka.",
-            )}
-          </Lead>
         </Reveal>
         <div className="mt-10">
           <TierCards tiers={SMS_TIERS} unit="SMS" ctaTo="/signup" ctaLabel={tr("Get started", "Anza sasa")} />

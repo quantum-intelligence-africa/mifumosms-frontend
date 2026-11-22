@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Activity, BarChart3, BookOpen, Check, Copy, KeyRound, Languages, MessageSquare, Server, ShieldCheck, Users, Webhook } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ButtonLink, H2, Lead, Section, SitePage, btnClass, focusRing } from "../Layout";
+import { ButtonLink, H2, Section, SitePage, btnClass, focusRing } from "../Layout";
 import { Reveal } from "../Reveal";
 import { useSiteLang } from "../i18n";
 import { DemoInvitation } from "./Home";
@@ -116,12 +116,6 @@ export default function Developers() {
               <h1 id="dev-title" className="text-4xl font-extrabold leading-[1.08] tracking-tight text-[#0B1B3F] sm:text-5xl">
                 {tr("Send SMS from your own software", "Tuma SMS kutoka kwenye mfumo wako")}
               </h1>
-              <Lead>
-                {tr(
-                  "The SENDA API lets you send OTPs, alerts and notifications with a few lines of code, and track every message.",
-                  "SENDA API inakuwezesha kutuma OTP, tahadhari na arifa kwa mistari michache ya msimbo, na kufuatilia kila ujumbe.",
-                )}
-              </Lead>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" className={btnClass("primary")}>
                   <BookOpen className="h-4 w-4" aria-hidden /> {tr("Read the API docs", "Soma nyaraka za API")}
@@ -161,7 +155,6 @@ export default function Developers() {
       <Section grey labelledBy="dev-features-title">
         <Reveal>
           <H2 id="dev-features-title">{tr("What the API can do", "API inaweza kufanya nini")}</H2>
-          <Lead>{tr("Everything you need to add messaging to your application.", "Kila unachohitaji kuongeza ujumbe kwenye programu yako.")}</Lead>
         </Reveal>
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {features.map(({ icon: Icon, title, body }, i) => (

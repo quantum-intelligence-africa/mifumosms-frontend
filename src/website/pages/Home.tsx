@@ -23,7 +23,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ButtonLink, H2, Lead, Section, SitePage, Tag, focusRing } from "../Layout";
+import { ButtonLink, H2, Section, SitePage, Tag, focusRing } from "../Layout";
 import { SampleCallCard, useSamplePlayback } from "../SampleCallPlayer";
 import { Partners } from "../Partners";
 import { DiscussMock, ReviewCallMock, TrendsMock } from "../Mockups";
@@ -131,12 +131,6 @@ function ProductsOverview() {
     <Section grey labelledBy="products-title">
       <Reveal>
         <H2 id="products-title">{tr("Everything your customers use to reach you", "Kila njia wateja wanayotumia kukufikia")}</H2>
-        <Lead>
-          {tr(
-            "Use one channel or all three. Contacts, reports and your team stay in one account.",
-            "Tumia njia moja au zote tatu. Anwani, ripoti na timu yako vinabaki kwenye akaunti moja.",
-          )}
-        </Lead>
       </Reveal>
       <div className="mt-10 grid gap-5 md:grid-cols-3">
         {PRODUCTS.map((p, i) => {
@@ -190,12 +184,6 @@ function SharedInbox() {
       <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
         <Reveal>
           <H2 id="inbox-title">{tr("Every conversation in one place", "Mazungumzo yote mahali pamoja")}</H2>
-          <Lead>
-            {tr(
-              "WhatsApp chats, SMS replies and missed calls arrive in one inbox. Assign each conversation to a team member, see the customer's history, and reply on the channel they used.",
-              "Gumzo za WhatsApp, majibu ya SMS na simu zilizokosa zinaingia kwenye kikasha kimoja. Mkabidhi kila mazungumzo mtu wa timu, ona historia ya mteja, na ujibu kupitia njia aliyotumia.",
-            )}
-          </Lead>
           <ul className="mt-6 grid gap-2 text-[#3F4A5A] sm:grid-cols-2">
             {points.map((x) => (
               <li key={x} className="flex gap-2">
@@ -264,12 +252,6 @@ function DevelopersStrip() {
         <div className="grid gap-8 rounded-3xl border border-[#E3E7EE] bg-white p-6 sm:p-10 lg:grid-cols-[1fr_1fr] lg:items-center">
           <div>
             <H2 id="dev-title">{tr("Connect SENDA to the systems you already run", "Unganisha SENDA na mifumo unayotumia tayari")}</H2>
-            <Lead>
-              {tr(
-                "Send OTPs, alerts and notifications by SMS and WhatsApp from your own software, with a REST API, delivery webhooks and sandbox keys.",
-                "Tuma OTP, tahadhari na arifa kwa SMS na WhatsApp kutoka kwenye programu yako, kupitia REST API, webhooks za ufikishaji na funguo za majaribio (sandbox).",
-              )}
-            </Lead>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <ButtonLink to="/developer" variant="secondary">
                 <Code2 className="h-4 w-4" aria-hidden /> {tr("Open the API reference", "Fungua mwongozo wa API")}
@@ -370,12 +352,6 @@ export function CallToFollowUp() {
     <Section labelledBy="flow-title">
       <Reveal>
         <H2 id="flow-title">{tr("One passenger question, carried through to a reply", "Swali moja la abiria, hadi kupata jibu")}</H2>
-        <Lead>
-          {tr(
-            "The same enquiry moves from the phone line to the call review to your team's follow-up, without anyone retyping it.",
-            "Ombi lilelile linatoka kwenye simu, linakaguliwa, kisha timu yako inalifuatilia, bila mtu yeyote kuliandika upya.",
-          )}
-        </Lead>
       </Reveal>
       <ol className="mt-10 grid gap-5 md:grid-cols-3">
         <li>
@@ -516,12 +492,6 @@ export function TeamReview() {
     <Section labelledBy="review-title">
       <Reveal className="text-center">
         <H2 id="review-title">{tr("Review calls with your team", "Kagueni simu pamoja na timu yako")}</H2>
-        <Lead className="mx-auto">
-          {tr(
-            "Bring real customer conversations to your team, see what happened, and decide together on the next step.",
-            "Leteni mazungumzo halisi ya wateja kwa timu, oneni kilichotokea, na mkubaliane pamoja hatua inayofuata.",
-          )}
-        </Lead>
       </Reveal>
       <Reveal delay={80}>
         <div role="tablist" aria-label={tr("Team review views", "Mionekano ya ukaguzi wa timu")} className="mx-auto mt-8 grid max-w-3xl gap-2 sm:grid-cols-3">
@@ -631,12 +601,6 @@ export function DemoInvitation({ source = "home" }: { source?: string }) {
           <H2 id="invite-title" className="mt-6">
             {tr("See how SENDA fits your team.", "Ona jinsi SENDA inavyoifaa timu yako.")}
           </H2>
-          <Lead className="mx-auto">
-            {tr(
-              "Bring one typical customer enquiry. We'll walk through how your team could review it and follow up.",
-              "Leta ombi moja la kawaida la mteja. Tutakuonyesha jinsi timu yako inavyoweza kulikagua na kulifuatilia.",
-            )}
-          </Lead>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <ButtonLink to={`/book-demo?source=${source}-invite`}>{tr("Book a demo", "Omba onyesho")}</ButtonLink>
             <ButtonLink to="/#sample-call" variant="secondary">
@@ -659,9 +623,6 @@ export function Faqs({ items, title }: { items?: { q: string; a: string }[]; tit
     <Section grey labelledBy="faq-title">
       <Reveal className="text-center">
         <H2 id="faq-title">{heading}</H2>
-        <Lead className="mx-auto">
-          {tr("Quick answers about SMS, WhatsApp, calls, setup and support.", "Majibu mafupi kuhusu SMS, WhatsApp, simu, kuanza na msaada.")}
-        </Lead>
       </Reveal>
       <Reveal delay={80}>
         <div className="mx-auto mt-10 max-w-3xl space-y-3">

@@ -221,18 +221,6 @@ export default function BookDemo() {
 
   const err = (k: keyof Fields) => (errors[k] ? { "aria-invalid": true as const, "aria-describedby": `${k}-error` } : {});
 
-  const steps: [string, string][] = [
-    [tr("Send the form", "Tuma fomu"), tr("It takes about a minute.", "Inachukua kama dakika moja.")],
-    [
-      tr("We contact you", "Tunawasiliana nawe"),
-      tr("The SENDA team gets in touch to agree on a time.", "Timu ya SENDA inawasiliana nawe ili kukubaliana muda."),
-    ],
-    [
-      tr("See it with your calls", "Ione na simu zako"),
-      tr("We walk through a typical enquiry from your business.", "Tunapitia ulizo la kawaida kutoka kwenye biashara yako."),
-    ],
-  ];
-
   return (
     <SitePage title={tr("Book a demo — SENDA", "Omba onyesho — SENDA")}>
       <div className="grid lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[1fr_1.05fr]">
@@ -249,17 +237,6 @@ export default function BookDemo() {
                 </Tag>
               </p>
             )}
-            <ol className="mt-10 space-y-5">
-              {steps.map(([t, d], i) => (
-                <li key={t} className="flex gap-4">
-                  <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#EAF1FF] text-sm font-bold text-[#2563EB]">{i + 1}</span>
-                  <div>
-                    <p className="font-semibold text-[#0B1B3F]">{t}</p>
-                    <p className="text-sm text-[#4B5565]">{d}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
           </div>
         </section>
 
@@ -290,16 +267,24 @@ export default function BookDemo() {
               </Field>
               <Field id="phone" label={tr("Phone number", "Namba ya simu")} error={errors.phone}>
                 <div className="flex gap-2">
-                  <label htmlFor="countryCode" className="sr-only">
-                    {tr("Country code", "Msimbo wa nchi")}
-                  </label>
-                  <select id="countryCode" value={f.countryCode} onChange={set("countryCode")} className={cn(inputClass(), "w-[7.5rem] flex-shrink-0 px-2")}>
-                    {COUNTRY_CODES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.code === f.countryCode ? c.code : c.label}
-                      </option>
-                    ))}
-                  </select>
+                  {COUNTRY_CODES.length > 1 ? (
+                    <>
+                      <label htmlFor="countryCode" className="sr-only">
+                        {tr("Country code", "Msimbo wa nchi")}
+                      </label>
+                      <select id="countryCode" value={f.countryCode} onChange={set("countryCode")} className={cn(inputClass(), "w-[7.5rem] flex-shrink-0 px-2")}>
+                        {COUNTRY_CODES.map((c) => (
+                          <option key={c.code} value={c.code}>
+                            {c.code === f.countryCode ? c.code : c.label}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    <span className={cn(inputClass(), "flex w-[5.5rem] flex-shrink-0 items-center justify-center font-medium text-[#0B1B3F]")}>
+                      {COUNTRY_CODES[0].code}
+                    </span>
+                  )}
                   <input id="phone" type="tel" inputMode="tel" autoComplete="tel-national" value={f.phone} onChange={set("phone")} className={inputClass(!!errors.phone)} placeholder="712 345 678" {...err("phone")} />
                 </div>
               </Field>

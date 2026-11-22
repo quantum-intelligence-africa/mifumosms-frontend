@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Check, Headphones, MessageCircle, MessageSquare, PhoneCall, Rocket, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ButtonLink, H2, Lead, Section, SitePage, Tag, focusRing } from "../Layout";
+import { ButtonLink, H2, Section, SitePage, Tag, focusRing } from "../Layout";
 import { SUPPORT, fmtTZS, useContent } from "../content";
 import { useSiteLang } from "../i18n";
 import { Reveal } from "../Reveal";
@@ -157,12 +157,6 @@ export default function Pricing() {
           <h1 id="pricing-title" className="text-4xl font-extrabold tracking-tight text-[#0B1B3F] sm:text-5xl">
             {tr("Simple prices in Tanzanian shillings", "Bei rahisi kwa shilingi za Kitanzania")}
           </h1>
-          <Lead>
-            {tr(
-              "Pay as you go for SMS and WhatsApp. Monthly plans for the Call Center. No hidden fees.",
-              "Lipa kadri unavyotumia kwa SMS na WhatsApp. Mipango ya kila mwezi kwa Kituo cha Simu. Hakuna ada zilizofichwa.",
-            )}
-          </Lead>
           <div
             role="tablist"
             aria-label={tr("Product pricing", "Bei za huduma")}

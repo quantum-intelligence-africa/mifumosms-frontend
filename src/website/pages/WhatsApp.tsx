@@ -1,5 +1,5 @@
 import { BarChart3, Bot, FileText, Link2, ListChecks, Send, Upload, Users } from "lucide-react";
-import { ButtonLink, H2, Lead, Section, SitePage, Tag } from "../Layout";
+import { ButtonLink, H2, Section, SitePage, Tag } from "../Layout";
 import { TeamInboxMock, WaBroadcastMock } from "../ChannelMockups";
 import { useContent } from "../content";
 import { useSiteLang } from "../i18n";
@@ -69,12 +69,6 @@ export default function WhatsApp() {
             <h1 id="wa-title" className="text-4xl font-extrabold leading-[1.08] tracking-tight text-[#0B1B3F] sm:text-5xl">
               {tr("Broadcast on WhatsApp and reply as a team", "Tangaza kwenye WhatsApp na mjibu kama timu")}
             </h1>
-            <Lead>
-              {tr(
-                "Send approved templates, polls and documents to thousands of customers, then handle every reply from one shared inbox.",
-                "Tuma violezo vilivyoidhinishwa, kura na hati kwa maelfu ya wateja, kisha shughulikia kila jibu kutoka kisanduku kimoja cha pamoja.",
-              )}
-            </Lead>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <ButtonLink to="/signup">{tr("Get started", "Anza sasa")}</ButtonLink>
               <ButtonLink to="/book-demo?source=whatsapp-hero" variant="secondary">
@@ -134,12 +128,6 @@ export default function WhatsApp() {
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
           <Reveal>
             <H2 id="wa-inbox-title">{tr("Every reply reaches the right person", "Kila jibu linamfikia mtu sahihi")}</H2>
-            <Lead>
-              {tr(
-                "Assign chats to team members, use saved replies, and see each customer's history before you answer.",
-                "Wape wanatimu mazungumzo, tumia majibu yaliyohifadhiwa, na uone historia ya kila mteja kabla ya kujibu.",
-              )}
-            </Lead>
             <ul className="mt-6 space-y-3 text-[#3F4A5A]">
               <li className="flex gap-3">
                 <Users className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#2563EB]" aria-hidden />{" "}
@@ -163,12 +151,6 @@ export default function WhatsApp() {
       <Section id="wa-pricing" labelledBy="wa-pricing-title">
         <Reveal>
           <H2 id="wa-pricing-title">{tr("WhatsApp broadcast pricing", "Bei za matangazo ya WhatsApp")}</H2>
-          <Lead>
-            {tr(
-              "Pay as you go. Volume discounts apply automatically. Prices exclude VAT.",
-              "Lipa kadri unavyotumia. Punguzo la kiasi linatumika kiotomatiki. Bei hazijumuishi VAT.",
-            )}
-          </Lead>
         </Reveal>
         <div className="mt-10">
           <TierCards tiers={WA_TIERS} unit={tr("message", "ujumbe")} ctaTo="/signup" ctaLabel={tr("Get started", "Anza sasa")} />

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Bus, CalendarDays, Play, PhoneMissed, Users } from "lucide-react";
-import { ButtonLink, H2, Lead, Section, SitePage, Tag, btnClass } from "../Layout";
+import { ButtonLink, H2, Section, SitePage, Tag, btnClass } from "../Layout";
 import { SampleCallCard, useSamplePlayback } from "../SampleCallPlayer";
 import { DiscussMock, MissedCallsMock } from "../Mockups";
 import { useContent } from "../content";
@@ -107,12 +107,6 @@ export default function Transport() {
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
           <Reveal>
             <H2 id="transport-sample-title">{tr("A passenger books three seats to Arusha", "Abiria anahifadhi viti vitatu kwenda Arusha")}</H2>
-            <Lead>
-              {tr(
-                "A staged call in Kiswahili: the passenger asks about tomorrow's coaches, the fare and paying by phone. Play it, read the transcript or switch to the English translation.",
-                "Simu ya maigizo kwa Kiswahili: abiria anauliza kuhusu mabasi ya kesho, nauli na kulipa kwa simu. Isikilize, soma maandishi ya mazungumzo au badili kwenda tafsiri ya Kiingereza.",
-              )}
-            </Lead>
             <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
               {details.map(([k, v]) => (
                 <div key={k} className="rounded-xl bg-[#F5F6F8] p-3">
@@ -131,12 +125,6 @@ export default function Transport() {
       <Section grey labelledBy="transport-followup-title">
         <Reveal>
           <H2 id="transport-followup-title">{tr("The booking office agrees the next step", "Ofisi ya tiketi inakubaliana hatua inayofuata")}</H2>
-          <Lead>
-            {tr(
-              "The supervisor checks the seats, the agent who took the call owns the follow-up, and missed callers get a scheduled callback.",
-              "Msimamizi anahakiki viti, mhudumu aliyepokea simu anasimamia ufuatiliaji, na waliokosa kupokelewa wanapangiwa kupigiwa tena.",
-            )}
-          </Lead>
         </Reveal>
         <div className="mt-10 grid gap-6 lg:grid-cols-[1.3fr_1fr]">
           <Reveal>
@@ -152,12 +140,6 @@ export default function Transport() {
         <Reveal>
           <div className="rounded-3xl border border-[#E3E7EE] bg-[#F5F6F8] px-6 py-12 text-center sm:px-12">
             <H2 id="transport-cta-title">{tr("See SENDA with your booking office", "Ona SENDA ikifanya kazi na ofisi yako ya tiketi")}</H2>
-            <Lead className="mx-auto">
-              {tr(
-                "Bring one typical passenger enquiry. We'll set up the demo around your routes and shifts.",
-                "Kuja na ulizo moja la kawaida la abiria. Tutaandaa onyesho kulingana na njia na zamu zako.",
-              )}
-            </Lead>
             <div className="mt-8 flex justify-center">
               <ButtonLink to={DEMO_LINK}>{tr("Book a transport demo", "Omba onyesho la usafirishaji")}</ButtonLink>
             </div>

@@ -33,6 +33,7 @@ const SiteProduct = lazy(() => import("./website/pages/Product"));
 const SiteBulkSms = lazy(() => import("./website/pages/BulkSms"));
 const SiteWhatsApp = lazy(() => import("./website/pages/WhatsApp"));
 const SiteTransport = lazy(() => import("./website/pages/Transport"));
+const SiteUseCase = lazy(() => import("./website/pages/UseCase"));
 const SitePricing = lazy(() => import("./website/pages/Pricing"));
 const SiteBookDemo = lazy(() => import("./website/pages/BookDemo"));
 const SiteDevelopers = lazy(() => import("./website/pages/Developers"));
@@ -287,6 +288,7 @@ const AppContent = () => {
         <Route path="/product" element={<Navigate to="/products/call-center" replace />} />
         <Route path="/use-cases" element={<Navigate to="/use-cases/transport" replace />} />
         <Route path="/use-cases/transport" element={<PublicOnly><SiteTransport /></PublicOnly>} />
+        <Route path="/use-cases/:slug" element={<PublicOnly><SiteUseCase /></PublicOnly>} />
         <Route path="/pricing" element={<PublicOnly><SitePricing /></PublicOnly>} />
         <Route path="/book-demo" element={<PublicOnly><SiteBookDemo /></PublicOnly>} />
         <Route path="/features" element={<Navigate to="/" replace />} />

@@ -666,15 +666,7 @@ export function useContent(): SiteContent {
   return lang === "sw" ? CONTENT_SW : CONTENT_EN;
 }
 
+// Tanzania only for now. Add more rows here to re-enable other countries in the demo form.
 export const COUNTRY_CODES = [
   { code: "+255", label: "Tanzania (+255)" },
-  { code: "+254", label: "Kenya (+254)" },
-  { code: "+256", label: "Uganda (+256)" },
-  { code: "+250", label: "Rwanda (+250)" },
-  { code: "+257", label: "Burundi (+257)" },
-  { code: "+260", label: "Zambia (+260)" },
-  { code: "+258", label: "Mozambique (+258)" },
-  { code: "+27", label: "South Africa (+27)" },
-  { code: "+44", label: "United Kingdom (+44)" },
-  { code: "+1", label: "US / Canada (+1)" },
 ];
