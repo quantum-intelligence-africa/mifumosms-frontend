@@ -209,7 +209,7 @@ export function BrandingDomainsCard() {
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => { setPreview(draft); toast({ title: t("pg.BrandingDomainsCard.0229"), description: t("pg.BrandingDomainsCard.0230") }); }}>
                 <Eye className="w-3.5 h-3.5 mr-1" />{t("pg.BrandingDomainsCard.0231")}
               </Button>
-              <Button size="sm" variant="ghost" disabled={!!busy} onClick={async () => { const r = await run("reset", () => apiClient.resetBranding(tenantId), "Back to SENDA Copilot branding"); if (r.success) await applyPublished(); }}>
+              <Button size="sm" variant="ghost" disabled={!!busy} onClick={async () => { const r = await run("reset", () => apiClient.resetBranding(tenantId), "Back to SENDA branding"); if (r.success) await applyPublished(); }}>
                 {t("pg.BrandingDomainsCard.0232")}
               </Button>
               {unpublishedChanges && <span className="text-xs text-muted-foreground self-center">{t("pg.BrandingDomainsCard.0233")}</span>}

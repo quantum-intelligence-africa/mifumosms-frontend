@@ -27,7 +27,19 @@ import { PendingPaymentReminder } from "@/components/sms/PendingPaymentReminder"
 // Pages are lazily loaded so each route ships as its own chunk. This keeps the
 // initial bundle small — heavy deps (charts, xlsx, pdf) only download when a
 // route that uses them is visited.
-const Landing = lazy(() => import("./pages/Landing"));
+// Redesigned public website (website-redesign branch)
+const SiteHome = lazy(() => import("./website/pages/Home"));
+const SiteProduct = lazy(() => import("./website/pages/Product"));
+const SiteBulkSms = lazy(() => import("./website/pages/BulkSms"));
+const SiteWhatsApp = lazy(() => import("./website/pages/WhatsApp"));
+const SiteTransport = lazy(() => import("./website/pages/Transport"));
+const SitePricing = lazy(() => import("./website/pages/Pricing"));
+const SiteBookDemo = lazy(() => import("./website/pages/BookDemo"));
+const SiteDevelopers = lazy(() => import("./website/pages/Developers"));
+
+/** Signed-in visitors to the homepage go to their dashboard, as before. */
+const HomeOrDashboard = () =>
+  localStorage.getItem("access_token") ? <Navigate to="/dashboard" replace /> : <SiteHome />;
 const Login = lazy(() => import("./pages/Login"));
 const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
 const Signup = lazy(() => import("./pages/Signup"));
@@ -69,7 +81,6 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const DownloadApp = lazy(() => import("./pages/DownloadApp"));
 const PertinaInsights = lazy(() => import("./pages/PertinaInsights"));
-const Developer = lazy(() => import("./pages/Developer"));
 const AIAgents = lazy(() => import("./pages/AIAgents"));
 const VoiceAgents = lazy(() => import("./pages/VoiceAgents"));
 const IvrFlowList = lazy(() => import("./pages/voice/IvrFlowList"));
@@ -94,7 +105,6 @@ const CallCenterTickets = lazy(() => import("./pages/callcenter/Tickets"));
 const CallCenterPlans = lazy(() => import("./pages/callcenter/Plans"));
 const WhatsAppCloud = lazy(() => import("./pages/WhatsAppCloud"));
 const CreateWhatsAppTemplate = lazy(() => import("./pages/CreateWhatsAppTemplate"));
-const WhatsAppBroadcast = lazy(() => import("./pages/WhatsAppBroadcast"));
 const WhatsAppCampaigns = lazy(() => import("./pages/WhatsAppCampaigns"));
 // @ts-ignore — standalone JSX admin dashboard
 const SendaAdmin = lazy(() => import("../senda-dashboard.jsx"));
@@ -115,9 +125,10 @@ const CANONICAL_BASE_URL = "https://sms.mifumolabs.com";
 const CHUNK_RELOAD_KEY = "senda_chunk_reload_attempted";
 
 // Shown while a lazily-loaded route chunk is being fetched.
+// Always light, whatever the theme: a dark flash between pages looked broken.
 const RouteFallback = () => (
-  <div className="flex min-h-screen items-center justify-center">
-    <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+  <div className="fixed inset-0 flex items-center justify-center bg-white">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#D5DAE3] border-t-[#2563EB]" />
   </div>
 );
 
@@ -268,13 +279,20 @@ const AppContent = () => {
       <Suspense fallback={<RouteFallback />}>
       {!hostLoaded ? <RouteFallback /> : portalUnavailable ? <PortalUnavailable /> : (
       <Routes>
-        <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />
-        <Route path="/whatsapp-broadcast" element={<PublicOnly><WhatsAppBroadcast /></PublicOnly>} />
-        {/* SEO-friendly landing aliases */}
-        <Route path="/pricing" element={<PublicOnly><Landing /></PublicOnly>} />
-        <Route path="/features" element={<PublicOnly><Landing /></PublicOnly>} />
-        <Route path="/watch-tutorial" element={<PublicOnly><Landing /></PublicOnly>} />
-        <Route path="/tutorial" element={<PublicOnly><Landing /></PublicOnly>} />
+        <Route path="/" element={<PublicOnly><HomeOrDashboard /></PublicOnly>} />
+        <Route path="/products/bulk-sms" element={<PublicOnly><SiteBulkSms /></PublicOnly>} />
+        <Route path="/products/whatsapp" element={<PublicOnly><SiteWhatsApp /></PublicOnly>} />
+        <Route path="/products/call-center" element={<PublicOnly><SiteProduct /></PublicOnly>} />
+        <Route path="/products" element={<Navigate to="/" replace />} />
+        <Route path="/product" element={<Navigate to="/products/call-center" replace />} />
+        <Route path="/use-cases" element={<Navigate to="/use-cases/transport" replace />} />
+        <Route path="/use-cases/transport" element={<PublicOnly><SiteTransport /></PublicOnly>} />
+        <Route path="/pricing" element={<PublicOnly><SitePricing /></PublicOnly>} />
+        <Route path="/book-demo" element={<PublicOnly><SiteBookDemo /></PublicOnly>} />
+        <Route path="/features" element={<Navigate to="/" replace />} />
+        <Route path="/whatsapp-broadcast" element={<Navigate to="/products/whatsapp" replace />} />
+        <Route path="/watch-tutorial" element={<Navigate to="/" replace />} />
+        <Route path="/tutorial" element={<Navigate to="/" replace />} />
         <Route path="/login" element={<Login />} />
         {/* Team invitations: open on the inviting organization's own portal, never gated as marketing. */}
         <Route path="/invite/:token" element={<InviteAccept />} />
@@ -291,7 +309,7 @@ const AppContent = () => {
               <Route path="/terms" element={<PublicOnly><Terms /></PublicOnly>} />
               <Route path="/privacy" element={<PublicOnly><Privacy /></PublicOnly>} />
               <Route path="/download" element={<PublicOnly><DownloadApp /></PublicOnly>} />
-              <Route path="/developer" element={<PublicOnly><Developer /></PublicOnly>} />
+              <Route path="/developer" element={<PublicOnly><SiteDevelopers /></PublicOnly>} />
               <Route path="/dashboard" element={
                 <ProtectedRoute>
                   <DashboardGate />

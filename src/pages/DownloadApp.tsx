@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { SitePage } from "@/website/Layout";
 import { Download, Share, SquarePlus, CheckCircle2, Zap, BellRing, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BrandLogo } from "@/components/layout/BrandLogo";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useLanguage } from "@/hooks/useLanguage";
 import { toast } from "@/hooks/use-toast";
@@ -48,24 +48,11 @@ const DownloadApp = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-200 via-blue-100 to-white">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-white/40 bg-white/70 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link to="/" className="flex items-center gap-2">
-            <BrandLogo className="h-10 w-auto -my-2" />
-            <span className="font-heading text-base font-bold text-gray-900">SENDA</span>
-          </Link>
-          <Link to="/" className="text-sm font-medium text-blue-700 hover:text-blue-800 hover:underline">
-            {t("auth.common.home")}
-          </Link>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-2xl px-4 py-12 sm:px-6 sm:py-16">
+    <SitePage title={`${t("pwa.download_page.title")} — SENDA`}>
+      <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="text-center">
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-lg ring-1 ring-black/5">
-            <BrandLogo className="h-10 w-10" />
+            <img src="/website/senda-mark.webp" alt="SENDA" className="h-9 w-auto object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
             {t("pwa.download_page.title")}
@@ -141,8 +128,8 @@ const DownloadApp = () => {
             </div>
           ))}
         </div>
-      </main>
-    </div>
+      </div>
+    </SitePage>
   );
 };
 

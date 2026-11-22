@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, MessageSquare, Mail, Lock, User, Phone, Menu } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,10 +10,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/hooks/useLanguage";
 import { apiClient } from "@/lib/api";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { motion } from "framer-motion";
-import MobileMenu from "@/components/layout/MobileMenu";
-import { BrandLogo } from "@/components/layout/BrandLogo";
+import { cn } from "@/lib/utils";
+import { useSiteLang } from "@/website/i18n";
+import { focusRing } from "@/website/Layout";
+import {
+  AuthShell,
+  authInputClass,
+  authLabelClass,
+  authLinkClass,
+  authPrimaryBtnClass,
+} from "@/website/AuthShell";
 import { getRecaptchaToken } from "@/lib/recaptcha";
 import { API_CONFIG } from "@/config/api";
 import GoogleButton from "@/components/auth/GoogleButton";
@@ -21,8 +27,8 @@ import GoogleButton from "@/components/auth/GoogleButton";
 const GOOGLE_SIGNUP_URL = `${API_CONFIG.BASE_URL.replace(/\/api\/?$/, "")}/accounts/google/login/`;
 
 const Signup = () => {
-  const isMobile = useIsMobile();
   const { t } = useLanguage();
+  const { tr } = useSiteLang();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,10 +36,8 @@ const Signup = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [registeredPhone, setRegisteredPhone] = useState("");
   const [smsFailed, setSmsFailed] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    fullName: "",
     email: "",
     phone: "",
     referralSource: "",
@@ -50,18 +54,6 @@ const Signup = () => {
   const fromCallCenterLink = new URLSearchParams(location.search).get("service") === "call-center";
   // "Continue with Google" carries the same request, so a new Google account gets call center access too.
   const googleUrl = fromCallCenterLink ? `${GOOGLE_SIGNUP_URL}?service=call-center` : GOOGLE_SIGNUP_URL;
-
-  // Prevent body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isMobileMenuOpen]);
 
   // Handle phone verification
   const handleVerifyPhone = async (e: React.FormEvent) => {
@@ -154,6 +146,15 @@ const Signup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const nameParts = formData.fullName.trim().split(/\s+/).filter(Boolean);
+    if (nameParts.length < 2) {
+      toast({
+        title: tr("Enter your full name", "Weka jina lako kamili"),
+        description: tr("Please enter your first and last name, for example Amina Mwakyusa.", "Tafadhali weka jina la kwanza na la mwisho, kwa mfano Amina Mwakyusa."),
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!formData.password || formData.password.length < 8) {
       toast({
@@ -241,8 +242,9 @@ const Signup = () => {
         email: formData.email.trim(),
         password: formData.password,
         password_confirm: formData.confirmPassword,
-        first_name: formData.firstName.trim(),
-        last_name: formData.lastName.trim(),
+        // One "Full name" field on screen; the API still takes first and last name separately.
+        first_name: nameParts[0],
+        last_name: nameParts.slice(1).join(" "),
         phone_number: processedPhone,
         recaptcha_token: await getRecaptchaToken("signup"),
       };
@@ -340,674 +342,227 @@ const Signup = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Mobile Background Component
-  const MobileBackground = () => {
-  const { t } = useLanguage();
-    return (
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0">
-          <img
-            src="/home background12.webp"
-            className="w-full h-full object-cover"
-            alt={t("pg.Login.0883")}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30"></div>
-        </div>
-      </div>
-    );
-  };
+  const phoneLooksValid = !!(formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8);
 
-  // Desktop Sliding Background Component
-  const SlidingBackground = () => {
-    return (
-      <div className="absolute inset-0 overflow-hidden bg-blue-grad has-image height-auto main-section has-bg-blue">
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-blue-50/80 to-blue-100/60">
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-0 right-0 w-full h-full">
-              <svg className="w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="patternGradientSignup" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.08" />
-                    <stop offset="50%" stopColor="#3b82f6" stopOpacity="0.12" />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.08" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M800,200 Q900,150 1000,200 T1200,200 L1200,800 L800,800 Z"
-                  fill="url(#patternGradientSignup)"
-                  opacity="0.5"
-                />
-                <path
-                  d="M600,300 Q750,250 900,300 T1200,300 L1200,800 L600,800 Z"
-                  fill="url(#patternGradientSignup)"
-                  opacity="0.4"
-                />
-                <path
-                  d="M400,400 Q600,300 800,400 T1200,400 L1200,800 L400,800 Z"
-                  fill="url(#patternGradientSignup)"
-                  opacity="0.3"
-                />
-              </svg>
+  return (
+    <AuthShell
+      wide={!showVerification}
+      title={showVerification ? t("auth.signup.verify_phone_title") : t("auth.signup.create_account_title")}
+      subtitle={
+        showVerification
+          ? smsFailed
+            ? t("auth.signup.sms_failed_message_support")
+            : t("auth.signup.code_sent_message_redirect", { phone: registeredPhone })
+          : t("auth.signup.join_senda_subtitle")
+      }
+    >
+      {!showVerification ? (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <GoogleButton href={googleUrl} roundedClassName="rounded-xl !border-[#D5DCE8] !text-[15px] !font-semibold !text-[#0B1B3F] !shadow-none">
+            {t("pg.InviteAccept.0945")}
+          </GoogleButton>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="fullName" className={authLabelClass}>{tr("Full name", "Jina kamili")}</Label>
+              <Input
+                id="fullName"
+                autoComplete="name"
+                placeholder={tr("e.g. Amina Mwakyusa", "mf. Amina Mwakyusa")}
+                value={formData.fullName}
+                onChange={(e) => handleInputChange("fullName", e.target.value)}
+                required
+                className={authInputClass}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className={authLabelClass}>{t("email_address")}</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder={t("auth.signup.email_placeholder_desktop")}
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
+                required
+                className={authInputClass}
+              />
             </div>
           </div>
-        </div>
-      </div>
-    );
-  };
 
-  // Mobile Signup UI
-  if (isMobile) {
-    return (
-      <div className="min-h-screen flex flex-col relative overflow-hidden">
-        <MobileBackground />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="phone" className={authLabelClass}>
+                {t("phone_number")} {phoneLooksValid ? <span className="text-[#027A48]">✓</span> : ''}
+              </Label>
+              <Input
+                id="phone"
+                type="tel"
+                autoComplete="tel"
+                placeholder={t("auth.signup.phone_placeholder_desktop")}
+                value={formData.phone || ''}
+                onChange={(e) => handleInputChange("phone", e.target.value)}
+                required
+                className={cn(authInputClass, phoneLooksValid && "border-[#12B76A]")}
+              />
+            </div>
 
-        {/* Fixed Header with Menu Button */}
-        <header className="fixed top-0 left-0 right-0 z-[50] px-4 py-3 bg-gradient-to-b from-black/20 to-transparent">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <BrandLogo className="h-16 w-auto -my-3 -mr-8" />
-              <span className="font-heading text-lg font-bold text-white">
-                SENDA
-              </span>
-            </Link>
-
-            {/* Hamburger Menu Button */}
-            <button
-              className="p-2 text-white hover:text-gray-200 transition-colors touch-manipulation"
-              onClick={() => setIsMobileMenuOpen(true)}
-              aria-label={t("pg.Login.0888")}
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-          </div>
-        </header>
-
-        {/* Mobile Menu */}
-        <MobileMenu
-          isOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-        />
-
-        {/* White Curved Container */}
-        <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="relative z-10 flex-1 bg-white rounded-t-[40px] px-6 pt-20 pb-4 shadow-2xl overflow-y-auto mt-14"
-        >
-          {!showVerification ? (
-            <>
-              {/* Form Title */}
-              <div className="text-center mb-4">
-                <motion.h2
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="text-xl font-bold text-gray-800 mb-1"
+            <div className="space-y-1.5">
+              <Label htmlFor="referralSource" className={authLabelClass}>{t("auth.signup.referral_source_label")}</Label>
+              <Select onValueChange={(value) => handleInputChange("referralSource", value)}>
+                <SelectTrigger
+                  id="referralSource"
+                  className="h-auto w-full rounded-xl border border-[#D5DCE8] bg-white px-3.5 py-3 text-[15px] text-[#0B1B3F] focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
                 >
-                  {t("auth.signup.create_account_title")}
-                </motion.h2>
-                <p className="text-xs text-gray-600">
-                  {t("auth.signup.join_senda_subtitle")}
-                </p>
-              </div>
+                  <SelectValue placeholder={t("auth.signup.select_placeholder")} />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border border-[#E3E7EE] bg-white shadow-lg">
+                  {referralSources.map((source) => (
+                    <SelectItem key={source.value} value={source.value}>
+                      {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <GoogleButton href={googleUrl} roundedClassName="rounded-lg">
-                  {t("pg.InviteAccept.0945")}
-                </GoogleButton>
-                {/* Name Fields */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <Input
-                    placeholder={t("auth.signup.first_name")}
-                    value={formData.firstName}
-                    onChange={(e) => handleInputChange("firstName", e.target.value)}
-                    required
-                    className="h-10 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
-                  />
-                </div>
-                <div className="relative">
-                  <Input
-                    placeholder={t("auth.signup.last_name")}
-                    value={formData.lastName}
-                    onChange={(e) => handleInputChange("lastName", e.target.value)}
-                    required
-                    className="h-10 px-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Email Input */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className={authLabelClass}>{t("auth.common.password_label")}</Label>
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600">
-                  <Mail className="w-4 h-4" />
-                </div>
                 <Input
-                  type="email"
-                  placeholder={t("auth.signup.email_placeholder_mobile")}
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  required
-                  className="h-10 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
-                />
-              </div>
-
-              {/* Phone Input */}
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600">
-                  <Phone className="w-4 h-4" />
-                </div>
-                <Input
-                  type="tel"
-                  placeholder={t("auth.signup.phone_placeholder_mobile")}
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  required
-                  className="h-10 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
-                />
-              </div>
-
-              {/* Referral Source */}
-              <div className="relative">
-                <Select onValueChange={(value) => handleInputChange("referralSource", value)}>
-                  <SelectTrigger className="h-10 pl-3 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm">
-                    <SelectValue placeholder={t("auth.signup.referral_source_label")} />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                    {referralSources.map((source) => (
-                      <SelectItem key={source.value} value={source.value}>
-                        {source.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Password Input */}
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <Input
+                  id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder={t("auth.common.password_label")}
+                  autoComplete="new-password"
+                  placeholder={t("auth.signup.password_placeholder_desktop")}
                   value={formData.password}
                   onChange={(e) => handleInputChange("password", e.target.value)}
                   required
-                  className="h-10 pl-10 pr-10 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
+                  className={cn(authInputClass, "pr-12")}
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className={cn("absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#8A94A6] hover:text-[#0B1B3F]", focusRing)}
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </div>
 
-              {/* Confirm Password Input */}
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword" className={authLabelClass}>{t("auth.signup.confirm_password_label")}</Label>
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600">
-                  <Lock className="w-4 h-4" />
-                </div>
                 <Input
+                  id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
+                  autoComplete="new-password"
                   placeholder={t("auth.signup.confirm_password_label")}
                   value={formData.confirmPassword}
                   onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                   required
-                  className="h-10 pl-10 pr-10 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
+                  className={cn(authInputClass, "pr-12")}
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className={cn("absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#8A94A6] hover:text-[#0B1B3F]", focusRing)}
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </div>
+          </div>
 
-              {/* Terms */}
-              <div className="flex items-start space-x-2 pt-1">
-                <Checkbox id="terms" required className="mt-0.5" />
-                <label htmlFor="terms" className="text-xs text-gray-500 leading-tight">
-                  {t("auth.signup.agree_prefix")}{" "}
-                  <Link to="/terms" className="text-blue-600 hover:text-blue-700 hover:underline">{t("auth.signup.terms_short")}</Link>
-                  {" "}{t("auth.signup.and")}{" "}
-                  <Link to="/privacy" className="text-blue-600 hover:text-blue-700 hover:underline">{t("auth.signup.privacy_policy")}</Link>
-                </label>
-              </div>
+          <div className="flex items-start gap-2.5 pt-1">
+            <Checkbox
+              id="terms"
+              required
+              className="mt-0.5 rounded-md border-[#D5DCE8] data-[state=checked]:border-[#2563EB] data-[state=checked]:bg-[#2563EB]"
+            />
+            <label htmlFor="terms" className="text-sm leading-snug text-[#4B5565]">
+              {t("auth.signup.agree_prefix")}{" "}
+              <Link to="/terms" className={authLinkClass}>
+                {t("auth.signup.terms_full")}
+              </Link>{" "}
+              {t("auth.signup.and")}{" "}
+              <Link to="/privacy" className={authLinkClass}>
+                {t("auth.signup.privacy_policy")}
+              </Link>
+            </label>
+          </div>
 
-              {/* Sign Up Button */}
-              <motion.div
-                whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.1 }}
-                className="pt-1"
-              >
-                <Button
-                  type="submit"
-                  className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-                  disabled={isLoading}
-                >
-                  {isLoading ? t("auth.common.creating_account") : t("auth.signup.sign_up_button_mobile")}
-                </Button>
-              </motion.div>
-            </form>
-            </>
-          ) : (
-            <>
-              {/* Verification Title */}
-              <div className="text-center mb-4">
-                <motion.h2
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="text-xl font-bold text-gray-800 mb-1"
-                >
-                  {t("auth.signup.verify_phone_title")}
-                </motion.h2>
-                <p className="text-xs text-gray-600">
-                  {t("auth.signup.enter_code_subtitle")}
-                </p>
-              </div>
-
-              <form onSubmit={handleVerifyPhone} className="space-y-4">
-                <p className="text-center text-gray-600 text-xs">
-                {smsFailed
-                  ? t("auth.signup.sms_failed_message")
-                  : t("auth.signup.code_sent_message", { phone: registeredPhone })
-                }
-              </p>
-
-              {!smsFailed && (
-                <div className="space-y-2">
-                    <Input
-                      type="text"
-                      placeholder={t("auth.common.enter_6digit_code")}
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      maxLength={6}
-                      required
-                      className="h-12 text-center text-xl font-mono tracking-widest border-2 border-gray-200 focus:border-blue-500 focus:ring-0 rounded-xl"
-                    />
-                </div>
-              )}
-
-              {!smsFailed ? (
-                <motion.div whileTap={{ scale: 0.98 }}>
-                  <Button
-                    type="submit"
-                    className="w-full h-12 text-base font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full shadow-lg"
-                    disabled={isLoading || verificationCode.length !== 6}
-                  >
-                    {isLoading ? t("auth.common.verifying") : t("auth.signup.verify_phone_button")}
-                  </Button>
-                </motion.div>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={() => window.open('mailto:support@mifumosms.com?subject=SMS Verification Issue', '_blank')}
-                  className="w-full h-12 text-base font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full shadow-lg"
-                >
-                  {t("auth.signup.contact_support_button")}
-                </Button>
-              )}
-
-              <div className="text-center mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowVerification(false)}
-                  className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
-                >
-                  {t("auth.signup.back_to_registration")}
-                </button>
-              </div>
-            </form>
-            </>
+          <Button type="submit" className={authPrimaryBtnClass} disabled={isLoading}>
+            {isLoading ? t("auth.common.creating_account") : t("auth.common.sign_up")}
+          </Button>
+        </form>
+      ) : (
+        <form onSubmit={handleVerifyPhone} className="space-y-4">
+          {!smsFailed && (
+            <div className="space-y-1.5">
+              <Label htmlFor="verificationCode" className={authLabelClass}>
+                {t("auth.common.verification_code_label")}
+              </Label>
+              <Input
+                id="verificationCode"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder={t("auth.common.enter_6digit_code")}
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                maxLength={6}
+                required
+                className={cn(authInputClass, "text-center font-mono text-xl tracking-widest")}
+              />
+            </div>
           )}
 
-          {/* Links */}
-          <div className="mt-3 text-center space-y-2">
-            <div className="flex items-center justify-center gap-3">
-              <Link
-                to="/"
-                className="text-xs text-blue-600 font-semibold hover:text-blue-700 hover:underline"
-              >
-                {t("auth.common.home")}
-              </Link>
-              <span className="text-gray-400">|</span>
-              <p className="text-gray-500 text-xs">
-                {t("auth.common.already_have_account")}{" "}
-                <Link
-                  to="/login"
-                  className="text-blue-600 font-semibold hover:text-blue-700 hover:underline"
-                >
-                  {t("auth.common.sign_in")}
-                </Link>
-              </p>
-            </div>
+          {!smsFailed ? (
+            <Button
+              type="submit"
+              className={authPrimaryBtnClass}
+              disabled={isLoading || verificationCode.length !== 6}
+            >
+              {isLoading ? t("auth.common.verifying") : t("auth.signup.verify_phone_button")}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={() => window.open('mailto:support@mifumosms.com?subject=SMS Verification Issue', '_blank')}
+              className={authPrimaryBtnClass}
+            >
+              {t("auth.signup.contact_support_button")}
+            </Button>
+          )}
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setShowVerification(false)}
+              className={cn("text-sm", authLinkClass)}
+            >
+              {t("auth.signup.back_to_registration")}
+            </button>
           </div>
-        </motion.div>
+        </form>
+      )}
+
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t border-[#E3E7EE] pt-5 text-sm">
+        <Link to="/" className={authLinkClass}>
+          {t("auth.common.home")}
+        </Link>
+        <span className="text-[#D5DCE8]" aria-hidden="true">|</span>
+        <p className="text-[#4B5565]">
+          {t("auth.common.already_have_account")}{" "}
+          <Link to="/login" className={authLinkClass}>
+            {t("auth.common.sign_in")}
+          </Link>
+        </p>
       </div>
-    );
-  }
-
-  // Desktop Signup UI (unchanged from original)
-  return (
-    <div className="min-h-screen flex">
-      <SlidingBackground />
-
-      <div className="flex w-full">
-        {/* Left Column - Header and Image */}
-        <div className="hidden md:flex md:w-1/2 flex-col justify-center p-8 relative overflow-hidden min-h-screen">
-          <div className="relative z-10 w-full max-w-lg flex-1 flex items-center">
-            <div className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-white/90 to-transparent rounded-t-lg">
-              <div className="flex items-center gap-3">
-                <BrandLogo className="h-24 w-auto -my-3 -mr-11" />
-                <div>
-                  <span className="font-heading text-2xl font-bold text-gray-900">
-                    SENDA
-                  </span>
-                  <p className="text-base text-black mt-1">
-                    {t("auth.common.tagline")}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="absolute bottom-4 left-4 right-4 z-20">
-              <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
-                <h3 className="text-base font-semibold text-black mb-2">{t("auth.common.why_choose_senda")}</h3>
-                <ul className="space-y-1 text-sm text-black">
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-1">•</span>
-                    <span>{t("auth.common.benefit_reliable_delivery")}</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-1">•</span>
-                    <span>{t("auth.common.benefit_competitive_pricing")}</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-1">•</span>
-                    <span>{t("auth.common.benefit_advanced_analytics")}</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-1">•</span>
-                    <span>{t("auth.common.benefit_support")}</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <img
-              src="/sign in image.webp"
-              className="w-full h-auto object-contain"
-              alt={t("pg.Signup.0971")}
-            />
-          </div>
-
-          <div className="absolute inset-0">
-            <img
-              src="/home background12.webp"
-              alt={t("pg.Signup.0972")}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </div>
-
-        {/* Right Column - Form */}
-        <div className="w-full md:w-1/2 flex items-center justify-center p-3 sm:p-4 md:p-8 bg-white/20 backdrop-blur-sm relative z-10 min-h-screen md:min-h-screen">
-          <div className="w-full max-w-md space-y-4 sm:space-y-6">
-            <div className="text-center mb-4 sm:mb-6">
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <BrandLogo className="h-20 w-auto -my-3 -mr-10" />
-                <span className="font-heading text-lg font-bold text-gray-900">
-                  SENDA
-                </span>
-              </div>
-
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">
-                {showVerification ? t("auth.signup.verify_phone_title") : t("auth.signup.create_account_title")}
-              </h2>
-              {showVerification && (
-                <p className="text-xs text-gray-600">
-                  {smsFailed
-                    ? t("auth.signup.sms_failed_message_support")
-                    : t("auth.signup.code_sent_message_redirect", { phone: registeredPhone })
-                  }
-                </p>
-              )}
-            </div>
-
-            {!showVerification ? (
-              <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
-                <GoogleButton href={googleUrl} roundedClassName="rounded-lg">
-                  {t("pg.InviteAccept.0945")}
-                </GoogleButton>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  <div className="space-y-0.5 sm:space-y-1">
-                    <Label htmlFor="firstName" className="text-xs font-medium text-gray-700">{t("auth.signup.first_name")}</Label>
-                    <Input
-                      id="firstName"
-                      placeholder={t("auth.signup.first_name")}
-                      value={formData.firstName}
-                      onChange={(e) => handleInputChange("firstName", e.target.value)}
-                      required
-                      className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm"
-                    />
-                  </div>
-                  <div className="space-y-0.5 sm:space-y-1">
-                    <Label htmlFor="lastName" className="text-xs font-medium text-gray-700">{t("auth.signup.last_name")}</Label>
-                    <Input
-                      id="lastName"
-                      placeholder={t("auth.signup.last_name")}
-                      value={formData.lastName}
-                      onChange={(e) => handleInputChange("lastName", e.target.value)}
-                      required
-                      className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="email" className="text-xs font-medium text-gray-700">{t("email_address")}</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder={t("auth.signup.email_placeholder_desktop")}
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    required
-                    className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="phone" className="text-xs font-medium text-gray-700">
-                    {t("phone_number")} {formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8 ? '✓' : ''}
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder={t("auth.signup.phone_placeholder_desktop")}
-                    value={formData.phone || ''}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    required
-                    className={`h-9 border rounded-lg text-sm ${
-                      formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8
-                        ? 'border-green-500 focus:border-green-500 focus:ring-2 focus:ring-green-200'
-                        : 'border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
-                    }`}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="referralSource" className="text-xs font-medium text-gray-700">{t("auth.signup.referral_source_label")}</Label>
-                  <Select onValueChange={(value) => handleInputChange("referralSource", value)}>
-                    <SelectTrigger className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm">
-                      <SelectValue placeholder={t("auth.signup.select_placeholder")} />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                      {referralSources.map((source) => (
-                        <SelectItem key={source.value} value={source.value}>
-                          {source.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="password" className="text-xs font-medium text-gray-700">{t("auth.common.password_label")}</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder={t("auth.signup.password_placeholder_desktop")}
-                      value={formData.password}
-                      onChange={(e) => handleInputChange("password", e.target.value)}
-                      required
-                      className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 pr-12 rounded-lg text-sm"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-9 px-3 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4 text-gray-400" />
-                      ) : (
-                        <Eye className="w-4 h-4 text-gray-400" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="confirmPassword" className="text-xs font-medium text-gray-700">{t("auth.signup.confirm_password_label")}</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder={t("auth.signup.confirm_password_label")}
-                      value={formData.confirmPassword}
-                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                      required
-                      className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 pr-12 rounded-lg text-sm"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-9 px-3 hover:bg-transparent"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="w-4 h-4 text-gray-400" />
-                      ) : (
-                        <Eye className="w-4 h-4 text-gray-400" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-2">
-                  <Checkbox id="terms" required className="mt-0.5" />
-                  <label htmlFor="terms" className="text-xs text-gray-600 leading-tight">
-                    {t("auth.signup.agree_prefix")}{" "}
-                    <Link to="/terms" className="text-blue-600 hover:text-blue-700 hover:underline">
-                      {t("auth.signup.terms_full")}
-                    </Link>{" "}
-                    {t("auth.signup.and")}{" "}
-                    <Link to="/privacy" className="text-blue-600 hover:text-blue-700 hover:underline">
-                      {t("auth.signup.privacy_policy")}
-                    </Link>
-                  </label>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
-                  disabled={isLoading}
-                >
-                  {isLoading ? t("auth.common.creating_account") : t("auth.common.sign_up")}
-                </Button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyPhone} className="space-y-4">
-                {!smsFailed && (
-                  <div className="space-y-2">
-                    <Label htmlFor="verificationCode" className="text-xs font-medium text-gray-700">
-                      {t("auth.common.verification_code_label")}
-                    </Label>
-                    <Input
-                      id="verificationCode"
-                      type="text"
-                      placeholder={t("auth.common.enter_6digit_code")}
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      maxLength={6}
-                      required
-                      className="h-12 text-center text-xl font-mono tracking-widest border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg"
-                    />
-                  </div>
-                )}
-
-                {!smsFailed ? (
-                  <Button
-                    type="submit"
-                    className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
-                    disabled={isLoading || verificationCode.length !== 6}
-                  >
-                    {isLoading ? t("auth.common.verifying") : t("auth.signup.verify_phone_button")}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    onClick={() => window.open('mailto:support@mifumosms.com?subject=SMS Verification Issue', '_blank')}
-                    className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
-                  >
-                    {t("auth.signup.contact_support_button")}
-                  </Button>
-                )}
-
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowVerification(false)}
-                    className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
-                  >
-                    {t("auth.signup.back_to_registration")}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            <div className="text-center space-y-1">
-              <div className="flex items-center justify-center gap-3">
-                <Link to="/" className="text-blue-600 hover:text-blue-700 hover:underline font-medium text-xs">
-                  {t("auth.common.home")}
-                </Link>
-                <span className="text-gray-400 text-xs">|</span>
-                <p className="text-xs text-gray-600">
-                  {t("auth.common.already_have_account")}{" "}
-                  <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-medium">
-                    {t("auth.common.sign_in")}
-                  </Link>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 };
 

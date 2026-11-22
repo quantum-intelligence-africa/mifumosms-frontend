@@ -236,7 +236,7 @@ export const pgSw: Record<keyof typeof pgEn, string> = {
   "pg.BrandingDomainsCard.0232": "Ondoa chapa",
   "pg.BrandingDomainsCard.0233": "Mabadiliko ambayo hayajachapishwa",
   "pg.BrandingDomainsCard.0234": "Vikoa",
-  "pg.BrandingDomainsCard.0235": "Subdomain ya SENDA Copilot",
+  "pg.BrandingDomainsCard.0235": "Subdomain ya SENDA",
   "pg.BrandingDomainsCard.0236": "kampuniyako",
   "pg.BrandingDomainsCard.0237": "Unganisha kikoa chako mwenyewe",
   "pg.BrandingDomainsCard.0238": "Ongeza",

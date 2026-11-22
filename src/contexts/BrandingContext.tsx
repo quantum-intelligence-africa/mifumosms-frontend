@@ -4,7 +4,7 @@ import { apiClient, type BrandingConfig, type PublicBranding } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
- * White-label branding. Stock SENDA Copilot unless the backend says this host
+ * White-label branding. Stock SENDA unless the backend says this host
  * (before login) or this user's organization (after login) has published,
  * entitled branding. Every value arrives validated by the backend; colors are
  * only ever written as CSS custom properties and the logo as an <img src>.

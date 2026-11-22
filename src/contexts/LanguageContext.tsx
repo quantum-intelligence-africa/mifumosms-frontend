@@ -2193,7 +2193,7 @@ const translations = {
     "legal.privacy.title": "Privacy Policy",
     "legal.privacy.last_updated": "Last updated: November 2, 2026",
     "legal.privacy.s1_title": "1. Introduction",
-    "legal.privacy.s1_p1": "Welcome to SENDA Copilot (\"we,\" \"our,\" or \"us\"). We are committed to protecting your privacy and the security of your personal information. This Privacy Policy explains how we collect, use, share, and protect information when you visit sendacopilot.com or use our platform for SMS, WhatsApp, voice calls, the shared Team Inbox, and AI assistants.",
+    "legal.privacy.s1_p1": "Welcome to SENDA (\"we,\" \"our,\" or \"us\"). We are committed to protecting your privacy and the security of your personal information. This Privacy Policy explains how we collect, use, share, and protect information when you visit sendacopilot.com or use our platform for SMS, WhatsApp, voice calls, the shared Team Inbox, and AI assistants.",
     "legal.privacy.s1_p2": "By using our services, you agree to the collection and use of information in accordance with this policy. We comply with Tanzanian and Kenyan data protection laws, including the Data Protection Act and any applicable telecommunications regulations.",
     "legal.privacy.s2_title": "2. Information We Collect",
     "legal.privacy.s2_1_title": "2.1 Personal Information",

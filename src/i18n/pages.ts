@@ -236,7 +236,7 @@ export const pgEn = {
   "pg.BrandingDomainsCard.0232": "Remove branding",
   "pg.BrandingDomainsCard.0233": "Unpublished changes",
   "pg.BrandingDomainsCard.0234": "Domains",
-  "pg.BrandingDomainsCard.0235": "SENDA Copilot subdomain",
+  "pg.BrandingDomainsCard.0235": "SENDA subdomain",
   "pg.BrandingDomainsCard.0236": "yourcompany",
   "pg.BrandingDomainsCard.0237": "Connect your own domain",
   "pg.BrandingDomainsCard.0238": "Add",

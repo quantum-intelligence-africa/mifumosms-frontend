@@ -15587,6 +15587,177 @@ function AnalysisAlertsTab() {
 // Inbox Data Deletion (super admin): organizations whose owner or admin asked for the shared Team Inbox data (conversations, messages, notes,
 // WhatsApp call records) to be erased. Only that data goes; accounts and everything else stay. Nothing is deleted until it is approved here,
 // approving needs the organization name typed out, and the erasure is permanent.
+// Book-a-demo leads from the public SENDA website. Admins triage them by status.
+// API: GET /api/admin/v1/demo-requests (list), /:id/update (PATCH status+note), /export (CSV).
+const DEMO_STATUSES = [
+  { id: 'new',       label: 'New' },
+  { id: 'contacted', label: 'Contacted' },
+  { id: 'scheduled', label: 'Scheduled' },
+  { id: 'won',       label: 'Won' },
+  { id: 'lost',      label: 'Lost' },
+];
+function demoTone(s) {
+  return ({
+    new:       { bg:'#dbeafe', fg:'#1d4ed8' },
+    contacted: { bg:'#fef3c7', fg:'#b45309' },
+    scheduled: { bg:'#e0e7ff', fg:'#4338ca' },
+    won:       { bg:'#dcfce7', fg:'#15803d' },
+    lost:      { bg:'#f1f5f9', fg:'#64748b' },
+  }[s]) || { bg:'#f1f5f9', fg:'#475569' };
+}
+function DemoRequestsTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [status, setStatus]   = useState('new');
+  const [search, setSearch]   = useState('');
+  const [rows, setRows]       = useState(null);
+  const [summary, setSummary] = useState({});
+  const [meta, setMeta]       = useState({});
+  const [page, setPage]       = useState(1);
+  const [error, setError]     = useState(null);
+  const [openId, setOpenId]   = useState(null);
+  const [note, setNote]       = useState('');
+  const [busy, setBusy]       = useState(false);
+
+  const load = useCallback(() => {
+    const qs = new URLSearchParams({ status, page: String(page) });
+    if (search.trim()) qs.set('search', search.trim());
+    adminFetch(`/api/admin/v1/demo-requests?${qs}`, {}, onLogout)
+      .then(res => {
+        if (res.success) { setRows(res.data || []); setSummary(res.summary || {}); setMeta(res.meta || {}); setError(null); }
+        else setError(res.error?.message || 'Could not load demo requests.');
+      })
+      .catch(() => setError('Could not load demo requests.'));
+  }, [status, search, page, onLogout]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPage(1); }, [status, search]);
+
+  const open = (row) => {
+    if (openId === row.id) { setOpenId(null); return; }
+    setOpenId(row.id); setNote(row.admin_note || '');
+  };
+
+  const update = (row, body, okMessage) => {
+    setBusy(true);
+    adminFetch(`/api/admin/v1/demo-requests/${row.id}/update`, { method: 'PATCH', body: JSON.stringify(body) }, onLogout)
+      .then(res => {
+        if (res.success) { showToast?.(okMessage || 'Updated.', 'success'); load(); }
+        else showToast?.(res.error?.message || 'That did not work.', 'error');
+      })
+      .catch(() => showToast?.('That did not work. Try again.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
+  const exportCsv = async () => {
+    try {
+      const qs = new URLSearchParams({ status });
+      if (search.trim()) qs.set('search', search.trim());
+      const token = getToken();
+      const res = await fetch(`${BASE_URL}/api/admin/v1/demo-requests/export?${qs}`, { headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials: 'include' });
+      if (!res.ok) { showToast?.('Could not export the demo requests.', 'error'); return; }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'demo-requests.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch { showToast?.('Could not export the demo requests.', 'error'); }
+  };
+
+  const fmtDateTime = (iso) => { try { return new Date(iso).toLocaleString(); } catch { return iso; } };
+
+  return (
+    <div style={{display:'grid',gap:16}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12,flexWrap:'wrap'}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a'}}>Demo Requests</h2>
+          <p style={{fontSize:13,color:'#64748b',marginTop:2}}>People who filled in the website's "Book a demo" form. Review each lead, note what was discussed and move it through the pipeline.</p>
+        </div>
+        <button className="senda-btn senda-btn-sm" onClick={exportCsv}><Download size={14}/> Export CSV</button>
+      </div>
+
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+        {DEMO_STATUSES.map(s => (
+          <button key={s.id} className={`senda-btn senda-btn-sm${status===s.id?' senda-btn-primary':''}`} onClick={()=>{ setStatus(s.id); setOpenId(null); }}>
+            {s.label}{summary[s.id] ? ` (${summary[s.id]})` : ''}
+          </button>
+        ))}
+        <div style={{position:'relative',marginLeft:'auto'}}>
+          <Search size={14} style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'#94a3b8'}}/>
+          <input className="senda-input" style={{paddingLeft:30,height:32,fontSize:13}} placeholder="Name, company, email, phone..." value={search} onChange={e=>setSearch(e.target.value)} />
+        </div>
+        <button className="senda-btn senda-btn-sm" onClick={load}><RefreshCw size={14}/> Refresh</button>
+      </div>
+
+      {error && <div style={{padding:12,background:'#fee2e2',color:'#dc2626',borderRadius:8,fontSize:13}}>{error}</div>}
+
+      <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,overflow:'hidden'}}>
+        <div style={{overflowX:'auto'}}>
+          <table className="senda-table" style={{width:'100%',fontSize:13}}>
+            <thead>
+              <tr><th>Submitted</th><th>Name</th><th>Company</th><th>Email</th><th>Phone</th><th>Agents</th><th>Interest</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {rows === null && <tr><td colSpan={8} style={{padding:20,textAlign:'center',color:'#94a3b8'}}>Loading...</td></tr>}
+              {rows && rows.length === 0 && <tr><td colSpan={8} style={{padding:20,textAlign:'center',color:'#94a3b8'}}>No demo requests here.</td></tr>}
+              {rows && rows.map(row => {
+                const t = demoTone(row.status);
+                const interest = row.selected_plan || row.use_case || '-';
+                return (
+                  <React.Fragment key={row.id}>
+                    <tr style={{cursor:'pointer'}} onClick={()=>open(row)}>
+                      <td style={{whiteSpace:'nowrap'}}>{fmtDateTime(row.created_at)}</td>
+                      <td style={{fontWeight:600,color:'#0f172a'}}>{row.full_name}</td>
+                      <td>{row.company}</td>
+                      <td>{row.work_email}</td>
+                      <td style={{whiteSpace:'nowrap'}}>{row.phone}</td>
+                      <td>{row.agent_count || '-'}</td>
+                      <td style={{textTransform:'capitalize'}}>{interest}</td>
+                      <td><span style={{background:t.bg,color:t.fg,padding:'2px 8px',borderRadius:999,fontSize:12,fontWeight:600}}>{row.status_label || row.status}</span></td>
+                    </tr>
+                    {openId === row.id && (
+                      <tr><td colSpan={8} style={{background:'#f8fafc',padding:16}}>
+                        <div style={{display:'grid',gap:14}}>
+                          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12}}>
+                            <div><div style={{fontSize:11,color:'#94a3b8',fontWeight:600,textTransform:'uppercase'}}>Work email</div><div><a href={`mailto:${row.work_email}`} style={{color:'#2563eb'}}>{row.work_email}</a></div></div>
+                            <div><div style={{fontSize:11,color:'#94a3b8',fontWeight:600,textTransform:'uppercase'}}>Phone</div><div><a href={`tel:${row.phone}`} style={{color:'#2563eb'}}>{row.phone}</a></div></div>
+                            <div><div style={{fontSize:11,color:'#94a3b8',fontWeight:600,textTransform:'uppercase'}}>Agents</div><div>{row.agent_count || '-'}</div></div>
+                            <div><div style={{fontSize:11,color:'#94a3b8',fontWeight:600,textTransform:'uppercase'}}>Plan / Use case</div><div style={{textTransform:'capitalize'}}>{interest}</div></div>
+                            <div><div style={{fontSize:11,color:'#94a3b8',fontWeight:600,textTransform:'uppercase'}}>Referral</div><div>{row.referral_source || '-'}</div></div>
+                            <div><div style={{fontSize:11,color:'#94a3b8',fontWeight:600,textTransform:'uppercase'}}>Came from</div><div>{row.originating_page || '-'}</div></div>
+                          </div>
+                          <div>
+                            <div style={{fontSize:11,color:'#94a3b8',fontWeight:600,textTransform:'uppercase'}}>What they want to improve</div>
+                            <div style={{whiteSpace:'pre-wrap',marginTop:2}}>{row.wants_to_improve || '-'}</div>
+                          </div>
+                          {row.reviewed_by && (
+                            <div style={{fontSize:12,color:'#64748b'}}>Last updated by {row.reviewed_by}{row.reviewed_at ? ` - ${fmtDateTime(row.reviewed_at)}` : ''}</div>
+                          )}
+                          <div>
+                            <div style={{fontSize:11,color:'#94a3b8',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>Internal note</div>
+                            <textarea className="senda-input" style={{width:'100%',minHeight:70,fontSize:13}} value={note} onChange={e=>setNote(e.target.value)} placeholder="What was discussed, next step..." />
+                          </div>
+                          <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                            <span style={{fontSize:12,color:'#64748b'}}>Move to:</span>
+                            {DEMO_STATUSES.filter(s=>s.id!==row.status).map(s => (
+                              <button key={s.id} className="senda-btn senda-btn-sm" disabled={busy} onClick={()=>update(row, { status: s.id, admin_note: note }, `Marked ${s.label}.`)}>{s.label}</button>
+                            ))}
+                            <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={busy} style={{marginLeft:'auto'}} onClick={()=>update(row, { admin_note: note }, 'Note saved.')}>Save note</button>
+                          </div>
+                        </div>
+                      </td></tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <PagerFooter page={page} setPage={setPage} hasNext={meta.has_next} count={meta.total || 0} label="requests" />
+      </div>
+    </div>
+  );
+}
+
 function DeletionRequestsTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [status, setStatus]   = useState('pending');
@@ -18614,7 +18785,7 @@ function OrganizationDetail({ orgId, onBack }) {
             ['Platform plan', sub ? `${sub.plan.name} (${sub.status})` : 'None'],
             ['Call-center plan', cc.current ? `${cc.current.plan}${cc.current.is_trial ? ' (trial)' : ''}` : 'None'],
             ['Overrides', `${features.filter(x => x.override).length} feature(s)`],
-            ['Branding', branding.published ? `Published ${fmtDate(branding.published_at)}` : 'SENDA Copilot default']].map(([k, v]) => (
+            ['Branding', branding.published ? `Published ${fmtDate(branding.published_at)}` : 'SENDA default']].map(([k, v]) => (
             <div key={k} style={{display:'flex',gap:12,padding:'6px 0',borderBottom:'1px solid #f8fafc',fontSize:13}}>
               <span style={{width:160,color:'#94a3b8'}}>{k}</span><span style={{color:'#0f172a'}}>{v}</span>
             </div>))}
@@ -19455,7 +19626,10 @@ function VoiceProvidersTab() {
 const AI_PROVIDER_TYPES = [
   { value: 'huggingface', label: 'Hugging Face (call transcription & analysis)' },
   { value: 'elevenlabs', label: 'ElevenLabs (call transcription — Scribe)' },
-  { value: 'openai', label: 'OpenAI-compatible (earlier method)' },
+  { value: 'openai', label: 'OpenAI-compatible (OpenAI, Groq, OpenRouter — transcription & analysis)' },
+  { value: 'gemini', label: 'Google Gemini (transcription & analysis — strong on Swahili/English mixing)' },
+  { value: 'soniox', label: 'Soniox (call transcription — code-switching)' },
+  { value: 'speechmatics', label: 'Speechmatics (call transcription — East African accents)' },
 ];
 
 const AI_CREDENTIAL_FIELDS = {
@@ -19480,8 +19654,31 @@ const AI_CREDENTIAL_FIELDS = {
     { key: 'asr_inactive', label: 'Do not use it by default (keep it only as a "re-run with another model" choice)', type: 'checkbox' },
   ],
   openai: [
-    { key: 'api_key', label: 'API Key',                required: true, secret: true },
-    { key: 'model',   label: 'Chat model (optional)',   required: false, placeholder: 'gpt-4o-mini' },
+    { key: 'api_key',          label: 'API Key',                                                      required: true, secret: true, placeholder: 'sk_… or gsk_… for Groq' },
+    { key: 'base_url',         label: 'API base URL (optional — set for Groq or another OpenAI-compatible host)', placeholder: 'https://api.groq.com/openai/v1' },
+    { key: 'model',            label: 'Chat model (for call summary & AI agent)',                      required: false, placeholder: 'e.g. llama-3.3-70b-versatile' },
+    { key: 'transcribe_model', label: 'Speech model (optional — auto-detected; Groq uses whisper-large-v3)', placeholder: 'whisper-large-v3' },
+  ],
+  gemini: [
+    { key: 'api_key',  label: 'Google AI Studio API key', required: true, secret: true, placeholder: 'AIza…' },
+    { key: 'model',    label: 'Model (optional — transcription & analysis)', placeholder: 'gemini-2.5-flash' },
+    { key: 'base_url', label: 'API base URL (optional)', placeholder: 'https://generativelanguage.googleapis.com/v1beta' },
+  ],
+  soniox: [
+    { key: 'api_key',   label: 'Soniox API key', required: true, secret: true },
+    { key: 'asr_model', label: 'Speech model (optional)', placeholder: 'stt-async-preview' },
+    { key: 'base_url',  label: 'API base URL (optional)', placeholder: 'https://api.soniox.com' },
+    { key: 'asr_cost_per_audio_minute', label: 'Speech cost per audio minute (optional)', type: 'number' },
+    { key: 'cost_currency',             label: 'Cost currency (optional)', placeholder: 'USD' },
+    { key: 'asr_inactive', label: 'Do not use it by default (keep it only as a "re-run with another model" choice)', type: 'checkbox' },
+  ],
+  speechmatics: [
+    { key: 'api_key',   label: 'Speechmatics API key', required: true, secret: true },
+    { key: 'asr_model', label: 'Quality tier (optional): enhanced or standard', placeholder: 'enhanced' },
+    { key: 'base_url',  label: 'API base URL (optional — region-specific)', placeholder: 'https://asr.api.speechmatics.com/v2' },
+    { key: 'asr_cost_per_audio_minute', label: 'Speech cost per audio minute (optional)', type: 'number' },
+    { key: 'cost_currency',             label: 'Cost currency (optional)', placeholder: 'USD' },
+    { key: 'asr_inactive', label: 'Do not use it by default (keep it only as a "re-run with another model" choice)', type: 'checkbox' },
   ],
 };
 
@@ -23164,6 +23361,7 @@ const NAV_GROUPS = [
     { id:'featureaccess', Icon:UserCheck,    label:'Feature Access'   },
     { id:'trash',         Icon:Trash2,       label:'Trash'            },
     { id:'deletionrequests', Icon:Trash2,    label:'Inbox Data Deletion' },
+    { id:'demorequests', Icon:Target,      label:'Demo Requests' },
   ]},
   { title: 'Messaging', items: [
     { id:'broadcast',     Icon:Megaphone,    label:'Broadcast'        },
@@ -27535,6 +27733,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     loginactivity:<LoginActivityTab/>,
     trash:        <TrashTab/>,
     deletionrequests:<DeletionRequestsTab/>,
+    demorequests:<DemoRequestsTab/>,
     callcenterplans:<CallCenterPlansTab/>,
     comingsoon:   <ComingSoonTab/>,
     waotp:        <WaOtpTab/>,

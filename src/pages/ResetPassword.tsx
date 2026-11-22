@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { MessageSquare, ArrowLeft, Key, CheckCircle, Eye, EyeOff } from "lucide-react";
+import { MessageSquare, ArrowLeft, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
-import { BrandLogo } from "@/components/layout/BrandLogo";
+import { useHostBranding } from "@/contexts/BrandingContext";
+import { AuthShell, authInputClass, authLabelClass, authLinkClass, authPrimaryBtnClass } from "@/website/AuthShell";
+import { focusRing } from "@/website/Layout";
 import { useLanguage } from "@/hooks/useLanguage";
 
 const ResetPassword = () => {
@@ -15,6 +16,7 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { branded: whiteLabelHost } = useHostBranding();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -100,173 +102,117 @@ const ResetPassword = () => {
     navigate("/login");
   };
 
+  // Back-to-homepage and support/terms links point at SENDA's site: not shown on a white-label host.
+  const homeLink = !whiteLabelHost && (
+    <Link to="/" className={`mb-5 inline-flex items-center gap-2 rounded text-sm text-[#4B5565] transition-colors hover:text-[#0B1B3F] ${focusRing}`}>
+      <ArrowLeft className="h-4 w-4" />
+      <span>{t("auth.reset_password.back_to_homepage")}</span>
+    </Link>
+  );
+
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <Link to="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors">
-              <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm">{t("auth.reset_password.back_to_homepage")}</span>
-            </Link>
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <BrandLogo className="h-24 w-auto -my-3 -mr-11" />
-              <span className="font-heading text-2xl font-bold text-gray-900">
-                SENDA
-              </span>
-            </div>
-          </div>
-
-          <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-            <CardHeader className="text-center pb-4">
-              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
-              <CardTitle className="text-2xl font-bold text-gray-900">{t("auth.reset_password.success_title")}</CardTitle>
-              <CardDescription className="text-gray-600">
-                {t("auth.reset_password.success_desc")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-6 pb-6">
-              <div className="space-y-4">
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-4">
-                    {t("auth.reset_password.success_message")}
-                  </p>
-                </div>
-
-                <Button
-                  onClick={handleBackToLogin}
-                  className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  {t("auth.reset_password.sign_in_to_account_button")}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="mt-6 text-center text-xs text-gray-500">
-            <p>
-              {t("auth.reset_password.need_help")}{" "}
-              <Link to="/support" className="text-blue-600 hover:underline">
-                {t("auth.reset_password.support_team")}
-              </Link>
+      <AuthShell title={t("auth.reset_password.success_title")} subtitle={t("auth.reset_password.success_desc")}>
+        {homeLink}
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 rounded-2xl bg-[#ECFDF3] p-4">
+            <CheckCircle className="h-6 w-6 flex-shrink-0 text-green-600" />
+            <p className="text-sm leading-relaxed text-[#4B5565]">
+              {t("auth.reset_password.success_message")}
             </p>
           </div>
+
+          <Button onClick={handleBackToLogin} className={authPrimaryBtnClass}>
+            {t("auth.reset_password.sign_in_to_account_button")}
+          </Button>
         </div>
-      </div>
+
+        {!whiteLabelHost && (
+          <p className="mt-6 border-t border-[#E3E7EE] pt-5 text-center text-xs text-[#4B5565]">
+            {t("auth.reset_password.need_help")}{" "}
+            <Link to="/support" className={authLinkClass}>
+              {t("auth.reset_password.support_team")}
+            </Link>
+          </p>
+        )}
+      </AuthShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">{t("auth.reset_password.back_to_homepage")}</span>
-          </Link>
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <BrandLogo className="h-24 w-auto -my-3 -mr-11" />
-            <span className="font-heading text-2xl font-bold text-gray-900">
-              SENDA
-            </span>
+    <AuthShell title={t("auth.forgot_password.step_title_reset")} subtitle={t("auth.forgot_password.step_desc_reset")}>
+      {homeLink}
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-1.5">
+          <Label htmlFor="password" className={authLabelClass}>{t("auth.reset_password.new_password_label")}</Label>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder={t("auth.forgot_password.new_password_placeholder")}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className={`${authInputClass} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#8A94A6] transition-colors hover:text-[#4B5565] ${focusRing}`}
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          </div>
+          <p className="text-xs text-[#4B5565]">{t("auth.reset_password.password_hint")}</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="confirmPassword" className={authLabelClass}>{t("auth.reset_password.confirm_password_label")}</Label>
+          <div className="relative">
+            <Input
+              id="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder={t("auth.forgot_password.confirm_password_placeholder")}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              className={`${authInputClass} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#8A94A6] transition-colors hover:text-[#4B5565] ${focusRing}`}
+            >
+              {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
           </div>
         </div>
 
-        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-          <CardHeader className="text-center pb-4">
-            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
-              <Key className="w-8 h-8 text-blue-600" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">{t("auth.forgot_password.step_title_reset")}</CardTitle>
-            <CardDescription className="text-gray-600">
-              {t("auth.forgot_password.step_desc_reset")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-6 pb-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-semibold text-gray-700">{t("auth.reset_password.new_password_label")}</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder={t("auth.forgot_password.new_password_placeholder")}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-12 text-base border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500">{t("auth.reset_password.password_hint")}</p>
-              </div>
+        <Button type="submit" className={authPrimaryBtnClass} disabled={isLoading}>
+          {isLoading ? t("auth.common.resetting") : t("auth.reset_password.reset_password_button")}
+        </Button>
+      </form>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">{t("auth.reset_password.confirm_password_label")}</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder={t("auth.forgot_password.confirm_password_placeholder")}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    className="h-12 text-base border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
+      <p className="mt-6 border-t border-[#E3E7EE] pt-5 text-center text-sm text-[#4B5565]">
+        {t("auth.common.remember_your_password")}{" "}
+        <Link to="/login" className={authLinkClass}>
+          {t("auth.common.sign_in")}
+        </Link>
+      </p>
 
-              <Button
-                type="submit"
-                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                disabled={isLoading}
-              >
-                {isLoading ? t("auth.common.resetting") : t("auth.reset_password.reset_password_button")}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                {t("auth.common.remember_your_password")}{" "}
-                <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
-                  {t("auth.common.sign_in")}
-                </Link>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="mt-6 text-center text-xs text-gray-500">
-          <p>
-            {t("auth.reset_password.terms_notice_prefix")}{" "}
-            <Link to="/terms" className="text-blue-600 hover:underline">
-              {t("auth.signup.terms_full")}
-            </Link>{" "}
-            {t("auth.signup.and")}{" "}
-            <Link to="/privacy" className="text-blue-600 hover:underline">
-              {t("auth.signup.privacy_policy")}
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+      {!whiteLabelHost && (
+        <p className="mt-4 text-center text-xs text-[#4B5565]">
+          {t("auth.reset_password.terms_notice_prefix")}{" "}
+          <Link to="/terms" className={authLinkClass}>
+            {t("auth.signup.terms_full")}
+          </Link>{" "}
+          {t("auth.signup.and")}{" "}
+          <Link to="/privacy" className={authLinkClass}>
+            {t("auth.signup.privacy_policy")}
+          </Link>
+        </p>
+      )}
+    </AuthShell>
   );
 };
 

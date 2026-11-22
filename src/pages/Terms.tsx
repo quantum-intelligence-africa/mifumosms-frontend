@@ -1,11 +1,9 @@
-import { LandingHeader } from "@/components/layout/LandingHeader";
-import { LandingFooter } from "@/components/layout/LandingFooter";
+import { SitePage } from "@/website/Layout";
 import { Button } from "@/components/ui/button";
 import {
   MessageSquare,
   Menu
 } from "lucide-react";
-import MobileMenu from "@/components/layout/MobileMenu";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
@@ -58,17 +56,9 @@ const Terms = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-200 via-blue-100 to-white">
-      <LandingHeader forceScrolled />
+    <SitePage title={`${t('legal.terms.title')} — SENDA`}>
 
-      {/* Mobile Menu */}
-      <MobileMenu
-        isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-        scrollToSection={scrollToSection}
-      />
-
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16" style={{ paddingTop: '120px' }}>
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16" >
         <div className="text-center mb-8 sm:mb-12 lg:mb-16">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-black mb-4">{t('legal.terms.title')}</h1>
           <p className="text-gray-700 text-base sm:text-lg">{t('legal.terms.last_updated')}</p>
@@ -116,9 +106,7 @@ const Terms = () => {
           </div>
         </div>
       </div>
-
-      <LandingFooter />
-    </div>
+    </SitePage>
   );
 };
 
