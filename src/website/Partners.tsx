@@ -7,17 +7,51 @@ import { useSiteLang } from "./i18n";
 
 /**
  * Partners we provide our solutions to — a bordered logo grid (like a wall of
- * clients), ending with a "Your business next" call-to-action cell. Logos are
- * muted by default and show their colour on hover.
+ * clients), ending with a "Your business next" call-to-action cell, plus a
+ * second row of our top SMS users. Logos show their colour and lift on hover.
  */
-const PARTNERS = [
+type Logo = { name: string; src: string; href: string; /** app-icon style: rounded tile */ icon?: boolean };
+
+const PARTNERS: Logo[] = [
   { name: "Swahilies", src: "/website/partners/swahilies.png", href: "https://www.swahilies.com/" },
   { name: "Ijuka Luxury Coach", src: "/website/partners/ijuka.png", href: "https://ijukaluxury.co.tz/" },
   { name: "Harvest Point", src: "/website/partners/harvestpoint.png", href: "https://harvestpoint.co.tz/" },
   { name: "Magige Lens", src: "/website/partners/magigelens.png", href: "https://magigelens.co.tz/" },
 ];
 
+const TOP_SMS_USERS: Logo[] = [
+  { name: "TangaYetu", src: "/website/partners/tangayetu.png", href: "https://tz.linkedin.com/company/tangayetu/" },
+  { name: "Swahilies Pepea", src: "/website/partners/swahilies-pepea.png", href: "https://play.google.com/store/apps/details?id=com.swahiliespepea.app", icon: true },
+  { name: "Kuza", src: "/website/partners/kuza.png", href: "https://play.google.com/store/apps/details?id=com.kuza.com", icon: true },
+  { name: "Kinara Copilot", src: "/website/partners/kinara.svg", href: "http://kinaracopilot.com/", icon: true },
+];
+
 const CELL = "flex items-center justify-center border-b border-r border-[#E7EAF0] p-6 sm:p-8";
+
+function LogoCell({ logo }: { logo: Logo }) {
+  return (
+    <li>
+      <a
+        href={logo.href}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={logo.name}
+        className={cn(CELL, "group h-28 transition sm:h-32", focusRing)}
+      >
+        <img
+          src={logo.src}
+          alt={logo.name}
+          className={cn(
+            "w-auto object-contain transition duration-300 group-hover:scale-105",
+            logo.icon ? "max-h-16 rounded-2xl shadow-sm ring-1 ring-black/5 sm:max-h-20" : "max-h-14 max-w-[80%] sm:max-h-16",
+          )}
+          loading="lazy"
+          draggable={false}
+        />
+      </a>
+    </li>
+  );
+}
 
 export function Partners() {
   const { tr } = useSiteLang();
@@ -32,23 +66,7 @@ export function Partners() {
         <div className="mt-8 overflow-hidden rounded-3xl border-l border-t border-[#E7EAF0] bg-white">
           <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
             {PARTNERS.map((p) => (
-              <li key={p.name}>
-                <a
-                  href={p.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={p.name}
-                  className={cn(CELL, "group h-28 transition sm:h-32", focusRing)}
-                >
-                  <img
-                    src={p.src}
-                    alt={p.name}
-                    className="max-h-14 w-auto max-w-[80%] object-contain transition duration-300 group-hover:scale-105 sm:max-h-16"
-                    loading="lazy"
-                    draggable={false}
-                  />
-                </a>
-              </li>
+              <LogoCell key={p.name} logo={p} />
             ))}
             <li>
               <Link
@@ -61,6 +79,21 @@ export function Partners() {
                 </span>
               </Link>
             </li>
+          </ul>
+        </div>
+      </Reveal>
+
+      <Reveal delay={120}>
+        <h3 className="mt-12 text-center text-sm font-semibold uppercase tracking-wide text-[#6B7585]">
+          {tr("Top SMS users", "Watumiaji wakuu wa SMS")}
+        </h3>
+      </Reveal>
+      <Reveal delay={160}>
+        <div className="mx-auto mt-6 max-w-3xl overflow-hidden rounded-3xl border-l border-t border-[#E7EAF0] bg-white">
+          <ul className="grid grid-cols-2 sm:grid-cols-4">
+            {TOP_SMS_USERS.map((p) => (
+              <LogoCell key={p.name} logo={p} />
+            ))}
           </ul>
         </div>
       </Reveal>
