@@ -24,6 +24,7 @@ const TOP_SMS_USERS: Logo[] = [
   { name: "Swahilies Pepea", src: "/website/partners/swahilies-pepea.png", href: "https://play.google.com/store/apps/details?id=com.swahiliespepea.app", icon: true },
   { name: "Kuza", src: "/website/partners/kuza.png", href: "https://play.google.com/store/apps/details?id=com.kuza.com", icon: true },
   { name: "Kinara Copilot", src: "/website/partners/kinara.svg", href: "http://kinaracopilot.com/", icon: true },
+  { name: "Ankara MFI", src: "/website/partners/ankara.png", href: "https://play.google.com/store/apps/details?id=com.ankaraapp.com", icon: true },
 ];
 
 const CELL = "flex items-center justify-center border-b border-r border-[#E7EAF0] p-6 sm:p-8";
@@ -90,7 +91,7 @@ export function Partners() {
       </Reveal>
       <Reveal delay={160}>
         <div className="mx-auto mt-6 max-w-3xl overflow-hidden rounded-3xl border-l border-t border-[#E7EAF0] bg-white">
-          <ul className="grid grid-cols-2 sm:grid-cols-4">
+          <ul className="grid grid-cols-2 sm:grid-cols-5">
             {TOP_SMS_USERS.map((p) => (
               <LogoCell key={p.name} logo={p} />
             ))}
