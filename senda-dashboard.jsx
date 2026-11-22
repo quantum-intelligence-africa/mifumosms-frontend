@@ -41,6 +41,7 @@ import {
   Mail,
   Megaphone,
   Menu,
+  MessageCircle,
   MessageSquare,
   MoonStar,
   MoreHorizontal,
@@ -7038,7 +7039,25 @@ function UsersTab() {
   const [formModal, setFormModal] = useState(null); // null | 'create' | <user row> (edit)
   const [busyId, setBusyId]       = useState(null);
   const [selectedUser, setSelectedUser] = useState(null); // row whose full detail drawer is open
+  const [selectedIds, setSelectedIds] = useState(() => new Set()); // users ticked for a batch message (may span pages)
+  const [msgModal, setMsgModal] = useState(false);
   const PER = 15;
+
+  // Selection helpers for the "message selected users" batch action.
+  const pageIds = items.map(u => u.id);
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const toggleSelect = (id) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  const toggleSelectAllPage = () => setSelectedIds(prev => {
+    const next = new Set(prev);
+    if (pageIds.every(id => next.has(id))) pageIds.forEach(id => next.delete(id));
+    else pageIds.forEach(id => next.add(id));
+    return next;
+  });
+  const clearSelection = () => setSelectedIds(new Set());
 
   const fetchData = useCallback(() => {
     setLoading(true); setError(null);
@@ -7319,6 +7338,15 @@ function UsersTab() {
           )}
         </div>
         <span style={{fontSize:12,color:'#94a3b8',marginLeft: isSuperAdmin ? 0 : 'auto'}}>{total} users{joinedActive ? ' registered in this period' : ''}</span>
+        {selectedIds.size > 0 && (
+          <div style={{display:'flex',alignItems:'center',gap:8,marginLeft:12,background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:10,padding:'4px 6px 4px 12px'}}>
+            <span style={{fontSize:12,fontWeight:700,color:BRAND}}>{selectedIds.size} selected</span>
+            <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={()=>setMsgModal(true)}>
+              <Send size={13} strokeWidth={2.4}/> Message
+            </button>
+            <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={clearSelection} title="Clear selection">Clear</button>
+          </div>
+        )}
         {isSuperAdmin && (
           <div style={{marginLeft:'auto',display:'flex',gap:8}}>
             <button className="senda-btn senda-btn-sm" disabled={exporting || total === 0} onClick={exportCsv}
@@ -7344,14 +7372,17 @@ function UsersTab() {
           <div style={{overflowX:'auto'}}>
             <table className="senda-table" style={{minWidth:1180}}>
               <thead>
-                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>SMS Access</th><th>IVR Access</th><th>Team Inbox</th><th>2FA</th><th>Joined</th><th>Actions</th></tr>
+                <tr><th style={{width:34,textAlign:'center'}}><input type="checkbox" aria-label="Select all users on this page" checked={allOnPageSelected} onChange={toggleSelectAllPage} style={{cursor:'pointer'}}/></th><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>SMS Access</th><th>IVR Access</th><th>Team Inbox</th><th>2FA</th><th>Joined</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {items.map(u=>{
                   const busy = busyId === u.id;
                   const trashed = !!u.is_deleted;
                   return (
-                  <tr key={u.id} style={trashed ? {opacity:.55} : undefined}>
+                  <tr key={u.id} style={trashed ? {opacity:.55} : (selectedIds.has(u.id) ? {background:'#f5f9ff'} : undefined)}>
+                    <td style={{textAlign:'center'}}>
+                      <input type="checkbox" aria-label={`Select ${u.name}`} checked={selectedIds.has(u.id)} onChange={()=>toggleSelect(u.id)} style={{cursor:'pointer'}}/>
+                    </td>
                     <td
                       style={{fontWeight:600,color:BRAND,fontSize:12,cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}}
                       title="Click to view full details"
@@ -7516,6 +7547,106 @@ function UsersTab() {
           isSuperAdmin={isSuperAdmin}
         />
       )}
+
+      {msgModal && (
+        <UserMessageModal
+          userIds={Array.from(selectedIds)}
+          onClose={()=>setMsgModal(false)}
+          onSent={()=>{ setMsgModal(false); clearSelection(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Compose and send a message to the users ticked in UsersTab, over any mix of
+// Email / SMS / WhatsApp. Posts /users/message, which fans each channel out to
+// the matching send path on the backend. See senda_admin/views/users_message.py.
+function UserMessageModal({ userIds, onClose, onSent }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [channels, setChannels] = useState({ email: true, sms: false, whatsapp: false });
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const count = userIds.length;
+  const picked = Object.keys(channels).filter(c => channels[c]);
+  const toggle = (c) => setChannels(prev => ({ ...prev, [c]: !prev[c] }));
+
+  const send = async () => {
+    if (!picked.length) { showToast?.('Choose at least one channel.', 'error'); return; }
+    if (!message.trim()) { showToast?.('Write a message first.', 'error'); return; }
+    if (channels.email && !subject.trim()) { showToast?.('Email needs a subject.', 'error'); return; }
+    setSending(true);
+    try {
+      const res = await adminFetch('/users/message', {
+        method: 'POST',
+        body: JSON.stringify({ user_ids: userIds, channels: picked, subject: subject.trim(), message: message.trim() }),
+      }, onLogout);
+      if (!res.success) { showToast?.(res.error?.message || 'Could not send the message.', 'error'); return; }
+      const ch = res.data?.channels || {};
+      const parts = [];
+      if (ch.email)    parts.push(`Email: ${ch.email.queued} queued${ch.email.skipped_no_email ? `, ${ch.email.skipped_no_email} had no email` : ''}`);
+      if (ch.sms)      parts.push(`SMS: ${ch.sms.queued} queued${ch.sms.skipped_no_phone ? `, ${ch.sms.skipped_no_phone} had no phone` : ''}`);
+      if (ch.whatsapp) parts.push(`WhatsApp: ${ch.whatsapp.sent} sent, ${ch.whatsapp.failed} failed`);
+      showToast?.(parts.join(' · ') || 'Message dispatched.', 'success');
+      onSent?.();
+    } catch (e) {
+      showToast?.(e.message || 'Could not send the message.', 'error');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const chanBtn = (key, label, Icon) => (
+    <button type="button" onClick={()=>toggle(key)}
+      style={{display:'inline-flex',alignItems:'center',gap:7,padding:'8px 14px',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer',
+        border:`1.5px solid ${channels[key] ? BRAND : '#e2e8f0'}`,
+        background:channels[key] ? '#eff6ff' : '#fff',
+        color:channels[key] ? BRAND : '#64748b'}}>
+      <Icon size={15} strokeWidth={2.3}/> {label}
+    </button>
+  );
+
+  return (
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}}>
+      <div onClick={e=>e.stopPropagation()} className="senda-card" style={{width:'100%',maxWidth:520,background:'#fff',borderRadius:16,padding:22,maxHeight:'90vh',overflowY:'auto'}}>
+        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,marginBottom:4}}>
+          <div>
+            <h3 style={{margin:0,fontSize:17,fontWeight:800,color:'#0f172a'}}>Message {count} user{count===1?'':'s'}</h3>
+            <p style={{margin:'4px 0 0',fontSize:12.5,color:'#64748b'}}>Choose the channel(s) and write your message.</p>
+          </div>
+          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',color:'#94a3b8',fontSize:20,lineHeight:1}}>×</button>
+        </div>
+
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',margin:'16px 0 6px'}}>
+          {chanBtn('email','Email', Mail)}
+          {chanBtn('sms','SMS', MessageSquare)}
+          {chanBtn('whatsapp','WhatsApp', MessageCircle)}
+        </div>
+
+        {channels.email && (
+          <div style={{marginTop:12}}>
+            <label style={{display:'block',fontSize:12,fontWeight:700,color:'#334155',marginBottom:5}}>Email subject</label>
+            <input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="e.g. An update from SENDA"
+              style={{width:'100%',padding:'9px 11px',border:'1px solid #e2e8f0',borderRadius:9,fontSize:13.5,color:'#0f172a',boxSizing:'border-box'}}/>
+          </div>
+        )}
+
+        <div style={{marginTop:12}}>
+          <label style={{display:'block',fontSize:12,fontWeight:700,color:'#334155',marginBottom:5}}>Message</label>
+          <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={5} placeholder="Write the message your selected users will receive…"
+            style={{width:'100%',padding:'10px 11px',border:'1px solid #e2e8f0',borderRadius:9,fontSize:13.5,color:'#0f172a',resize:'vertical',boxSizing:'border-box',fontFamily:'inherit'}}/>
+          {channels.sms && <p style={{margin:'6px 0 0',fontSize:11.5,color:'#94a3b8'}}>SMS is sent under the platform sender and only reaches users with a phone number.</p>}
+          {channels.whatsapp && <p style={{margin:'4px 0 0',fontSize:11.5,color:'#b45309'}}>WhatsApp only reaches users with an open 24-hour session; others are reported as failed.</p>}
+        </div>
+
+        <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:18}}>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={onClose} disabled={sending}>Cancel</button>
+          <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={send} disabled={sending || !picked.length}>
+            <Send size={13} strokeWidth={2.4}/> {sending ? 'Sending…' : `Send to ${count}`}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
