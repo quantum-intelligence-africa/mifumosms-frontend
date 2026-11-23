@@ -576,7 +576,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                         <TableHead>{t("voice.calls.col_agent")}</TableHead>
                         <TableHead>{t("voice.calls.col_time")}</TableHead>
                         <TableHead>{t("voice.calls.col_length")}</TableHead>
-                        <TableHead className="min-w-[260px]">{t("voice.calls.col_ai_summary")}</TableHead>
+                        <TableHead className="w-full min-w-[260px]">{t("voice.calls.col_ai_summary")}</TableHead>
                         <TableHead>{t("voice.calls.col_sentiment")}</TableHead>
                         <TableHead className="w-28 text-right">{t("voice.calls.actions")}</TableHead>
                       </TableRow>

@@ -101,7 +101,9 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
       setDownloading(false);
     }
   };
-  const downloadTrack = () => saveFrom(source === "enhanced" && enh?.enhanced_download_url ? enh.enhanced_download_url : track?.url ?? "", source === "enhanced" ? "enhanced" : "");
+  // Downloads whatever is playing (the enhanced copy when available). No "enhanced"
+  // suffix in the filename — tenants shouldn't be able to tell it was enhanced.
+  const downloadTrack = () => saveFrom(source === "enhanced" && enh?.enhanced_download_url ? enh.enhanced_download_url : track?.url ?? "");
 
   // Load the enhancement status for a recording, and keep watching it while it is being made.
   useEffect(() => {
@@ -250,7 +252,11 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
     if (!playing && !audio.paused) audio.pause();
   }, [playing, track, onPlayingChange]);
 
-  const showEnh = Boolean(track?.recordingId && enh && (enh.enabled || enh.status !== "none"));
+  // Tenants never see the enhancement controls or the "Original / Enhanced" labels.
+  // The enhanced copy is still loaded (the poll effect above) and played transparently
+  // (the auto-switch effect), so they hear the enhanced voice without being shown — or
+  // needing to know — that it was enhanced. Enhancement is managed from the admin side.
+  const showEnh = false;
   const Icon = track?.direction === "outbound" ? PhoneOutgoing : PhoneIncoming;
   const total = duration || track?.durationSeconds || 0;
 
