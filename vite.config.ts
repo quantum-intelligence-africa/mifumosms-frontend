@@ -60,7 +60,29 @@ export default defineConfig(({ mode }) => ({
         // a circular chunk-init order ("Cannot read properties of undefined (reading 'forwardRef')").
         // The automatic graph-based split has no such cycle.
         manualChunks(id) {
-          if (id.includes("node_modules") && id.includes("xlsx")) return "xlsx";
+          // The default-language (English) dictionary is ~160 kB and was being
+          // inlined into `main`, which every first visit must download serially
+          // before anything paints. Ship it as its own chunk that still preloads
+          // in parallel. NOTE: never pull the Swahili files in here — they are
+          // dynamically imported (see LanguageContext) and must stay their own
+          // lazy chunk, so a visitor downloads one language, not both.
+          if (id.includes("/src/i18n/") && !id.includes("Sw") && !/[/\\]sw\.ts$/.test(id)) {
+            return "i18n-en";
+          }
+          if (id.includes("node_modules")) {
+            if (id.includes("xlsx")) return "xlsx";
+            // Keep react/react-dom/scheduler in the entry chunk: splitting them
+            // out produced a circular init order ("Cannot read properties of
+            // undefined (reading 'forwardRef')"). Everything below only depends
+            // on react, so shipping it as its own parallel-downloaded chunk is
+            // safe and turns the one 941 kB serial download into several that
+            // fetch concurrently (and cache independently across deploys).
+            if (/[/\\](react|react-dom|scheduler)[/\\]/.test(id) || id.includes("react/jsx")) return;
+            if (id.includes("@radix-ui")) return "radix";
+            if (id.includes("lucide-react")) return "icons";
+            if (id.includes("@tanstack")) return "query";
+            if (id.includes("date-fns")) return "date-fns";
+          }
         },
       },
     },
