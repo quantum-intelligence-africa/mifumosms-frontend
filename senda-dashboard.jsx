@@ -15736,6 +15736,105 @@ function demoTone(s) {
     lost:      { bg:'#f1f5f9', fg:'#64748b' },
   }[s]) || { bg:'#f1f5f9', fg:'#475569' };
 }
+// Who gets alerted (email / SMS / WhatsApp) on each new demo lead, and how.
+// Backed by /api/admin/v1/demo-lead-notifications (GET + /update PATCH + /test POST).
+function DemoLeadNotificationsPanel() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [open, setOpen]       = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded]   = useState(false);
+  const [saving, setSaving]   = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [data, setData] = useState({
+    enabled:false, notify_emails:'', notify_phones:'', notify_whatsapp:'',
+    sms_sender_id:'', wa_template:'', wa_language:'en', available_senders:[],
+  });
+
+  const applyServer = (d) => setData(prev => ({ ...prev, ...(d||{}) }));
+
+  const loadSettings = useCallback(() => {
+    setLoading(true);
+    adminFetch('/api/admin/v1/demo-lead-notifications', {}, onLogout)
+      .then(res => { if (res.success) { applyServer(res.data); setLoaded(true); } else showToast?.(res.error?.message || 'Could not load lead-alert settings.', 'error'); })
+      .catch(() => showToast?.('Could not load lead-alert settings.', 'error'))
+      .finally(() => setLoading(false));
+  }, [onLogout]);
+
+  useEffect(() => { if (open && !loaded) loadSettings(); }, [open, loaded, loadSettings]);
+
+  const field = (k, v) => setData(prev => ({ ...prev, [k]: v }));
+
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const res = await adminFetch('/api/admin/v1/demo-lead-notifications/update', { method:'PATCH', body: JSON.stringify({
+        enabled: !!data.enabled,
+        notify_emails: data.notify_emails || '', notify_phones: data.notify_phones || '', notify_whatsapp: data.notify_whatsapp || '',
+        sms_sender_id: data.sms_sender_id || '', wa_template: data.wa_template || '', wa_language: data.wa_language || 'en',
+      }) }, onLogout);
+      if (res.success) { applyServer(res.data); showToast?.('Lead-alert settings saved.', 'success'); }
+      else showToast?.(res.error?.message || 'Could not save.', 'error');
+    } catch { showToast?.('Network error while saving.', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  const sendTest = async () => {
+    if (testing) return;
+    setTesting(true);
+    try {
+      const res = await adminFetch('/api/admin/v1/demo-lead-notifications/test', { method:'POST', body:'{}' }, onLogout);
+      if (res.success) showToast?.(res.message || 'Test alert sent.', 'success');
+      else showToast?.(res.error?.message || 'Could not send the test.', 'error');
+    } catch { showToast?.('Network error while sending the test.', 'error'); }
+    finally { setTesting(false); }
+  };
+
+  const label = (t) => <div style={{fontSize:11,color:'#94a3b8',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>{t}</div>;
+
+  return (
+    <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,overflow:'hidden'}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{all:'unset',cursor:'pointer',boxSizing:'border-box',width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <Bell size={15} color="#2563eb"/>
+          <span style={{fontWeight:700,color:'#0f172a',fontSize:14}}>Lead alerts</span>
+          <span style={{fontSize:12,padding:'2px 8px',borderRadius:999,background:data.enabled?'#dcfce7':'#f1f5f9',color:data.enabled?'#166534':'#64748b',fontWeight:600}}>{data.enabled?'On':'Off'}</span>
+        </div>
+        <ChevronDown size={16} style={{transform:open?'rotate(180deg)':'none',transition:'transform .15s',color:'#94a3b8'}}/>
+      </button>
+      {open && (
+        <div style={{borderTop:'1px solid #e2e8f0',padding:16,display:'grid',gap:14}}>
+          <p style={{fontSize:13,color:'#64748b',margin:0}}>Alert the demo/sales team on every new "Book a demo" lead. Any channel left blank is skipped.</p>
+          {loading && !loaded ? <div style={{color:'#94a3b8',fontSize:13}}>Loading…</div> : (
+          <>
+            <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:600,color:'#0f172a'}}>
+              <input type="checkbox" checked={!!data.enabled} onChange={e=>field('enabled', e.target.checked)}/>
+              Send alerts for new demo requests
+            </label>
+            <div>{label('Emails (comma-separated)')}<input className="senda-input" value={data.notify_emails} onChange={e=>field('notify_emails', e.target.value)} placeholder="sales@yourco.com, ops@yourco.com"/></div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12}}>
+              <div>{label('SMS numbers (E.164)')}<input className="senda-input" value={data.notify_phones} onChange={e=>field('notify_phones', e.target.value)} placeholder="+2557..., +2557..."/></div>
+              <div>{label('SMS sender ID')}<input className="senda-input" list="demo-lead-senders" value={data.sms_sender_id} onChange={e=>field('sms_sender_id', e.target.value)} placeholder="SENDA (default)"/>
+                <datalist id="demo-lead-senders">{(data.available_senders||[]).map(s=><option key={s} value={s}/>)}</datalist>
+              </div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12}}>
+              <div>{label('WhatsApp numbers (E.164)')}<input className="senda-input" value={data.notify_whatsapp} onChange={e=>field('notify_whatsapp', e.target.value)} placeholder="+2557..."/></div>
+              <div>{label('WhatsApp template')}<input className="senda-input" value={data.wa_template} onChange={e=>field('wa_template', e.target.value)} placeholder="demo_lead_alert"/></div>
+              <div>{label('Template language')}<input className="senda-input" value={data.wa_language} onChange={e=>field('wa_language', e.target.value)} placeholder="en"/></div>
+            </div>
+            <p style={{fontSize:12,color:'#94a3b8',margin:0}}>WhatsApp needs an approved template whose body has 5 variables in order: name, company, email, phone, interest.</p>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={save} disabled={saving}>{saving?'Saving…':'Save'}</button>
+              <button className="senda-btn senda-btn-sm" onClick={sendTest} disabled={testing}>{testing?'Sending…':'Send test'}</button>
+            </div>
+          </>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DemoRequestsTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [status, setStatus]   = useState('new');
@@ -15805,6 +15904,8 @@ function DemoRequestsTab() {
         </div>
         <button className="senda-btn senda-btn-sm" onClick={exportCsv}><Download size={14}/> Export CSV</button>
       </div>
+
+      <DemoLeadNotificationsPanel />
 
       <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
         {DEMO_STATUSES.map(s => (
