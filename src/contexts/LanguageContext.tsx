@@ -100,6 +100,8 @@ const translations = {
     "voice.calls.col_time": "Time",
     "voice.calls.col_length": "Length",
     "voice.calls.col_ai_summary": "AI Summary",
+    "voice.calls.read_more": "Read more",
+    "voice.calls.read_less": "Show less",
     "voice.calls.col_sentiment": "Sentiment",
     "voice.calls.actions": "Actions",
     "voice.calls.select_all_recorded": "Select all calls with recordings",

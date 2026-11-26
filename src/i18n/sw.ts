@@ -99,6 +99,8 @@ const sw: Record<string, string> = {
   "voice.calls.col_time": "Muda",
   "voice.calls.col_length": "Urefu",
   "voice.calls.col_ai_summary": "Muhtasari wa AI",
+  "voice.calls.read_more": "Soma zaidi",
+  "voice.calls.read_less": "Onyesha kidogo",
   "voice.calls.col_sentiment": "Hisia",
   "voice.calls.actions": "Vitendo",
   "voice.calls.select_all_recorded": "Chagua simu zote zenye rekodi",

@@ -201,6 +201,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
   const [agentId, setAgentId] = useState("all");
   const [sentiment, setSentiment] = useState("any");
   const [selectedCallIds, setSelectedCallIds] = useState<Set<string>>(new Set());
+  const [openSummaries, setOpenSummaries] = useState<Set<string>>(new Set()); // AI summaries expanded via "Read more"
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisMessage, setAnalysisMessage] = useState<string | null>(null);
   // Deleting call logs is allowed only while SENDA support has switched it on for this organization (owners/admins only).
@@ -556,7 +557,9 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
             {!error && !isLoading && calls.length > 0 && (
               <Card className="overflow-hidden p-0">
                 <div className="overflow-x-auto">
-                  <Table>
+                  {/* w-auto so columns size to content and pack left: no giant empty AI-summary gap pushing
+                      Sentiment/Actions off-screen. Any slack sits as trailing space on the right instead. */}
+                  <Table className="w-auto">
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
                         <TableHead className="w-12">
@@ -578,7 +581,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                         <TableHead>{t("voice.calls.col_agent")}</TableHead>
                         <TableHead>{t("voice.calls.col_time")}</TableHead>
                         <TableHead>{t("voice.calls.col_length")}</TableHead>
-                        <TableHead className="w-full min-w-[260px]">{t("voice.calls.col_ai_summary")}</TableHead>
+                        <TableHead className="min-w-[160px] max-w-[460px]">{t("voice.calls.col_ai_summary")}</TableHead>
                         <TableHead>{t("voice.calls.col_sentiment")}</TableHead>
                         <TableHead className="w-28 text-right">{t("voice.calls.actions")}</TableHead>
                       </TableRow>
@@ -666,9 +669,30 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                               <TableCell className="whitespace-nowrap font-mono text-sm tabular-nums text-foreground">{formatLength(call.duration_seconds)}</TableCell>
                               <TableCell>
                                 {call.analysis?.summary ? (
-                                  <p className="line-clamp-2 max-w-md text-sm text-foreground/80" title={call.analysis.summary}>
-                                    {call.analysis.summary}
-                                  </p>
+                                  <div className="max-w-[440px]">
+                                    <p
+                                      className={cn("text-sm text-foreground/80", !openSummaries.has(call.id) && "line-clamp-2")}
+                                      title={call.analysis.summary}
+                                    >
+                                      {call.analysis.summary}
+                                    </p>
+                                    {call.analysis.summary.length > 110 && (
+                                      <button
+                                        type="button"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setOpenSummaries((prev) => {
+                                            const next = new Set(prev);
+                                            next.has(call.id) ? next.delete(call.id) : next.add(call.id);
+                                            return next;
+                                          });
+                                        }}
+                                        className="mt-0.5 text-xs font-medium text-primary hover:underline"
+                                      >
+                                        {openSummaries.has(call.id) ? t("voice.calls.read_less") : t("voice.calls.read_more")}
+                                      </button>
+                                    )}
+                                  </div>
                                 ) : call.analysis?.status === "pending" || call.analysis?.status === "processing" ? (
                                   <span className="text-xs text-muted-foreground">{t("voice.calls.outcome_in_progress")}</span>
                                 ) : call.outcome_detail === "voicemail_left" || call.outcome_detail === "callback_requested" ? (
