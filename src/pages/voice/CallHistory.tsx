@@ -84,6 +84,8 @@ interface CallSummary {
   /** For a call nobody took: the agents (branches) it rang and the team it was sent to; null when answered or unknown. */
   missed_for?: { agents: string[]; team: string | null } | null;
   agent_name?: string;
+  /** The agent who actually answered (from the answered attempt), kept even when the call's agent FK is unset. */
+  answered_by?: { id: string | null; name: string; endpoint: string } | null;
   is_simulated: boolean;
   started_at: string;
   ended_at: string | null;
@@ -654,7 +656,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                                     )}
                                   </div>
                                 ) : (
-                                  <AgentChip name={call.agent?.name} department={call.agent?.department} />
+                                  <AgentChip name={call.agent?.name || call.answered_by?.name || call.agent_name} department={call.agent?.department} />
                                 )}
                               </TableCell>
                               <TableCell className="whitespace-nowrap">
@@ -771,13 +773,15 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                                               </dd>
                                             </>
                                           )}
-                                          {detail.agent && (
+                                          {(detail.agent || call.answered_by?.name || call.agent_name) && (
                                             <>
                                               <dt className="text-muted-foreground">{t("voice.calls.col_agent")}</dt>
                                               <dd className="text-foreground">
-                                                {detail.agent.department && detail.agent.department !== detail.agent.name
-                                                  ? `${detail.agent.name} · ${detail.agent.department}`
-                                                  : detail.agent.name}
+                                                {detail.agent
+                                                  ? (detail.agent.department && detail.agent.department !== detail.agent.name
+                                                      ? `${detail.agent.name} · ${detail.agent.department}`
+                                                      : detail.agent.name)
+                                                  : (call.answered_by?.name || call.agent_name)}
                                               </dd>
                                             </>
                                           )}
