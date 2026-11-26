@@ -18002,6 +18002,11 @@ function VoiceNumbersTab() {
   const [sumTzList, setSumTzList] = useState(['Africa/Dar_es_Salaam']);
   const [sumSaved, setSumSaved] = useState('');
   const [sumBusy, setSumBusy]   = useState(false);
+  // Line-health alerts: a line getting a burst of ultra-short inbound calls (not connecting) alerts platform ops.
+  const SC_DEFAULT = { enabled:false, max_seconds:5, min_count:5, window_minutes:120, cooldown_minutes:360, emails:'', whatsapp:'', wa_template:'', wa_language:'en' };
+  const [sc, setSc] = useState(SC_DEFAULT);
+  const [scSaved, setScSaved] = useState(JSON.stringify(SC_DEFAULT));
+  const [scBusy, setScBusy] = useState(false);
   // Letting an organization delete its call logs (for a limited time). Staff decide; the organization cannot allow itself.
   const [grants, setGrants]     = useState([]);
   const [delQ, setDelQ]         = useState('');
@@ -18070,9 +18075,32 @@ function VoiceNumbersTab() {
         const cov = res.data?.timed_report_covers || 'last_24h';
         setSumMode(mode); setSumTimes(times); setSumTz(tz); setCovers(cov); setSumTzList(res.data?.summary_timezones || [tz]);
         setSumSaved(JSON.stringify([mode, times, tz, cov]));
+        const a = res.data?.short_call_alerts;
+        if (a) { const next = { ...SC_DEFAULT, ...a }; setSc(next); setScSaved(JSON.stringify(next)); }
       }
     });
   }, [onLogout]);
+
+  const scDirty = JSON.stringify(sc) !== scSaved;
+  const scField = (k, v) => setSc(prev => ({ ...prev, [k]: v }));
+  const saveShortCallAlerts = () => {
+    const payload = {
+      short_call_alert_enabled: !!sc.enabled,
+      short_call_max_seconds: Number(sc.max_seconds) || 5,
+      short_call_min_count: Number(sc.min_count) || 5,
+      short_call_window_minutes: Number(sc.window_minutes) || 120,
+      short_call_cooldown_minutes: Number(sc.cooldown_minutes) || 360,
+      short_call_alert_emails: sc.emails || '', short_call_alert_whatsapp: sc.whatsapp || '',
+      short_call_wa_template: sc.wa_template || '', short_call_wa_language: sc.wa_language || 'en',
+    };
+    setScBusy(true);
+    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify(payload) }, onLogout).then(res => {
+      setScBusy(false);
+      if (!res.success) { showToast?.(res.error || 'Could not save the alert settings.', 'error'); return; }
+      const a = res.data?.short_call_alerts; if (a) { const next = { ...SC_DEFAULT, ...a }; setSc(next); setScSaved(JSON.stringify(next)); }
+      showToast?.('Line-health alert settings saved.', 'success');
+    });
+  };
 
   // Takes effect on the next call, without restarting anything.
   const saveEnforcePlan = (on) => {
@@ -18470,6 +18498,55 @@ function VoiceNumbersTab() {
               {sumBusy ? 'Saving…' : 'Save'}
             </button>
           </div>
+        </div>
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Line-health alerts</div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 10px'}}>
+          When a business line gets a burst of ultra-short inbound calls (reaching the provider but not connecting — a few seconds each, no recording),
+          alert platform ops by email and WhatsApp, naming the exact number.
+        </p>
+        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'4px 0 10px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
+          <input type="checkbox" checked={!!sc.enabled} onChange={e=>scField('enabled', e.target.checked)} style={{marginTop:3}}/>
+          <span><b>Alert on lines that are not connecting</b></span>
+        </label>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginBottom:10}}>
+          {[['min_count','Short calls to trigger'],['max_seconds','Max seconds = "short"'],['window_minutes','Within (minutes)'],['cooldown_minutes','Cooldown (minutes)']].map(([k,label]) => (
+            <label key={k} style={{fontSize:12,color:'#64748b',fontWeight:600}}>
+              <div style={{marginBottom:4,textTransform:'uppercase',letterSpacing:.3}}>{label}</div>
+              <input type="number" min={1} className="senda-input" value={sc[k]} onChange={e=>scField(k, e.target.value)} style={{height:34,fontSize:13}}/>
+            </label>
+          ))}
+        </div>
+        <label style={{display:'block',fontSize:12,color:'#64748b',fontWeight:600,marginBottom:8}}>
+          <div style={{marginBottom:4,textTransform:'uppercase',letterSpacing:.3}}>Alert emails (comma-separated)</div>
+          <input className="senda-input" value={sc.emails} onChange={e=>scField('emails', e.target.value)} placeholder="ops@senda.co" style={{height:34,fontSize:13}}/>
+        </label>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10}}>
+          <label style={{fontSize:12,color:'#64748b',fontWeight:600}}>
+            <div style={{marginBottom:4,textTransform:'uppercase',letterSpacing:.3}}>WhatsApp numbers (E.164)</div>
+            <input className="senda-input" value={sc.whatsapp} onChange={e=>scField('whatsapp', e.target.value)} placeholder="+2557..., +2557..." style={{height:34,fontSize:13}}/>
+          </label>
+          <label style={{fontSize:12,color:'#64748b',fontWeight:600}}>
+            <div style={{marginBottom:4,textTransform:'uppercase',letterSpacing:.3}}>WhatsApp template</div>
+            <input className="senda-input" value={sc.wa_template} onChange={e=>scField('wa_template', e.target.value)} placeholder="line_not_connecting" style={{height:34,fontSize:13}}/>
+          </label>
+          <label style={{fontSize:12,color:'#64748b',fontWeight:600}}>
+            <div style={{marginBottom:4,textTransform:'uppercase',letterSpacing:.3}}>Template language</div>
+            <input className="senda-input" value={sc.wa_language} onChange={e=>scField('wa_language', e.target.value)} placeholder="en" style={{height:34,fontSize:13}}/>
+          </label>
+        </div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'10px 0 0'}}>
+          Emails fall back to the analysis-alert recipients when left blank. WhatsApp needs an approved template whose body has 5 variables in order:
+          org, number, count, window-minutes, max-seconds. Sent from SENDA's WhatsApp number.
+        </p>
+        <div style={{marginTop:12}}>
+          <button disabled={!scDirty || scBusy} onClick={saveShortCallAlerts}
+            style={{height:36,padding:'0 16px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,
+              cursor:(!scDirty || scBusy)?'default':'pointer',opacity:(!scDirty || scBusy)?.5:1}}>
+            {scBusy ? 'Saving…' : 'Save'}
+          </button>
         </div>
       </div>
         </VoiceSettingsGroup>
