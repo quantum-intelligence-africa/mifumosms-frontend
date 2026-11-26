@@ -1,78 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AudioLines, CheckCircle2, Languages, Pause, Play, RotateCcw, X } from "lucide-react";
+import { useCallback, useState } from "react";
+import { AudioLines, CheckCircle2, Languages, Play, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SAMPLE_CALL, SAMPLE_LINES, fmtTime, useContent } from "./content";
 import { useSiteLang } from "./i18n";
 import { Tag, focusRing } from "./Layout";
 
 /**
- * Playback for the staged sample call. Uses the recorded file when it exists; until the
- * recording is approved it runs a silent, timed walk through the transcript so reviewers can
- * judge layout and pacing. The fallback is announced on screen, never hidden.
+ * The staged sample call is illustrative only — a still picture of the player, not a real
+ * recording. Nothing ever plays and there is no timed progress. Clicking a transcript line
+ * still highlights it (and fills the waveform to that point) so the Kiswahili/English transcript
+ * stays readable, but the play control is decorative.
  */
 export function useSamplePlayback() {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [hasAudio, setHasAudio] = useState<boolean | null>(null);
-  const [playing, setPlaying] = useState(false);
   const [t, setT] = useState(0);
   const duration = SAMPLE_CALL.durationSec;
-
-  useEffect(() => {
-    const a = new Audio();
-    a.preload = "metadata";
-    const ok = () => setHasAudio(true);
-    const bad = () => setHasAudio(false);
-    a.addEventListener("loadedmetadata", ok);
-    a.addEventListener("error", bad);
-    a.addEventListener("timeupdate", () => setT(a.currentTime));
-    a.addEventListener("ended", () => setPlaying(false));
-    a.src = SAMPLE_CALL.audioSrc;
-    audioRef.current = a;
-    return () => {
-      a.pause();
-      a.src = "";
-    };
-  }, []);
-
-  // Silent timed preview when there is no recording.
-  useEffect(() => {
-    if (!playing || hasAudio) return;
-    const started = performance.now() - t * 1000;
-    const id = window.setInterval(() => {
-      const next = (performance.now() - started) / 1000;
-      if (next >= duration) {
-        setT(duration);
-        setPlaying(false);
-      } else setT(next);
-    }, 200);
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, hasAudio]);
-
-  const play = useCallback(() => {
-    if (t >= duration) setT(0);
-    if (hasAudio && audioRef.current) {
-      if (audioRef.current.currentTime >= duration) audioRef.current.currentTime = 0;
-      void audioRef.current.play();
-    }
-    setPlaying(true);
-  }, [hasAudio, t, duration]);
-
-  const pause = useCallback(() => {
-    audioRef.current?.pause();
-    setPlaying(false);
-  }, []);
-
-  const seek = useCallback(
-    (sec: number) => {
-      const v = Math.min(Math.max(sec, 0), duration);
-      setT(v);
-      if (hasAudio && audioRef.current) audioRef.current.currentTime = v;
-    },
-    [hasAudio, duration],
-  );
-
-  return { playing, t, duration, hasAudio, play, pause, seek, toggle: playing ? pause : play };
+  const noop = useCallback(() => {}, []);
+  const seek = useCallback((sec: number) => setT(Math.min(Math.max(sec, 0), duration)), [duration]);
+  return { playing: false as const, t, duration, hasAudio: false as const, play: noop, pause: noop, seek, toggle: noop };
 }
 
 type Playback = ReturnType<typeof useSamplePlayback>;
@@ -93,42 +37,20 @@ function Waveform({ progress }: { progress: number }) {
   );
 }
 
-function PlayButton({ p, size = "lg" }: { p: Playback; size?: "lg" | "md" }) {
+function PlayButton({ size = "lg" }: { size?: "lg" | "md" }) {
   const { tr } = useSiteLang();
+  // Decorative: the sample call is a picture, so the play control never plays anything.
   return (
-    <button
-      type="button"
-      onClick={p.toggle}
-      aria-label={p.playing ? tr("Pause sample call", "Simamisha simu ya mfano") : tr("Play sample call", "Cheza simu ya mfano")}
+    <span
+      role="img"
+      aria-label={tr("Sample call", "Simu ya mfano")}
       className={cn(
-        "flex flex-shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-white shadow-lg shadow-[#2563EB]/25 hover:bg-[#1D4ED8]",
-        focusRing,
+        "flex flex-shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-white shadow-lg shadow-[#2563EB]/25",
         size === "lg" ? "h-14 w-14" : "h-11 w-11",
       )}
     >
-      {p.playing ? <Pause className="h-6 w-6" fill="currentColor" /> : <Play className="ml-0.5 h-6 w-6" fill="currentColor" />}
-    </button>
-  );
-}
-
-function Scrubber({ p }: { p: Playback }) {
-  const { tr } = useSiteLang();
-  return (
-    <div className="flex flex-1 items-center gap-3">
-      <span className="w-10 text-right text-sm tabular-nums text-[#4B5565]">{fmtTime(p.t)}</span>
-      <input
-        type="range"
-        min={0}
-        max={p.duration}
-        step={0.5}
-        value={p.t}
-        onChange={(e) => p.seek(Number(e.target.value))}
-        aria-label={tr("Seek within the sample call", "Sogeza ndani ya simu ya mfano")}
-        aria-valuetext={tr(`${fmtTime(p.t)} of ${fmtTime(p.duration)}`, `${fmtTime(p.t)} kati ya ${fmtTime(p.duration)}`)}
-        className={cn("h-2 flex-1 cursor-pointer accent-[#2563EB]", focusRing)}
-      />
-      <span className="w-10 text-sm tabular-nums text-[#4B5565]">{fmtTime(p.duration)}</span>
-    </div>
+      <Play className="ml-0.5 h-6 w-6" fill="currentColor" aria-hidden />
+    </span>
   );
 }
 
@@ -264,28 +186,10 @@ export function SampleCallCard({
       </div>
 
       <div className="mt-5 flex items-center gap-4 rounded-2xl bg-[#F5F6F8] p-4">
-        <PlayButton
-          p={p}
-          size={expanded ? "md" : "lg"}
-        />
-        {expanded ? (
-          <Scrubber p={p} />
-        ) : (
-          <>
-            <Waveform progress={p.t / p.duration} />
-            <span className="text-sm tabular-nums text-[#4B5565]">{fmtTime(p.playing || p.t ? p.t : p.duration)}</span>
-          </>
-        )}
+        <PlayButton size={expanded ? "md" : "lg"} />
+        <Waveform progress={p.t / p.duration} />
+        <span className="text-sm tabular-nums text-[#4B5565]">{fmtTime(p.duration)}</span>
       </div>
-
-      {p.hasAudio === false && (p.playing || expanded) && (
-        <p className="mt-2 flex items-center gap-1.5 text-xs text-[#8A5300]" role="status">
-          {tr(
-            "Preview: the audio recording is being finalised, so playback follows the transcript silently.",
-            "Onyesho la awali: rekodi ya sauti inakamilishwa, hivyo uchezaji unafuata maandishi bila sauti.",
-          )}
-        </p>
-      )}
 
       {expanded ? (
         <div className="mt-4 space-y-4">
@@ -297,11 +201,6 @@ export function SampleCallCard({
               <p className="text-sm text-[#3F4A5A]">{SAMPLE_CALL.nextStep}</p>
             </div>
           </div>
-          {p.t >= p.duration && (
-            <button type="button" onClick={() => p.seek(0)} className={cn("inline-flex items-center gap-1.5 text-sm font-semibold text-[#2563EB]", focusRing)}>
-              <RotateCcw className="h-4 w-4" aria-hidden /> {tr("Play again", "Cheza tena")}
-            </button>
-          )}
         </div>
       ) : (
         <>
